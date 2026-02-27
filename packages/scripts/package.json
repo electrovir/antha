@@ -1,0 +1,19 @@
+{
+    "name": "@antha/scripts",
+    "private": true,
+    "sideEffects": false,
+    "type": "module",
+    "scripts": {
+        "build": "tsx src/build.script.ts",
+        "compile": "virmator compile",
+        "test": "exit 0"
+    },
+    "dependencies": {
+        "@augment-vir/common": "^31.67.0",
+        "@augment-vir/node": "^31.67.0",
+        "element-vir": "^26.14.4"
+    },
+    "engines": {
+        "node": ">=22"
+    }
+}

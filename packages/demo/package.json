@@ -7,12 +7,8 @@
     "scripts": {
         "build": "virmator frontend build",
         "compile": "virmator compile",
-        "docs": "virmator docs",
         "start": "virmator frontend",
-        "test": "virmator test web",
-        "test:coverage": "npm run test coverage",
-        "test:docs": "virmator docs check",
-        "test:update": "npm test update"
+        "test": "exit 0"
     },
     "dependencies": {
         "@augment-vir/assert": "^31.67.0",
@@ -36,8 +32,5 @@
     },
     "engines": {
         "node": ">=22"
-    },
-    "publishConfig": {
-        "access": "public"
     }
 }

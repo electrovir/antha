@@ -27,21 +27,33 @@ export const AnthaDemoPicker = defineElement<{
         );
 
         if (!demos.length) {
-            return html`Demos to be added soon!`;
+            return html`
+                Demos to be added soon!
+            `;
         }
 
         const listTemplates = demos.map((demo) => {
-            return html`<li><${ViraLink.assign({
-                route: {
-                    route: {
-                        paths: demoPathTree.paths.children[':demo-id'].fill(demo.demoPathId)
-                            .fullPaths,
-                    },
-                    router: inputs.router,
-                },
-            })}>${toSimpleDatePartString(demo.sortDate)}: ${demo.demoName}</${ViraLink}></li>`;
+            return html`
+                <li>
+                    <${ViraLink.assign({
+                        route: {
+                            route: {
+                                paths: demoPathTree.paths.children[':demo-id'].fill(demo.demoPathId)
+                                    .fullPaths,
+                            },
+                            router: inputs.router,
+                        },
+                    })}>
+                        ${toSimpleDatePartString(demo.sortDate)}: ${demo.demoName}
+                    </${ViraLink}>
+                </li>
+            `;
         });
 
-        return html`<ol>${listTemplates}</ol>`;
+        return html`
+            <ol>
+                ${listTemplates}
+            </ol>
+        `;
     },
 });

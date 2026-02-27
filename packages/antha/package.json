@@ -50,7 +50,9 @@
         "@web/test-runner-visual-regression": "^0.10.0",
         "istanbul-smart-text-reporter": "^1.1.5",
         "markdown-code-example-inserter": "^3.0.3",
-        "typedoc": "^0.28.17"
+        "typedoc": "^0.28.17",
+        "typescript": "^5.9.3",
+        "vite": "^7.3.1"
     },
     "engines": {
         "node": ">=22"

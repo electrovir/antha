@@ -21,6 +21,7 @@
         "packages/*"
     ],
     "scripts": {
+        "build": "npm run build --workspace @antha/scripts",
         "compile": "virmator compile",
         "format": "virmator format",
         "lint": "virmator lint fix",
