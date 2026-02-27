@@ -78,6 +78,65 @@ async function createFinalHtml() {
     );
 }
 
+/**
+ * GitHub Pages serves 404.html for any path that doesn't match a real file. This generates a smart
+ * 404 page that detects which sub-app the URL belongs to (e.g. `/antha/demo/...` or
+ * `/antha/docs/...`), fetches that sub-app's `index.html`, and replaces the document content while
+ * preserving the full URL so the SPA router handles the route.
+ */
+async function create404Html() {
+    const repoBase = '/antha';
+
+    const subDirs = builds.map((build) => build.finalOutputDirPath.replace(distDirPath + '/', ''));
+
+    await writeFile(
+        join(distDirPath, '404.html'),
+        convertTemplateToString(html`
+            <!doctype html>
+            <html lang="en">
+                <head>
+                    <meta charset="UTF-8" />
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+                    <title>Redirecting...</title>
+                    <script type="module">
+                        const repoBase = ${JSON.stringify(repoBase)};
+                        const knownSubDirs = ${JSON.stringify(subDirs)};
+                        const path = window.location.pathname;
+
+                        const prefix = path.startsWith(repoBase + '/')
+                            ? path.slice(repoBase.length + 1)
+                            : '';
+                        const subDir = prefix.split('/')[0];
+
+                        if (!subDir || !knownSubDirs.includes(subDir)) {
+                            window.location.replace(repoBase + '/');
+                        } else {
+                            const indexUrl = repoBase + '/' + subDir + '/index.html';
+
+                            try {
+                                const response = await fetch(indexUrl);
+
+                                if (!response.ok) {
+                                    throw new Error(String(response.status));
+                                }
+
+                                const html = await response.text();
+
+                                document.open();
+                                document.write(html);
+                                document.close();
+                            } catch {
+                                window.location.replace(repoBase + '/');
+                            }
+                        }
+                    </script>
+                </head>
+                <body></body>
+            </html>
+        `),
+    );
+}
+
 async function runBuilds() {
     await rm(distDirPath, {
         force: true,
@@ -109,6 +168,8 @@ async function runBuilds() {
         }
     });
     await createFinalHtml();
+    await create404Html();
+
     log.success('Build complete.');
 }
 
