@@ -1,5 +1,6 @@
 import {mapObject} from '@augment-vir/common';
 import {PathTree, SpaRouter, type FullSpaRoute, type SpaRouteByPath} from 'spa-router-vir';
+import {joinUrlPaths} from 'url-vir';
 
 export const demoPathTree = new PathTree({
     allowBare: true,
@@ -63,6 +64,7 @@ export type DemoRouter = SpaRouter<DemoRoutePaths, DemoRouteSearchParams, string
 
 export function createDemoRouter() {
     return new SpaRouter({
+        basePath: joinUrlPaths('antha', 'demo'),
         sanitizeRoute(rawRoute) {
             const sanitizedPaths = demoPathTree.sanitizePaths(rawRoute.paths);
 
