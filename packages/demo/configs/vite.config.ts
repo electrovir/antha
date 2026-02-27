@@ -1,5 +1,5 @@
 import {defineConfig} from '@virmator/frontend/configs/vite.config.base.js';
-import {resolve} from 'node:path';
+import {join, resolve} from 'node:path';
 
 export default defineConfig(
     {
@@ -9,6 +9,7 @@ export default defineConfig(
     (baseConfig) => {
         return {
             ...baseConfig,
+            base: process.env.CI ? join(baseConfig.base || '', 'demo') : baseConfig.base,
         };
     },
 );

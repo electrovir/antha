@@ -35,7 +35,7 @@ async function createFinalHtml() {
     const links = builds
         .map((build) => {
             const relativePath = build.finalOutputDirPath.replace(distDirPath + '/', '');
-            return `            <li><a href="./${relativePath}/index.html">${build.buildName}</a></li>`;
+            return `            <li><a href="./${relativePath}">${build.buildName}</a></li>`;
         })
         .join('\n');
 
