@@ -1,0 +1,61 @@
+{
+    "name": "antha",
+    "version": "0.0.1",
+    "description": "The Antha game engine (for the web).",
+    "keywords": [
+        "vir",
+        "antha"
+    ],
+    "homepage": "https://github.com/electrovir/antha",
+    "bugs": {
+        "url": "https://github.com/electrovir/antha/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/electrovir/antha.git"
+    },
+    "license": "(MIT or CC0 1.0)",
+    "author": {
+        "name": "electrovir",
+        "url": "https://github.com/electrovir"
+    },
+    "sideEffects": false,
+    "type": "module",
+    "main": "src/index.ts",
+    "module": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "build": "virmator frontend build",
+        "compile": "virmator compile",
+        "docs": "virmator docs",
+        "start": "virmator frontend",
+        "test": "virmator test web",
+        "test:coverage": "npm run test coverage",
+        "test:docs": "virmator docs check",
+        "test:update": "npm test update"
+    },
+    "dependencies": {
+        "@augment-vir/assert": "^31.67.0",
+        "@augment-vir/common": "^31.67.0",
+        "date-vir": "^8.2.0",
+        "element-vir": "^26.14.4",
+        "type-fest": "^5.4.4"
+    },
+    "devDependencies": {
+        "@augment-vir/test": "^31.67.0",
+        "@web/dev-server-esbuild": "^1.0.5",
+        "@web/test-runner": "^0.20.2",
+        "@web/test-runner-commands": "^0.9.0",
+        "@web/test-runner-playwright": "^0.11.1",
+        "@web/test-runner-visual-regression": "^0.10.0",
+        "istanbul-smart-text-reporter": "^1.1.5",
+        "markdown-code-example-inserter": "^3.0.3",
+        "typedoc": "^0.28.17"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}
