@@ -9,19 +9,35 @@ import {type HtmlInterpolation} from 'element-vir';
 import {Observable} from 'observavir';
 import {type RequireExactlyOne} from 'type-fest';
 
+/**
+ * Parameters passed to the execute callback in {@link AnthaMod}.
+ *
+ * @category Internal
+ */
 export type ModExecuteParams<State extends AnyObject> = {
-    state: State;
+    state: Partial<State>;
     engine: AnthaEngine;
     ticksSinceLastExecute: number;
     msSinceLastExecute: DOMHighResTimeStamp;
+    lastExecution: Readonly<LastExecution> | undefined;
     currentTick: number;
 } & ModOptions;
 
+/**
+ * Allowed output from the execute callback in {@link AnthaMod}.
+ *
+ * @category Internal
+ */
 export type ModExecuteResult = MaybePromise<HtmlInterpolation | void>;
 
+/**
+ * Possible options to use when defining {@link AnthaMod}.
+ *
+ * @category Internal
+ */
 export type ModOptions = {
     /**
-     * The frequency at which this mode should execute.
+     * The frequency at which this mod should execute.
      *
      * - `undefined`: execute on every tick
      * - `duration`: execute on each duration. This will be converted to a tick count based on what
@@ -46,59 +62,170 @@ export type ModOptions = {
     executeImmediately: boolean;
 };
 
-export type AnthaMod<State extends AnyObject = any> = {
+/**
+ * A mod for {@link AnthaEngine}. This is the core of getting anything done in the engine, everything
+ * runs in a mod.
+ *
+ * @category Mod
+ * @example
+ *
+ * ```ts
+ * import {AnthaMod, html} from 'antha';
+ *
+ * const myMod: AnthaMod<{count: number}> = {
+ *     execute({state}) {
+ *         state.count = (state.count || 0) + 1;
+ *         return html`
+ *             <span class="counter">${String(state.count)}</span>
+ *         `;
+ *     },
+ * };
+ * ```
+ */
+export type AnthaMod<State extends AnyObject = AnyObject> = {
     /**
      * The execute callback. This is where the mod's functionality lives. This will be called in
      * each tick based on the provided frequency. Any non-nullish output will be rendered as HTML to
      * the DOM.
      */
-    execute: (this: void, params: Readonly<ModExecuteParams<State>>) => ModExecuteResult;
+    execute: (this: void, params: Readonly<ModExecuteParams<NoInfer<State>>>) => ModExecuteResult;
 } & PartialWithUndefined<ModOptions>;
 
-export type AnthaEngineConfig = {
+/**
+ * A helper for defining {@link AnthaMod} inline. This is _not_ required in order to define an
+ * {@link AnthaMod}. It simply helps with type inference.
+ *
+ * @category Mod
+ * @example
+ *
+ * ```ts
+ * import {defineAnthaMod, html} from 'antha';
+ *
+ * defineAnthaMod<{count: number}>({
+ *     execute({state}) {
+ *         state.count = (state.count || 0) + 1;
+ *         return html`
+ *             <span class="counter">${String(state.count)}</span>
+ *         `;
+ *     },
+ * });
+ * ```
+ */
+export function defineAnthaMod<State extends AnyObject = never>(
+    mod: AnthaMod<NoInfer<State>>,
+): AnthaMod<NoInfer<State>> {
+    return mod;
+}
+
+/**
+ * Possible options to use when constructing {@link AnthaEngine}. Defaults are contained in
+ * {@link defaultAnthaEngineOptions}.
+ *
+ * @category Engine
+ */
+export type AnthaEngineOptions = {
     /** The minimum milliseconds between each tick. */
     tickDurationMs: number;
 };
 
+/**
+ * Default values for {@link AnthaEngineOptions}.
+ *
+ * @category Internal
+ */
+export const defaultAnthaEngineOptions: AnthaEngineOptions = {
+    tickDurationMs: 16,
+};
+
+/**
+ * The last known execution for a given mod. Passed to each mod's execute callback via
+ * {@link ModExecuteParams} and used inside {@link AnthaEngine} to keep track of when a mod should run
+ * again.
+ *
+ * @category Internal
+ */
 export type LastExecution = {
     tick: number;
     timeMs: DOMHighResTimeStamp;
 };
 
-export const defaultAnthaEngineConfig: AnthaEngineConfig = {
-    tickDurationMs: 16,
-};
-
+/**
+ * The Antha Engine. This keeps track of when to execute each mod, the mod's template outputs, and
+ * the state passed to and mutated by each mod.
+ *
+ * @category Engine
+ * @example
+ *
+ * ```ts
+ * import {AnthaEngine, defineAnthaMod, html} from 'antha';
+ *
+ * new AnthaEngine({
+ *     mods: [
+ *         defineAnthaMod<{count: number}>({
+ *             execute({state}) {
+ *                 state.count = (state.count || 0) + 1;
+ *                 return html`
+ *                     <span class="counter">${String(state.count)}</span>
+ *                 `;
+ *             },
+ *         }),
+ *     ],
+ * });
+ * ```
+ */
 export class AnthaEngine {
     constructor(
         init?:
             | PartialWithUndefined<{
                   mods: AnthaMod[];
-                  config: PartialWithUndefined<AnthaEngineConfig>;
+                  options: PartialWithUndefined<AnthaEngineOptions>;
               }>
             | undefined,
     ) {
-        this.config = mergeDefinedProperties(defaultAnthaEngineConfig, init?.config);
+        this.options = mergeDefinedProperties(defaultAnthaEngineOptions, init?.options);
         this.currentMods = init?.mods || [];
     }
 
+    /**
+     * Hook into this observable for updating event-based code, like UI elements. This is used
+     * directly in AnthaUi to update the UI.
+     */
     public readonly observable = new Observable<HtmlInterpolation[]>({
         defaultValue: [],
         equalityCheck: undefined,
     });
-    public readonly config: AnthaEngineConfig;
+    /** The current engine options. This can be modified at any time. */
+    public readonly options: AnthaEngineOptions;
+    /** The current mods to execute. This can be modified at any time. */
     public readonly currentMods: AnthaMod[];
     /**
-     * Use to store each template by its mod so that mod-to-template tracking remains stable even if
-     * mods are inserted, removed, or moved around.
+     * Used to store each template by its mod so that mod-to-template tracking remains stable even
+     * if mods are inserted, removed, or moved around in the `currentMods` array.
      */
     public readonly currentTemplateMap = new WeakMap<AnthaMod, HtmlInterpolation>();
-    /** The current array of templates. This array is mutated and passed to the UI. */
+    /**
+     * The current array of templates. This array is mutated and passed to the UI via the
+     * `observable`.
+     */
     public readonly currentTemplateArray: HtmlInterpolation[] = [];
+    /**
+     * Used to store when each mod was last executed in order to know when the next execution should
+     * be.
+     */
     public readonly lastModExecution = new WeakMap<AnthaMod, Readonly<LastExecution>>();
+    /** The engine's current tick number. This is incremented after each tick is finished executing. */
     public currentTick = 0;
+    /**
+     * The engine's current state. This is intended to be mutated by mods, but it can also be
+     * modified at any time externally.
+     */
     public readonly state: AnyObject = {};
+    /** When the engine started running its loop. */
     public engineStartTime: DOMHighResTimeStamp = performance.now();
+    /**
+     * Indicates whether the loop is running or not. This can be freely modified at any time to stop
+     * the next tick.
+     */
     public isLoopRunning = false;
 
     /**
@@ -138,6 +265,11 @@ export class AnthaEngine {
         this.observable.setValue([]);
     }
 
+    /**
+     * Start the tick loop. If the loop is already running, no changes will be made.
+     *
+     * @returns Whether the loop was started or not.
+     */
     public startLoop(): boolean {
         if (this.isLoopRunning) {
             return false;
@@ -151,8 +283,10 @@ export class AnthaEngine {
         return true;
     }
 
+    /** When the next tick should execute. */
     protected nextTickTarget: DOMHighResTimeStamp = 0;
 
+    /** Execute ticks in a loop. */
     protected async runTickInLoop() {
         if (!this.isLoopRunning) {
             return;
@@ -160,12 +294,16 @@ export class AnthaEngine {
 
         await this.runSingleTick();
 
-        this.nextTickTarget += this.config.tickDurationMs;
+        this.nextTickTarget += this.options.tickDurationMs;
         const nextDelay = Math.max(0, this.nextTickTarget - performance.now());
 
         setTimeout(() => this.runTickInLoop(), nextDelay);
     }
 
+    /**
+     * Run a single tick. This happens automatically in a loop if `startLoop` is called or
+     * `isLoopRunning` is set to `true`.
+     */
     public async runSingleTick(): Promise<void> {
         /** Clear the array as we're about to populate it. */
         this.currentTemplateArray.length = 0;
@@ -183,6 +321,7 @@ export class AnthaEngine {
                       ticksSinceLastExecute: this.currentTick - (lastExecution?.tick ?? 0),
                       executeImmediately: mod.executeImmediately || false,
                       frequency: mod.frequency || undefined,
+                      lastExecution,
                       msSinceLastExecute:
                           executionStart - (lastExecution?.timeMs ?? this.engineStartTime),
                   })) || undefined
@@ -203,6 +342,7 @@ export class AnthaEngine {
         this.observable.setValue(this.currentTemplateArray);
     }
 
+    /** Used to determine if a mod should execute right now or not. */
     public shouldModExecute(
         mod: Readonly<AnthaMod>,
         lastExecution: Readonly<LastExecution> | undefined,
@@ -212,7 +352,7 @@ export class AnthaEngine {
         }
 
         const ticksBetweenExecutions =
-            mod.frequency.ticks ?? mod.frequency.durationMs / this.config.tickDurationMs;
+            mod.frequency.ticks ?? mod.frequency.durationMs / this.options.tickDurationMs;
 
         if (!ticksBetweenExecutions) {
             return true;

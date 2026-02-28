@@ -2,6 +2,11 @@ import {type PartialWithUndefined} from '@augment-vir/common';
 import {css, defineElement} from 'element-vir';
 import {type AnthaEngine} from './antha.js';
 
+/**
+ * Options for {@link AnthaUi}.
+ *
+ * @category UI
+ */
 export type AnthaUiOptions = {
     /**
      * If set to `true`, the engine won't automatically be cleaned up when the {@link AnthaUi}
@@ -19,6 +24,18 @@ export type AnthaUiOptions = {
     disableConnectStart: boolean;
 };
 
+/**
+ * A built-in element for easily rendering {@link AnthaEngine} templates to the browser.
+ *
+ * @category UI
+ * @example
+ *
+ * ```ts
+ * import {AnthaUi, AnthaEngine} from 'antha';
+ *
+ * const engine = new AnthaEngine();
+ * ```
+ */
 export const AnthaUi = defineElement<{
     engine: AnthaEngine;
     options?: Readonly<PartialWithUndefined<AnthaUiOptions>>;

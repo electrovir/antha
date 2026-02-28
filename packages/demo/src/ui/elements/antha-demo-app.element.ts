@@ -46,7 +46,9 @@ export const AnthaDemoApp = defineElement()({
             } else {
                 chosenDemo.engine.startLoop();
                 return html`
-                    <${AnthaUi.assign({engine: chosenDemo.engine})}></${AnthaUi}>
+                    <${AnthaUi.assign({
+                        engine: chosenDemo.engine,
+                    })}></${AnthaUi}>
                 `;
             }
         } else {

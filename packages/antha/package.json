@@ -39,10 +39,12 @@
         "@augment-vir/common": "^31.67.0",
         "date-vir": "^8.2.0",
         "element-vir": "^26.14.4",
+        "observavir": "^2.3.2",
         "type-fest": "^5.4.4"
     },
     "devDependencies": {
         "@augment-vir/test": "^31.67.0",
+        "@augment-vir/web": "^31.67.0",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-commands": "^0.9.0",

@@ -6,7 +6,9 @@ import {cp, mkdir, rm, writeFile} from 'node:fs/promises';
 import {join} from 'node:path';
 import {distDirPath, packageDirPaths} from './file-paths.js';
 
-mkdirSync(distDirPath, {recursive: true});
+mkdirSync(distDirPath, {
+    recursive: true,
+});
 
 const builds: {
     buildName: string;

@@ -31,13 +31,19 @@ const tickCounterMod: AnthaMod = {
 const tpsTrackerMod: AnthaMod<{
     tps: number;
 }> = {
-    frequency: {durationMs: 1000},
+    frequency: {
+        durationMs: 1000,
+    },
     executeImmediately: true,
     execute({state, msSinceLastExecute, ticksSinceLastExecute}) {
         const elapsedSeconds = msSinceLastExecute / 1000;
 
         state.tps =
-            elapsedSeconds > 0 ? round(ticksSinceLastExecute / elapsedSeconds, {digits: 1}) : 0;
+            elapsedSeconds > 0
+                ? round(ticksSinceLastExecute / elapsedSeconds, {
+                      digits: 1,
+                  })
+                : 0;
 
         return html`
             <div
