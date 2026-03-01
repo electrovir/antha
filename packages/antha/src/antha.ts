@@ -38,11 +38,28 @@ export type ModExecuteParams<State extends AnyObject> = {
 } & ModOptions;
 
 /**
+ * Return this from a mod's {@link AnthaMod.execute} callback to instruct {@link AnthaEngine} that the
+ * mod's current execution should not count toward the mod's frequency schedule. This is useful when
+ * a mod needs a dependency (such as a canvas or external resource) that isn't ready yet so that the
+ * engine will keep retrying on subsequent ticks, even if the mod has a low execution frequency.
+ *
+ * @category Mod
+ */
+export const SkipExecution: unique symbol = Symbol.for('antha-engine-mode-skip-execution');
+
+/**
+ * Type for {@link SkipExecution}.
+ *
+ * @category Mod
+ */
+export type SkipExecution = typeof SkipExecution;
+
+/**
  * Allowed output from the execute callback in {@link AnthaMod}.
  *
  * @category Internal
  */
-export type ModExecuteResult = MaybePromise<HtmlInterpolation | void>;
+export type ModExecuteResult = MaybePromise<HtmlInterpolation | void | SkipExecution>;
 
 /**
  * Possible options to use when defining {@link AnthaMod}.
@@ -354,8 +371,8 @@ export class AnthaEngine {
             const lastExecution = this.lastModExecution.get(mod);
             const shouldExecute = this.shouldModExecute(mod, lastExecution);
 
-            const modTemplate = shouldExecute
-                ? (await mod.execute({
+            const executeResult = shouldExecute
+                ? await mod.execute({
                       engine: this,
                       modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
                           applyBrand<ModInstanceId>(createId()),
@@ -369,12 +386,19 @@ export class AnthaEngine {
                       hostElement: this.hostElement,
                       msSinceLastExecute:
                           executionStart - (lastExecution?.timeMs ?? this.engineStartTime),
-                  })) || undefined
-                : this.currentTemplateMap.get(mod);
+                  })
+                : undefined;
+
+            const skipped = executeResult === SkipExecution;
+
+            const modTemplate =
+                shouldExecute && !skipped
+                    ? executeResult || undefined
+                    : this.currentTemplateMap.get(mod);
 
             this.currentTemplateArray[index] = modTemplate;
 
-            if (shouldExecute) {
+            if (shouldExecute && !skipped) {
                 this.currentTemplateMap.set(mod, modTemplate);
                 this.lastModExecution.set(mod, {
                     tick: this.currentTick,

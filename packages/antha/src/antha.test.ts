@@ -4,6 +4,7 @@ import {describe, it} from '@augment-vir/test';
 import {html} from 'element-vir';
 import {
     AnthaEngine,
+    SkipExecution,
     defaultAnthaEngineOptions,
     defineAnthaMod,
     type AnthaMod,
@@ -802,6 +803,100 @@ describe(AnthaEngine.name, () => {
         await engine.runSingleTick();
         assert.strictEquals(executeCount, 1);
         assert.isDefined(engine.currentTemplateArray[0]);
+    });
+
+    it('does not record execution when mod returns SkipExecution', async () => {
+        let executeCount = 0;
+        const mod: AnthaMod = {
+            frequency: {
+                ticks: 100,
+            },
+            executeImmediately: true,
+            execute() {
+                executeCount++;
+                return SkipExecution;
+            },
+        };
+        const engine = new AnthaEngine({
+            mods: [mod],
+        });
+
+        await engine.runSingleTick();
+        assert.strictEquals(executeCount, 1);
+        assert.isUndefined(engine.lastModExecution.get(mod));
+    });
+
+    it('retries executeImmediately on subsequent ticks after SkipExecution', async () => {
+        let executeCount = 0;
+        let ready = false;
+        const mod: AnthaMod = {
+            frequency: {
+                ticks: 100,
+            },
+            executeImmediately: true,
+            execute() {
+                executeCount++;
+                if (!ready) {
+                    return SkipExecution;
+                }
+                return html`
+                    <p>ready</p>
+                `;
+            },
+        };
+        const engine = new AnthaEngine({
+            mods: [mod],
+        });
+
+        /** Tick 0: dependency not ready, returns SkipExecution. */
+        await engine.runSingleTick();
+        assert.strictEquals(executeCount, 1 as number);
+        assert.isUndefined(engine.lastModExecution.get(mod));
+        assert.isUndefined(engine.currentTemplateArray[0]);
+
+        /** Tick 1: still not ready, retries because no lastExecution was recorded. */
+        await engine.runSingleTick();
+        assert.strictEquals(executeCount, 2 as number);
+        assert.isUndefined(engine.lastModExecution.get(mod));
+
+        /** Make the dependency available. */
+        ready = true;
+
+        /** Tick 2: now ready, executes successfully. */
+        await engine.runSingleTick();
+        assert.strictEquals(executeCount, 3 as number);
+        assert.isDefined(engine.lastModExecution.get(mod));
+        assert.isDefined(engine.currentTemplateArray[0]);
+
+        /** Tick 3: frequency not reached (100 ticks), should not re-execute. */
+        await engine.runSingleTick();
+        assert.strictEquals(executeCount, 3 as number);
+    });
+
+    it('preserves previous template when SkipExecution is returned after a successful run', async () => {
+        let shouldSkip = false;
+        const mod: AnthaMod = {
+            execute() {
+                if (shouldSkip) {
+                    return SkipExecution;
+                }
+                return html`
+                    <p>content</p>
+                `;
+            },
+        };
+        const engine = new AnthaEngine({
+            mods: [mod],
+        });
+
+        await engine.runSingleTick();
+        assert.isDefined(engine.currentTemplateArray[0]);
+        const firstTemplate = engine.currentTemplateArray[0];
+
+        shouldSkip = true;
+        await engine.runSingleTick();
+        /** Template from prior successful execution is preserved. */
+        assert.strictEquals(engine.currentTemplateArray[0], firstTemplate);
     });
 
     it('supports adding mods at runtime', async () => {
