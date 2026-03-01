@@ -843,4 +843,46 @@ describe(AnthaEngine.name, () => {
         await engine.runSingleTick();
         assert.isLengthExactly(engine.currentTemplateArray, 0);
     });
+
+    it('clamps nextTickTarget when it falls far behind to prevent burst catch-up', async () => {
+        class ExposedEngine extends AnthaEngine {
+            public override nextTickTarget: DOMHighResTimeStamp = 0;
+        }
+
+        const engine = new ExposedEngine({
+            mods: [
+                {
+                    execute() {},
+                },
+            ],
+            options: {
+                tickDurationMs: 16,
+            },
+        });
+
+        engine.startLoop();
+        await wait({
+            milliseconds: 50,
+        });
+        engine.stopLoop();
+
+        const ticksBefore = engine.currentTick;
+
+        /**
+         * Simulate a background tab: set the tick target 5 seconds in the past, which would
+         * normally cause hundreds of rapid catch-up ticks.
+         */
+        engine.nextTickTarget = performance.now() - 5000;
+        engine.isLoopRunning = true;
+
+        await wait({
+            milliseconds: 200,
+        });
+        engine.stopLoop();
+
+        const ticksDuringCatchUp = engine.currentTick - ticksBefore;
+        const maxExpectedTicks = Math.ceil(200 / 16) + 5;
+
+        assert.isBelow(ticksDuringCatchUp, maxExpectedTicks);
+    });
 });

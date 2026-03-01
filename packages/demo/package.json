@@ -12,12 +12,14 @@
         "test:coverage": "npm test"
     },
     "dependencies": {
+        "@antha/pixi-canvas": "*",
         "@augment-vir/assert": "^31.67.0",
         "@augment-vir/common": "^31.67.0",
         "@electrovir/color": "^1.7.8",
         "antha": "*",
         "date-vir": "^8.2.0",
         "element-vir": "^26.14.4",
+        "pixi.js": "^8.16.0",
         "spa-router-vir": "^6.4.1",
         "type-fest": "^5.4.4",
         "url-vir": "^2.1.7",

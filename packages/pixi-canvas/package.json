@@ -1,0 +1,55 @@
+{
+    "name": "@antha/pixi-canvas",
+    "version": "0.0.1",
+    "description": "An Antha mod for rendering to a canvas using PixiJS.",
+    "keywords": [
+        "vir",
+        "antha",
+        "render",
+        "canvas"
+    ],
+    "homepage": "https://github.com/electrovir/antha",
+    "bugs": {
+        "url": "https://github.com/electrovir/antha/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/electrovir/antha.git"
+    },
+    "license": "(MIT or CC0 1.0)",
+    "author": {
+        "name": "electrovir",
+        "url": "https://github.com/electrovir"
+    },
+    "sideEffects": false,
+    "type": "module",
+    "main": "src/index.ts",
+    "module": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "compile": "virmator compile",
+        "docs": "virmator docs",
+        "test": "exit 0",
+        "test:coverage": "exit 0",
+        "test:docs": "virmator docs check"
+    },
+    "dependencies": {
+        "@augment-vir/assert": "^31.67.0",
+        "@augment-vir/common": "^31.67.0",
+        "@electrovir/color": "^1.7.8",
+        "vira": "^29.6.1"
+    },
+    "devDependencies": {
+        "pixi.js": "^8.16.0"
+    },
+    "peerDependencies": {
+        "antha": "*",
+        "pixi.js": ">=8"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}

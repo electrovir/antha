@@ -69,7 +69,18 @@ export const AnthaUi = defineElement<{
             engineObservable: undefined,
         });
     },
-    render({state, updateState, inputs}) {
+    render({state, updateState, inputs, host}) {
+        if (
+            inputs.engine.hostElement !== host &&
+            inputs.engine.hostElement === globalThis.document.documentElement
+        ) {
+            /**
+             * Automatically attach this element's host to the engine's host element is one has not
+             * been specifically set already.
+             */
+            inputs.engine.hostElement = host;
+        }
+
         if (state.engineObservable !== inputs.engine.observable) {
             /** Automatically swap out the observable if the engine changes. */
             updateState({

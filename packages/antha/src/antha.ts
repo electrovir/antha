@@ -1,13 +1,25 @@
 import {
+    applyBrand,
     awaitedForEach,
+    getOrSetFromMap,
     mergeDefinedProperties,
     type AnyObject,
+    type Branded,
     type MaybePromise,
     type PartialWithUndefined,
 } from '@augment-vir/common';
+import {createId} from '@paralleldrive/cuid2';
 import {type HtmlInterpolation} from 'element-vir';
 import {Observable} from 'observavir';
 import {type RequireExactlyOne} from 'type-fest';
+
+/**
+ * A string type used for mod instances. In reality these are just strings, but this branded type
+ * helps keep track of them. Under the hood, these are CUID2 ids.
+ *
+ * @category Internal
+ */
+export type ModInstanceId = Branded<string, 'antha-mod-instance-id'>;
 
 /**
  * Parameters passed to the execute callback in {@link AnthaMod}.
@@ -21,6 +33,8 @@ export type ModExecuteParams<State extends AnyObject> = {
     msSinceLastExecute: DOMHighResTimeStamp;
     lastExecution: Readonly<LastExecution> | undefined;
     currentTick: number;
+    hostElement: HTMLElement;
+    modInstanceId: ModInstanceId;
 } & ModOptions;
 
 /**
@@ -150,6 +164,28 @@ export type LastExecution = {
 };
 
 /**
+ * Init options for the constructor of {@link AnthaEngine}.
+ *
+ * @category Internal
+ */
+export type AnthaEngineInit = PartialWithUndefined<{
+    /** The Antha mods to start the Antha engine with. */
+    mods: AnthaMod[];
+    /**
+     * Various options to start the Antha engine with.
+     *
+     * @default defaultAnthaEngineOptions
+     */
+    options: PartialWithUndefined<AnthaEngineOptions>;
+    /**
+     * The host element to start the Antha engine with.
+     *
+     * @default globalThis.document.documentElement
+     */
+    hostElement: HTMLElement;
+}>;
+
+/**
  * The Antha Engine. This keeps track of when to execute each mod, the mod's template outputs, and
  * the state passed to and mutated by each mod.
  *
@@ -174,18 +210,14 @@ export type LastExecution = {
  * ```
  */
 export class AnthaEngine {
-    constructor(
-        init?:
-            | PartialWithUndefined<{
-                  mods: AnthaMod[];
-                  options: PartialWithUndefined<AnthaEngineOptions>;
-              }>
-            | undefined,
-    ) {
+    constructor(init?: AnthaEngineInit | undefined) {
         this.options = mergeDefinedProperties(defaultAnthaEngineOptions, init?.options);
         this.currentMods = init?.mods || [];
+        this.hostElement = init?.hostElement || globalThis.document.documentElement;
     }
 
+    /** The element that this engine considers itself to be "hosted" in. */
+    public hostElement: HTMLElement;
     /**
      * Hook into this observable for updating event-based code, like UI elements. This is used
      * directly in AnthaUi to update the UI.
@@ -203,6 +235,7 @@ export class AnthaEngine {
      * if mods are inserted, removed, or moved around in the `currentMods` array.
      */
     public readonly currentTemplateMap = new WeakMap<AnthaMod, HtmlInterpolation>();
+    public readonly modInstanceIdMap = new WeakMap<AnthaMod, ModInstanceId>();
     /**
      * The current array of templates. This array is mutated and passed to the UI via the
      * `observable`.
@@ -295,7 +328,15 @@ export class AnthaEngine {
         await this.runSingleTick();
 
         this.nextTickTarget += this.options.tickDurationMs;
-        const nextDelay = Math.max(0, this.nextTickTarget - performance.now());
+
+        const now = performance.now();
+
+        if (this.nextTickTarget < now - this.options.tickDurationMs) {
+            /** Prevent burst catch-up after the browser throttles the engine in the background. */
+            this.nextTickTarget = now;
+        }
+
+        const nextDelay = Math.max(0, this.nextTickTarget - now);
 
         setTimeout(() => this.runTickInLoop(), nextDelay);
     }
@@ -316,12 +357,16 @@ export class AnthaEngine {
             const modTemplate = shouldExecute
                 ? (await mod.execute({
                       engine: this,
+                      modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
+                          applyBrand<ModInstanceId>(createId()),
+                      ),
                       currentTick: this.currentTick,
                       state: this.state,
                       ticksSinceLastExecute: this.currentTick - (lastExecution?.tick ?? 0),
                       executeImmediately: mod.executeImmediately || false,
                       frequency: mod.frequency || undefined,
                       lastExecution,
+                      hostElement: this.hostElement,
                       msSinceLastExecute:
                           executionStart - (lastExecution?.timeMs ?? this.engineStartTime),
                   })) || undefined

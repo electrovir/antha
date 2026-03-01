@@ -12,13 +12,5 @@
         "./test-files/",
         "src/all-files-for-code-coverage.test.ts"
     ],
-    "extends": "../../configs/tsconfig.base.json",
-    "references": [
-        {
-            "path": "../antha"
-        },
-        {
-            "path": "../pixi-canvas"
-        }
-    ]
+    "extends": "../../configs/tsconfig.base.json"
 }
