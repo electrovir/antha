@@ -1,5 +1,5 @@
 import {assert} from '@augment-vir/assert';
-import {wait} from '@augment-vir/common';
+import {selectFrom, wait, type AnyObject} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {html} from 'element-vir';
 import {
@@ -9,6 +9,8 @@ import {
     defineAnthaMod,
     type AnthaMod,
     type LastExecution,
+    type ModCleanupParams,
+    type ModInstanceId,
 } from './antha-engine.js';
 
 describe(defineAnthaMod.name, () => {
@@ -131,7 +133,7 @@ describe(AnthaEngine.name, () => {
         assert.isDefined(engine.currentTemplateMap.get(mod));
         assert.isAbove(engine.observable.value.length, 0);
 
-        engine.reset();
+        await engine.reset();
 
         assert.strictEquals(engine.currentTick, 0);
         assert.isFalse(engine.isLoopRunning);
@@ -141,6 +143,174 @@ describe(AnthaEngine.name, () => {
         assert.isUndefined(engine.lastModExecution.get(mod));
         assert.isUndefined(engine.currentTemplateMap.get(mod));
         assert.isEmpty(engine.observable.value);
+    });
+
+    describe('mod cleanup', () => {
+        it('calls cleanup on each mod during reset', async () => {
+            let cleanupCalledA = false;
+            let cleanupCalledB = false;
+            const engine = new AnthaEngine({
+                mods: [
+                    {
+                        execute() {},
+                        cleanup() {
+                            cleanupCalledA = true;
+                        },
+                    },
+                    {
+                        execute() {},
+                        cleanup() {
+                            cleanupCalledB = true;
+                        },
+                    },
+                ],
+            });
+
+            await engine.runSingleTick();
+            await engine.reset();
+
+            assert.isTrue(cleanupCalledA);
+            assert.isTrue(cleanupCalledB);
+        });
+
+        it('passes correct params to cleanup', async () => {
+            let capturedParams: Readonly<ModCleanupParams<{value: number}>> | undefined;
+            const mod: AnthaMod<{value: number}> = defineAnthaMod<{value: number}>({
+                execute({state}) {
+                    state.value = 42;
+                },
+                cleanup(params) {
+                    capturedParams = params;
+                },
+            });
+            const engine = new AnthaEngine({
+                mods: [mod],
+            });
+
+            await engine.runSingleTick();
+            await engine.reset();
+
+            assert.isDefined(capturedParams);
+            assert.isDefined(capturedParams.modInstanceId);
+            assert.deepEquals(
+                selectFrom(capturedParams, {
+                    engine: true,
+                    hostElement: true,
+                    executeImmediately: true,
+                    frequency: true,
+                }),
+                {
+                    engine,
+                    hostElement: engine.hostElement,
+                    executeImmediately: false,
+                    frequency: undefined,
+                },
+            );
+        });
+
+        it('provides the same modInstanceId to cleanup as to execute', async () => {
+            let executeInstanceId: ModInstanceId | undefined;
+            let cleanupInstanceId: ModInstanceId | undefined;
+            const engine = new AnthaEngine({
+                mods: [
+                    defineAnthaMod<AnyObject>({
+                        execute({modInstanceId}) {
+                            executeInstanceId = modInstanceId;
+                        },
+                        cleanup({modInstanceId}) {
+                            cleanupInstanceId = modInstanceId;
+                        },
+                    }),
+                ],
+            });
+
+            await engine.runSingleTick();
+            await engine.reset();
+
+            assert.isDefined(executeInstanceId);
+            assert.strictEquals(cleanupInstanceId, executeInstanceId);
+        });
+
+        it('provides a modInstanceId to cleanup even when the engine has not ticked yet.', async () => {
+            let executeInstanceId: ModInstanceId | undefined;
+            let cleanupInstanceId: ModInstanceId | undefined;
+            const engine = new AnthaEngine({
+                mods: [
+                    defineAnthaMod<AnyObject>({
+                        execute({modInstanceId}) {
+                            executeInstanceId = modInstanceId;
+                        },
+                        cleanup({modInstanceId}) {
+                            cleanupInstanceId = modInstanceId;
+                        },
+                    }),
+                ],
+            });
+
+            await engine.reset();
+
+            assert.isUndefined(executeInstanceId);
+            assert.isTruthy(cleanupInstanceId);
+        });
+
+        it('awaits async cleanup', async () => {
+            let cleanupFinished = false;
+            const engine = new AnthaEngine({
+                mods: [
+                    {
+                        execute() {},
+                        async cleanup() {
+                            await wait({
+                                milliseconds: 10,
+                            });
+                            cleanupFinished = true;
+                        },
+                    },
+                ],
+            });
+
+            await engine.runSingleTick();
+            await engine.reset();
+
+            assert.isTrue(cleanupFinished);
+        });
+
+        it('cleanup receives current state before it is cleared', async () => {
+            let capturedValue: number | undefined;
+            const engine = new AnthaEngine({
+                mods: [
+                    defineAnthaMod<{value: number}>({
+                        execute({state}) {
+                            state.value = 99;
+                        },
+                        cleanup({state}) {
+                            capturedValue = state.value;
+                        },
+                    }),
+                ],
+            });
+
+            await engine.runSingleTick();
+            await engine.reset();
+
+            assert.strictEquals(capturedValue, 99);
+            assert.isUndefined(engine.state.value);
+        });
+
+        it('does not fail when mods have no cleanup', async () => {
+            const engine = new AnthaEngine({
+                mods: [
+                    {
+                        execute() {},
+                    },
+                ],
+            });
+
+            await engine.runSingleTick();
+            await engine.reset();
+
+            assert.strictEquals(engine.currentTick, 0);
+        });
     });
 
     describe('startLoop', () => {

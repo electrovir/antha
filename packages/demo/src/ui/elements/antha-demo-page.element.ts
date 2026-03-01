@@ -20,7 +20,7 @@ export const AnthaDemoPage = defineElement<{
         };
     },
     cleanup({state, updateState}) {
-        state.currentEngine?.engine?.reset();
+        void state.currentEngine?.engine?.reset();
 
         updateState({
             currentEngine: undefined,

@@ -1,7 +1,9 @@
+import {waitUntil} from '@augment-vir/assert';
 import {
     applyBrand,
     awaitedForEach,
     getOrSetFromMap,
+    makeWritable,
     mergeDefinedProperties,
     type AnyObject,
     type Branded,
@@ -33,6 +35,18 @@ export type ModExecuteParams<State extends AnyObject> = {
     msSinceLastExecute: DOMHighResTimeStamp;
     lastExecution: Readonly<LastExecution> | undefined;
     currentTick: number;
+    hostElement: HTMLElement;
+    modInstanceId: ModInstanceId;
+} & ModOptions;
+
+/**
+ * Parameters passed to the cleanup callback in {@link AnthaMod}.
+ *
+ * @category Internal
+ */
+export type ModCleanupParams<State extends AnyObject> = {
+    state: Partial<State>;
+    engine: AnthaEngine;
     hostElement: HTMLElement;
     modInstanceId: ModInstanceId;
 } & ModOptions;
@@ -120,7 +134,18 @@ export type AnthaMod<State extends AnyObject = AnyObject> = {
      * the DOM.
      */
     execute: (this: void, params: Readonly<ModExecuteParams<NoInfer<State>>>) => ModExecuteResult;
-} & PartialWithUndefined<ModOptions>;
+} & PartialWithUndefined<
+    {
+        /**
+         * Use this to cleanup resources that the mod has created. This is called when the engine is
+         * reset.
+         */
+        cleanup: (
+            this: void,
+            params: Readonly<ModCleanupParams<NoInfer<State>>>,
+        ) => MaybePromise<void>;
+    } & ModOptions
+>;
 
 /**
  * A helper for defining {@link AnthaMod} inline. This is _not_ required in order to define an
@@ -277,6 +302,8 @@ export class AnthaEngine {
      * the next tick.
      */
     public isLoopRunning = false;
+    /** Indicates whether a tick is currently running or not. This should not be modified externally. */
+    public readonly isTickRunning = false as boolean;
 
     /**
      * Stop the tick loop. If the loop already isn't running, no changes will be made.
@@ -293,16 +320,27 @@ export class AnthaEngine {
     }
 
     /** Reset the engine back to its initial state. */
-    public reset() {
+    public async reset() {
         this.stopLoop();
+        await waitUntil.isFalse(() => this.isTickRunning);
 
         this.currentTick = 0;
         this.nextTickTarget = 0;
 
         /** Clear all per-mod tracking for current mods. */
-        this.currentMods.forEach((mod) => {
+        await awaitedForEach(this.currentMods, async (mod) => {
             this.lastModExecution.delete(mod);
             this.currentTemplateMap.delete(mod);
+            await mod.cleanup?.({
+                engine: this,
+                hostElement: this.hostElement,
+                modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
+                    applyBrand<ModInstanceId>(createId()),
+                ),
+                state: this.state,
+                executeImmediately: mod.executeImmediately || false,
+                frequency: mod.frequency || undefined,
+            });
         });
 
         this.currentTemplateArray.length = 0;
@@ -363,6 +401,7 @@ export class AnthaEngine {
      * `isLoopRunning` is set to `true`.
      */
     public async runSingleTick(): Promise<void> {
+        makeWritable(this).isTickRunning = true;
         /** Clear the array as we're about to populate it. */
         this.currentTemplateArray.length = 0;
         const executionStart = performance.now();
@@ -409,6 +448,7 @@ export class AnthaEngine {
 
         this.currentTick++;
         this.observable.setValue(this.currentTemplateArray);
+        makeWritable(this).isTickRunning = false;
     }
 
     /** Used to determine if a mod should execute right now or not. */

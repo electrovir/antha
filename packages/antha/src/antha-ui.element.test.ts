@@ -216,7 +216,7 @@ describe(AnthaUi.tagName, () => {
         });
 
         assert.strictEquals(engine.currentTick, tickAfterExecution);
-        engine.reset();
+        await engine.reset();
         const afterResetTick = engine.currentTick;
 
         await wait({

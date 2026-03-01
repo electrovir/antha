@@ -56,6 +56,9 @@ export function createPixiCanvasMod(modOptions?: Readonly<AnthaPixiCanvasModOpti
     };
 
     return defineAnthaMod<AnthaPixiCanvasModState>({
+        cleanup({state}) {
+            state.pixi?.pixiApplication?.destroy(true);
+        },
         async execute({state}) {
             if (state.debugPixiJs == undefined) {
                 state.debugPixiJs = !!modOptions?.debug;
