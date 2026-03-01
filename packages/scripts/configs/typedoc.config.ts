@@ -1,4 +1,3 @@
-import {toPosixPath} from '@augment-vir/node';
 import {baseTypedocConfig} from '@virmator/docs/configs/typedoc.config.base';
 import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
@@ -11,7 +10,7 @@ export const typeDocConfig: Partial<TypeDocOptions> = {
     ...baseTypedocConfig,
     out: outDirPath,
     entryPoints: [
-        toPosixPath(indexTsFile),
+        indexTsFile.replaceAll('\\', '/'),
     ],
     intentionallyNotExported: [],
     defaultCategory: 'MISSING CATEGORY',
