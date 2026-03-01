@@ -110,11 +110,13 @@ export const basicEngineDemo: AnthaDemo = {
     demoName: 'Basic Engine Usage',
     demoPathId: 'basic',
     sortDate: createUtcFullDate('2026-02-27T08:59:47.000Z'),
-    engine: new AnthaEngine({
-        mods: [
-            tickCounterMod,
-            tpsTrackerMod,
-            colorCyclerMod,
-        ],
-    }),
+    engine() {
+        return new AnthaEngine({
+            mods: [
+                tickCounterMod,
+                tpsTrackerMod,
+                colorCyclerMod,
+            ],
+        });
+    },
 };

@@ -9,7 +9,7 @@ import {
     defineAnthaMod,
     type AnthaMod,
     type LastExecution,
-} from './antha.js';
+} from './antha-engine.js';
 
 describe(defineAnthaMod.name, () => {
     it('returns the same mod object', () => {

@@ -1,7 +1,7 @@
-import {AnthaUi} from 'antha';
 import {defineElement, html} from 'element-vir';
 import {allDemosByPathKey} from '../../data/all-demos.js';
 import {createDemoRouter, defaultDemoRoute} from '../../data/demo-router.js';
+import {AnthaDemoPage} from './antha-demo-page.element.js';
 import {AnthaDemoPicker} from './antha-demo-picker.element.js';
 
 export const AnthaDemoApp = defineElement()({
@@ -39,17 +39,11 @@ export const AnthaDemoApp = defineElement()({
         const chosenDemo = (demoPathId && allDemosByPathKey[demoPathId]) || undefined;
 
         if (chosenDemo) {
-            if (chosenDemo.element) {
-                return html`
-                    <${chosenDemo.element}></${chosenDemo.element}>
-                `;
-            } else {
-                return html`
-                    <${AnthaUi.assign({
-                        engine: chosenDemo.engine,
-                    })}></${AnthaUi}>
-                `;
-            }
+            return html`
+                <${AnthaDemoPage.assign({
+                    demo: chosenDemo,
+                })}></${AnthaDemoPage}>
+            `;
         } else {
             return html`
                 <${AnthaDemoPicker.assign({

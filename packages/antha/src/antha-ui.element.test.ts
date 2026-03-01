@@ -3,8 +3,8 @@ import {wait} from '@augment-vir/common';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {queryThroughShadow} from '@augment-vir/web';
 import {html} from 'element-vir';
+import {AnthaEngine, defineAnthaMod} from './antha-engine.js';
 import {AnthaUi} from './antha-ui.element.js';
-import {AnthaEngine, defineAnthaMod} from './antha.js';
 
 describe(AnthaUi.tagName, () => {
     it('renders', async () => {

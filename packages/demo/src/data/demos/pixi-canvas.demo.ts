@@ -242,15 +242,17 @@ export const pixiCanvasDemo: AnthaDemo = {
     demoName: 'Pixi Canvas',
     demoPathId: 'pixi-canvas',
     sortDate: createUtcFullDate('2026-02-28T20:00:00.000Z'),
-    engine: new AnthaEngine({
-        mods: [
-            createPixiCanvasMod({
-                extraCanvasStyles: css`
-                    border: 2px solid red;
-                `,
-            }),
-            createPixiFpsMod(),
-            bouncingBallsMod,
-        ],
-    }),
+    engine() {
+        return new AnthaEngine({
+            mods: [
+                createPixiCanvasMod({
+                    extraCanvasStyles: css`
+                        border: 2px solid red;
+                    `,
+                }),
+                createPixiFpsMod(),
+                bouncingBallsMod,
+            ],
+        });
+    },
 };

@@ -1,6 +1,6 @@
 import {type PartialWithUndefined} from '@augment-vir/common';
 import {css, defineElement} from 'element-vir';
-import {type AnthaEngine} from './antha.js';
+import {type AnthaEngine} from './antha-engine.js';
 
 /**
  * Options for {@link AnthaUi}.

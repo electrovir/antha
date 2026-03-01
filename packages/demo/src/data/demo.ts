@@ -17,5 +17,5 @@ export type AnthaDemo = {
      * The engine to use for this demo. This will be automatically inserted into a {@link AnthaUi}
      * instance.
      */
-    engine: AnthaEngine;
+    engine: () => AnthaEngine;
 }>;
