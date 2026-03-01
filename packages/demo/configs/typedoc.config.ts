@@ -1,5 +1,5 @@
 import {baseTypedocConfig} from '@virmator/docs/configs/typedoc.config.base';
-import {dirname, join} from 'node:path/posix';
+import {dirname, join} from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {type TypeDocOptions} from 'typedoc';
 
