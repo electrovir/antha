@@ -42,6 +42,7 @@ export const AnthaDemoApp = defineElement()({
             return html`
                 <${AnthaDemoPage.assign({
                     demo: chosenDemo,
+                    router: state.router,
                 })}></${AnthaDemoPage}>
             `;
         } else {

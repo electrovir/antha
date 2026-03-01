@@ -11,6 +11,13 @@ import {viraThemeDarkOverride} from 'vira';
 import {type AnthaPixiCanvasModState} from './pixi-canvas.mod.js';
 
 /**
+ * The z-index CSS property applied to the pixi-canvas mod's `<canvas>` element.
+ *
+ * @category Internal
+ */
+export const pixiCanvasZIndex = 1_000_000;
+
+/**
  * State for showing counters.
  *
  * @category Internal
@@ -122,7 +129,7 @@ export function createPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> | unde
                             font-family: monospace;
                             font-size: 14px;
                             pointer-events: none;
-                            z-index: 1000000;
+                            z-index: ${pixiCanvasZIndex};
                         `}
                     >
                         ${counters}

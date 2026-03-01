@@ -1,12 +1,31 @@
+import {pixiCanvasZIndex} from '@antha/pixi-canvas';
+import {colorCss} from '@electrovir/color';
 import {type AnthaEngine, AnthaUi} from 'antha';
-import {defineElement, html, nothing} from 'element-vir';
+import {css, defineElement, html, nothing} from 'element-vir';
+import {themeDefaultKey} from 'theme-vir';
 import {type RequireExactlyOne} from 'type-fest';
+import {ViraLink, viraTheme} from 'vira';
+import {type DemoRouter} from '../../data/demo-router.js';
 import {type AnthaDemo} from '../../data/demo.js';
 
 export const AnthaDemoPage = defineElement<{
     demo: AnthaDemo;
+    router: DemoRouter;
 }>()({
     tagName: 'antha-demo-page',
+    styles: css`
+        .overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            ${colorCss(viraTheme.colors[themeDefaultKey])}
+            border: 2px solid ${viraTheme.colors[themeDefaultKey].foreground.value};
+            z-index: ${pixiCanvasZIndex + 1};
+            padding: 4px 8px;
+            border-top-right-radius: 4px;
+            font-family: sans-serif;
+        }
+    `,
     state() {
         return {
             currentEngine: undefined as
@@ -37,18 +56,32 @@ export const AnthaDemoPage = defineElement<{
             });
         }
 
-        if (state.currentEngine?.element) {
-            return html`
-                <${inputs.demo.element}></${inputs.demo.element}>
-            `;
-        } else if (state.currentEngine?.engine) {
-            return html`
-                <${AnthaUi.assign({
-                    engine: state.currentEngine.engine,
-                })}></${AnthaUi}>
-            `;
-        } else {
-            return nothing;
-        }
+        const content = state.currentEngine?.element
+            ? html`
+                  <${inputs.demo.element}></${inputs.demo.element}>
+              `
+            : state.currentEngine?.engine
+              ? html`
+                    <${AnthaUi.assign({
+                        engine: state.currentEngine.engine,
+                    })}></${AnthaUi}>
+                `
+              : nothing;
+
+        return html`
+            <${ViraLink.assign({
+                route: {
+                    router: inputs.router,
+                    route: {
+                        paths: [],
+                    },
+                },
+            })}
+                class="overlay"
+            >
+                ← Back
+            </${ViraLink}>
+            ${content}
+        `;
     },
 });
