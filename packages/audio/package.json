@@ -1,0 +1,56 @@
+{
+    "name": "@antha/audio",
+    "version": "0.0.1",
+    "description": "An Antha mod for handling audio.",
+    "keywords": [
+        "vir",
+        "antha",
+        "audio"
+    ],
+    "homepage": "https://github.com/electrovir/antha",
+    "bugs": {
+        "url": "https://github.com/electrovir/antha/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/electrovir/antha.git"
+    },
+    "license": "(MIT or CC0 1.0)",
+    "author": {
+        "name": "electrovir",
+        "url": "https://github.com/electrovir"
+    },
+    "sideEffects": false,
+    "type": "module",
+    "main": "src/index.ts",
+    "module": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "compile": "virmator compile",
+        "docs": "virmator docs",
+        "test": "virmator test web",
+        "test:coverage": "npm test coverage",
+        "test:docs": "virmator docs check"
+    },
+    "dependencies": {
+        "@augment-vir/assert": "^31.67.0",
+        "@augment-vir/common": "^31.67.0",
+        "typed-event-target": "^4.1.0"
+    },
+    "peerDependencies": {
+        "antha": "*"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "devDependencies": {
+        "@augment-vir/test": "^31.64.0",
+        "@web/dev-server-esbuild": "^1.0.5",
+        "@web/test-runner": "^0.20.2",
+        "@web/test-runner-playwright": "^0.11.1",
+        "istanbul-smart-text-reporter": "^1.1.5"
+    }
+}

@@ -89,6 +89,7 @@ export function createPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> | unde
                 state.showFps &&
                     html`
                         <div
+                            title="Frames Per Second"
                             style=${css`
                                 ${colorCss(
                                     viraThemeDarkOverride.asTheme.colors[
@@ -105,6 +106,7 @@ export function createPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> | unde
                 state.showTps &&
                     html`
                         <div
+                            title="Ticks Per Second"
                             style=${css`
                                 ${colorCss(
                                     viraThemeDarkOverride.asTheme.colors[

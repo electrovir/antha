@@ -15,12 +15,6 @@
     "extends": "../../configs/tsconfig.base.json",
     "references": [
         {
-            "path": "../antha"
-        },
-        {
-            "path": "../audio"
-        },
-        {
             "path": "../pixi-canvas"
         }
     ]
