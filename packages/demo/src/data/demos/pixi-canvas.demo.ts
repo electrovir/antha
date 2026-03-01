@@ -221,7 +221,7 @@ const bouncingBallsMod: AnthaMod<
                     ball.vy *= -1;
                 }
 
-                /** Continue travelling for the remaining fraction after the bounce. */
+                /** Continue traveling for the remaining fraction after the bounce. */
                 const remaining = 1 - tBounce;
                 ball.x = bounceX + ball.vx * remaining;
                 ball.y = bounceY + ball.vy * remaining;

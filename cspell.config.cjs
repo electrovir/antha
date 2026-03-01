@@ -8,6 +8,7 @@ module.exports = {
     words: [
         ...baseConfig.words,
         'antha',
+        'lerp',
         'paralleldrive',
     ],
 };
