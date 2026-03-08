@@ -129,6 +129,11 @@ export type ModOptions = {
  */
 export type AnthaMod<State extends AnyObject = AnyObject> = {
     /**
+     * Not used by the Antha engine, just a nice string to help debugging so you can which mod is
+     * which.
+     */
+    modName: string;
+    /**
      * The execute callback. This is where the mod's functionality lives. This will be called in
      * each tick based on the provided frequency. Any non-nullish output will be rendered as HTML to
      * the DOM.

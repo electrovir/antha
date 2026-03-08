@@ -8,6 +8,7 @@ import {viraAnimationDurations, viraTheme, viraThemeDarkOverride} from 'vira';
 import {type AnthaDemo} from '../demo.js';
 
 const tickCounterMod: AnthaMod = {
+    modName: 'demo-tick-counter',
     execute({currentTick}) {
         return html`
             <div
@@ -31,6 +32,7 @@ const tickCounterMod: AnthaMod = {
 const tpsTrackerMod: AnthaMod<{
     tps: number;
 }> = {
+    modName: 'demo-tsp-tracker',
     frequency: {
         durationMs: 1000,
     },
@@ -77,6 +79,7 @@ const colorCyclePairs = [
 const colorCyclerMod: AnthaMod<{
     colorIndex: number;
 }> = {
+    modName: 'demo-color-cycle',
     frequency: {
         ticks: 50,
     },
@@ -109,7 +112,7 @@ const colorCyclerMod: AnthaMod<{
 export const basicEngineDemo: AnthaDemo = {
     demoName: 'Basic Engine Usage',
     demoPathId: 'basic',
-    sortDate: createUtcFullDate('2026-02-27T08:59:47.000Z'),
+    demoSortDate: createUtcFullDate('2026-02-27T08:59:47.000Z'),
     engine() {
         return new AnthaEngine({
             mods: [

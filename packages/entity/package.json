@@ -1,10 +1,12 @@
 {
-    "name": "antha",
+    "name": "@antha/entity",
     "version": "0.0.1",
-    "description": "The Antha game engine (for the web).",
+    "description": "An Antha mod for handling entities.",
     "keywords": [
         "vir",
-        "antha"
+        "antha",
+        "render",
+        "entity"
     ],
     "homepage": "https://github.com/electrovir/antha",
     "bugs": {
@@ -25,37 +27,31 @@
     "module": "src/index.ts",
     "types": "src/index.ts",
     "scripts": {
-        "build": "virmator frontend build",
         "compile": "virmator compile",
         "docs": "virmator docs",
-        "start": "virmator frontend",
-        "test": "virmator test web",
-        "test:coverage": "npm run test coverage",
-        "test:docs": "virmator docs check",
-        "test:update": "npm test update"
+        "test": "exit 0",
+        "test:coverage": "exit 0",
+        "test:docs": "virmator docs check"
     },
     "dependencies": {
         "@augment-vir/assert": "^31.68.0",
         "@augment-vir/common": "^31.68.0",
-        "@paralleldrive/cuid2": "^3.3.0",
-        "date-vir": "^8.2.0",
-        "element-vir": "^26.14.6",
-        "observavir": "^2.3.2",
         "type-fest": "^5.4.4"
     },
     "devDependencies": {
         "@augment-vir/test": "^31.68.0",
-        "@augment-vir/web": "^31.68.0",
-        "@web/dev-server-esbuild": "^1.0.5",
-        "@web/test-runner": "^0.20.2",
-        "@web/test-runner-commands": "^0.9.0",
-        "@web/test-runner-playwright": "^0.11.1",
-        "@web/test-runner-visual-regression": "^0.10.0",
-        "istanbul-smart-text-reporter": "^1.1.5",
-        "markdown-code-example-inserter": "^3.0.3",
-        "typedoc": "^0.28.17",
-        "typescript": "^5.9.3",
-        "vite": "^7.3.1"
+        "antha": "*",
+        "detect-collisions": "^10.10.2025",
+        "object-shape-tester": "^6.11.0",
+        "typed-event-target": "^4.3.0"
+    },
+    "peerDependencies": {
+        "@antha/pixi-canvas": "*",
+        "antha": "*",
+        "detect-collisions": ">=10",
+        "object-shape-tester": ">=6",
+        "pixi.js": ">=8",
+        "typed-event-target": ">=4.3"
     },
     "engines": {
         "node": ">=22"

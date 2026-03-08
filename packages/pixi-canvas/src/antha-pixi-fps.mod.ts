@@ -8,7 +8,7 @@ import {
 import {colorCss} from '@electrovir/color';
 import {css, defineAnthaMod, html} from 'antha';
 import {viraThemeDarkOverride} from 'vira';
-import {type AnthaPixiCanvasModState} from './pixi-canvas.mod.js';
+import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
 
 /**
  * The z-index CSS property applied to the pixi-canvas mod's `<canvas>` element.
@@ -30,7 +30,7 @@ export type ShowCountersState = {
 };
 
 /**
- * Options for {@link createPixiFpsMod}.
+ * Options for {@link createAnthaPixiFpsMod}.
  *
  * @category Internal
  */
@@ -42,7 +42,7 @@ export type PixiFpsModOptions = PartialWithUndefined<
 >;
 
 /**
- * Default options for {@link createPixiFpsMod}.
+ * Default options for {@link createAnthaPixiFpsMod}.
  *
  * @category Internal
  */
@@ -59,12 +59,13 @@ export const defaultPixiFpsModOptions = {
  *
  * @category Pre-Built Mods
  */
-export function createPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> | undefined) {
+export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> | undefined) {
     const options: Readonly<RequiredAndNotNull<PixiFpsModOptions>> = mergeDefinedProperties<
         RequiredAndNotNull<PixiFpsModOptions>
     >(defaultPixiFpsModOptions, modOptions);
 
     return defineAnthaMod<AnthaPixiCanvasModState & ShowCountersState>({
+        modName: 'antha-pixi-fps',
         frequency: {
             durationMs: options.updateIntervalMs,
         },

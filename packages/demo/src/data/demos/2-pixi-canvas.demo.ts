@@ -1,6 +1,6 @@
 import {
-    createPixiCanvasMod,
-    createPixiFpsMod,
+    createAnthaPixiCanvasMod,
+    createAnthaPixiFpsMod,
     defaultPixiOptions,
     type AnthaPixiCanvasModState,
 } from '@antha/pixi-canvas';
@@ -58,6 +58,7 @@ const bouncingBallsMod: AnthaMod<
         tweenTeardown: (() => void) | undefined;
     }
 > = {
+    modName: 'demo-bouncing-balls',
     frequency: {
         ticks: 50,
     },
@@ -241,16 +242,16 @@ const bouncingBallsMod: AnthaMod<
 export const pixiCanvasDemo: AnthaDemo = {
     demoName: 'Pixi Canvas',
     demoPathId: 'pixi-canvas',
-    sortDate: createUtcFullDate('2026-02-28T20:00:00.000Z'),
+    demoSortDate: createUtcFullDate('2026-02-28T20:00:00.000Z'),
     engine() {
         return new AnthaEngine({
             mods: [
-                createPixiCanvasMod({
+                createAnthaPixiCanvasMod({
                     extraCanvasStyles: css`
                         border: 2px solid red;
                     `,
                 }),
-                createPixiFpsMod(),
+                createAnthaPixiFpsMod(),
                 bouncingBallsMod,
             ],
         });

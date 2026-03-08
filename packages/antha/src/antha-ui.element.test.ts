@@ -25,6 +25,7 @@ describe(AnthaUi.tagName, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {
                         return html`
                             <p class="test-output">hello from mod</p>
@@ -57,6 +58,7 @@ describe(AnthaUi.tagName, () => {
         const engine = new AnthaEngine({
             mods: [
                 defineAnthaMod<{count: number}>({
+                    modName: 'test',
                     execute({state}) {
                         return html`
                             <span class="counter">${String(state.count ?? 0)}</span>
@@ -94,6 +96,7 @@ describe(AnthaUi.tagName, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {
                         return html`
                             <div class="auto-started">running</div>
@@ -120,6 +123,7 @@ describe(AnthaUi.tagName, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {
                         return html`
                             <div class="should-not-appear">running</div>
@@ -151,6 +155,7 @@ describe(AnthaUi.tagName, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {
                         return html`
                             <p>tick</p>
@@ -186,6 +191,7 @@ describe(AnthaUi.tagName, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {
                         return html`
                             <p>tick</p>
@@ -229,6 +235,7 @@ describe(AnthaUi.tagName, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {
                         return html`
                             <span class="mod-a">A</span>
@@ -236,6 +243,7 @@ describe(AnthaUi.tagName, () => {
                     },
                 },
                 {
+                    modName: 'test',
                     execute() {
                         return html`
                             <span class="mod-b">B</span>

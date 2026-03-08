@@ -64,6 +64,11 @@ export type AudioFileParams = Readonly<
     }>
 >;
 
+/**
+ * Create a key for a given audio file config as a cache key.
+ *
+ * @category Internal
+ */
 export function createAudioSourceKey(
     params: Readonly<
         SelectFrom<
@@ -322,15 +327,6 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
      */
     public async play(): Promise<boolean> {
         const audioBuffer = await this.load();
-        if (!audioBuffer) {
-            const error = new Error('Attempted to play unloaded audio.');
-            this.dispatch(
-                new AudioFileErrorEvent({
-                    detail: error,
-                }),
-            );
-            throw error;
-        }
         if (!this.isAudioAllowed) {
             makeWritable(this).isAudioAllowed = await isPlayingEnabled(this.audioContext);
             if (this.isAudioAllowed as boolean) {

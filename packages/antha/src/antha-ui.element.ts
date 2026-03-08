@@ -62,7 +62,7 @@ export const AnthaUi = defineElement<{
     },
     cleanup({inputs, updateState}) {
         if (!inputs.options?.disableDisconnectReset) {
-            inputs.engine.reset();
+            void inputs.engine.reset();
         }
         updateState({
             /** Remove the observable on cleanup to stop render updates. */

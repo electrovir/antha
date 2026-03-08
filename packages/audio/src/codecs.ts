@@ -45,7 +45,7 @@ function readCodecs() {
 
     return {
         mp3: !!(!isOldOpera && (mpegTest || audioTest.canPlayType('audio/mp3;'))),
-        mpeg: !!mpegTest,
+        mpeg: mpegTest,
         opus: !!audioTest.canPlayType('audio/ogg; codecs="opus"'),
         ogg: !!audioTest.canPlayType('audio/ogg; codecs="vorbis"'),
         oga: !!audioTest.canPlayType('audio/ogg; codecs="vorbis"'),

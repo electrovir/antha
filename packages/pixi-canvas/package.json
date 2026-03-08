@@ -34,17 +34,20 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^31.67.0",
-        "@augment-vir/common": "^31.67.0",
-        "@electrovir/color": "^1.7.8",
-        "vira": "^29.6.1"
+        "@augment-vir/assert": "^31.68.0",
+        "@augment-vir/common": "^31.68.0"
     },
     "devDependencies": {
-        "pixi.js": "^8.16.0"
+        "@electrovir/color": "^1.7.8",
+        "antha": "*",
+        "pixi.js": "^8.16.0",
+        "vira": "^31.3.0"
     },
     "peerDependencies": {
+        "@electrovir/color": ">=1",
         "antha": "*",
-        "pixi.js": ">=8"
+        "pixi.js": ">=8",
+        "vira": ">=31"
     },
     "engines": {
         "node": ">=22"

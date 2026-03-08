@@ -40,7 +40,7 @@ export const AnthaDemoPicker = defineElement<{
     `,
     render({inputs}) {
         const demos = allDemos.toSorted(
-            (a, b) => toTimestamp(b.sortDate) - toTimestamp(a.sortDate),
+            (a, b) => toTimestamp(b.demoSortDate) - toTimestamp(a.demoSortDate),
         );
 
         if (!demos.length) {
@@ -61,7 +61,7 @@ export const AnthaDemoPicker = defineElement<{
                             router: inputs.router,
                         },
                     })}>
-                        ${toSimpleDatePartString(demo.sortDate)}: ${demo.demoName}
+                        ${toSimpleDatePartString(demo.demoSortDate)}: ${demo.demoName}
                     </${ViraLink}>
                 </li>
             `;

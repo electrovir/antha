@@ -1,23 +1,24 @@
 import {assert} from '@augment-vir/assert';
 import {getOrSet, type PartialWithUndefined} from '@augment-vir/common';
-import {css, type CSSResult, defineAnthaMod, html, onDomCreated, unsafeCSS} from 'antha';
-import {Application, type ApplicationOptions} from 'pixi.js';
+import {css, defineAnthaMod, html, onDomCreated, unsafeCSS, type CSSResult} from 'antha';
+import {Application as PixiApplication, type ApplicationOptions} from 'pixi.js';
+
+export {Application as PixiApplication} from 'pixi.js';
 
 /**
- * Engine State for {@link createPixiCanvasMod}.
+ * Engine State for {@link createAnthaPixiCanvasMod}.
  *
  * @category Internal
  */
 export type AnthaPixiCanvasModState = {
     pixi: Partial<{
-        pixiApplication: Application;
+        pixiApplication: PixiApplication;
         canvas: HTMLCanvasElement;
     }>;
-    debugPixiJs: boolean;
 };
 
 /**
- * Options for {@link createPixiCanvasMod}.
+ * Options for {@link createAnthaPixiCanvasMod}.
  *
  * @category Internal
  */
@@ -26,7 +27,6 @@ export type AnthaPixiCanvasModOptions = PartialWithUndefined<{
     pixiOptions: Partial<Omit<ApplicationOptions, 'canvas'>>;
     /** If this is provided, the mod will not create its own canvas. */
     canvas: HTMLCanvasElement;
-    debug: boolean;
     extraCanvasStyles: CSSResult | string;
     extraCanvasWrapperStyles: CSSResult | string;
 }>;
@@ -48,7 +48,9 @@ export const defaultPixiOptions = {
  *
  * @category Pre-Built Mods
  */
-export function createPixiCanvasMod(modOptions?: Readonly<AnthaPixiCanvasModOptions> | undefined) {
+export function createAnthaPixiCanvasMod(
+    modOptions?: Readonly<AnthaPixiCanvasModOptions> | undefined,
+) {
     const pixiApplicationOptions = {
         ...defaultPixiOptions,
         canvas: undefined as undefined | HTMLCanvasElement,
@@ -56,14 +58,11 @@ export function createPixiCanvasMod(modOptions?: Readonly<AnthaPixiCanvasModOpti
     };
 
     return defineAnthaMod<AnthaPixiCanvasModState>({
+        modName: 'antha-pixi-canvas',
         cleanup({state}) {
             state.pixi?.pixiApplication?.destroy(true);
         },
         async execute({state}) {
-            if (state.debugPixiJs == undefined) {
-                state.debugPixiJs = !!modOptions?.debug;
-            }
-
             const pixiState = getOrSet(state, 'pixi', () => {
                 return {};
             });
@@ -71,7 +70,7 @@ export function createPixiCanvasMod(modOptions?: Readonly<AnthaPixiCanvasModOpti
             const canvas = pixiApplicationOptions.canvas || pixiState.canvas;
 
             if (!pixiState.pixiApplication && canvas) {
-                const pixiApplication = new Application();
+                const pixiApplication = new PixiApplication();
                 await pixiApplication.init({
                     ...pixiApplicationOptions,
                     canvas,

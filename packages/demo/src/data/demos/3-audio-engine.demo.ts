@@ -1,5 +1,5 @@
 import {createAnthaAudioMod, type AnthaAudioState, type AudioSetupParams} from '@antha/audio';
-import {createPixiFpsMod} from '@antha/pixi-canvas';
+import {createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {AnthaEngine, SkipExecution, type AnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {css, html, listen} from 'element-vir';
@@ -26,6 +26,7 @@ const audioFiles: ReadonlyArray<
 ];
 
 const audioControlsMod: AnthaMod<AnthaAudioState> = {
+    modName: 'demo-audio-controls',
     execute({state}) {
         if (!state.audioPlayer) {
             return SkipExecution;
@@ -47,7 +48,7 @@ const audioControlsMod: AnthaMod<AnthaAudioState> = {
             <div
                 style=${css`
                     position: absolute;
-                    top: calc(50% + 30px);
+                    top: 50%;
                     left: 50%;
                     transform: translate(-50%, 0%);
                 `}
@@ -61,12 +62,12 @@ const audioControlsMod: AnthaMod<AnthaAudioState> = {
 export const audioEngineDemo: AnthaDemo = {
     demoName: 'Audio Engine',
     demoPathId: 'audio',
-    sortDate: createUtcFullDate('2026-03-01T00:00:00.000Z'),
+    demoSortDate: createUtcFullDate('2026-03-01T00:00:00.000Z'),
     engine() {
         return new AnthaEngine({
             mods: [
                 createAnthaAudioMod(),
-                createPixiFpsMod({
+                createAnthaPixiFpsMod({
                     showFps: false,
                 }),
                 audioControlsMod,

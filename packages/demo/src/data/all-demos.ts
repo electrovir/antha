@@ -3,11 +3,13 @@ import {type AnthaDemo} from './demo.js';
 import {basicEngineDemo} from './demos/1-basic-engine.demo.js';
 import {pixiCanvasDemo} from './demos/2-pixi-canvas.demo.js';
 import {audioEngineDemo} from './demos/3-audio-engine.demo.js';
+import {entitiesDemo} from './demos/4-entities.demo.js';
 
 export const allDemos: AnthaDemo[] = [
     basicEngineDemo,
     pixiCanvasDemo,
     audioEngineDemo,
+    entitiesDemo,
 ];
 
 export const allDemosByPathKey = arrayToObject(allDemos, (demo) => {

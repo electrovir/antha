@@ -18,6 +18,7 @@ describe(defineAnthaMod.name, () => {
         const mod: AnthaMod<{
             count: number;
         }> = {
+            modName: 'test',
             execute({state}) {
                 state.count = (state.count || 0) + 1;
             },
@@ -27,6 +28,7 @@ describe(defineAnthaMod.name, () => {
     });
     it('requires explicit state type', () => {
         defineAnthaMod({
+            modName: 'test',
             execute({state}) {
                 // @ts-expect-error: state type is intentionally never
                 state.count = 5;
@@ -65,6 +67,7 @@ describe(AnthaEngine.name, () => {
 
         it('accepts mods', () => {
             const mod: AnthaMod = {
+                modName: 'test',
                 execute() {},
             };
             const engine = new AnthaEngine({
@@ -111,6 +114,7 @@ describe(AnthaEngine.name, () => {
         const mod: AnthaMod = defineAnthaMod<{
             count: number;
         }>({
+            modName: 'test',
             execute({state}) {
                 state.count = (state.count || 0) + 1;
                 return html`
@@ -152,12 +156,14 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {},
                         cleanup() {
                             cleanupCalledA = true;
                         },
                     },
                     {
+                        modName: 'test',
                         execute() {},
                         cleanup() {
                             cleanupCalledB = true;
@@ -176,6 +182,7 @@ describe(AnthaEngine.name, () => {
         it('passes correct params to cleanup', async () => {
             let capturedParams: Readonly<ModCleanupParams<{value: number}>> | undefined;
             const mod: AnthaMod<{value: number}> = defineAnthaMod<{value: number}>({
+                modName: 'test',
                 execute({state}) {
                     state.value = 42;
                 },
@@ -214,6 +221,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     defineAnthaMod<AnyObject>({
+                        modName: 'test',
                         execute({modInstanceId}) {
                             executeInstanceId = modInstanceId;
                         },
@@ -237,6 +245,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     defineAnthaMod<AnyObject>({
+                        modName: 'test',
                         execute({modInstanceId}) {
                             executeInstanceId = modInstanceId;
                         },
@@ -258,6 +267,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {},
                         async cleanup() {
                             await wait({
@@ -280,6 +290,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     defineAnthaMod<{value: number}>({
+                        modName: 'test',
                         execute({state}) {
                             state.value = 99;
                         },
@@ -301,6 +312,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {},
                     },
                 ],
@@ -352,6 +364,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {},
                     },
                 ],
@@ -375,6 +388,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {},
                     },
                 ],
@@ -398,11 +412,13 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {
                             executedA = true;
                         },
                     },
                     {
+                        modName: 'test',
                         execute() {
                             executedB = true;
                         },
@@ -420,6 +436,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {
                             return html`
                                 <p>first</p>
@@ -427,6 +444,7 @@ describe(AnthaEngine.name, () => {
                         },
                     },
                     {
+                        modName: 'test',
                         execute() {
                             return html`
                                 <p>second</p>
@@ -445,6 +463,7 @@ describe(AnthaEngine.name, () => {
 
         it('stores templates in currentTemplateMap', async () => {
             const mod: AnthaMod = {
+                modName: 'test',
                 execute() {
                     return html`
                         <p>mapped</p>
@@ -464,6 +483,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {
                             return html`
                                 <p>observed</p>
@@ -492,6 +512,7 @@ describe(AnthaEngine.name, () => {
                     defineAnthaMod<{
                         myVal: number;
                     }>({
+                        modName: 'test',
                         execute(params) {
                             capturedEngine = params.engine;
                             capturedTick = params.currentTick;
@@ -526,6 +547,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute(params) {
                             capturedLastExecution = params.lastExecution;
                             capturedTicksSince = params.ticksSinceLastExecute;
@@ -548,6 +570,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         execute() {
                             // returns void
                         },
@@ -564,6 +587,7 @@ describe(AnthaEngine.name, () => {
             const engine = new AnthaEngine({
                 mods: [
                     {
+                        modName: 'test',
                         async execute() {
                             await wait({
                                 milliseconds: 1,
@@ -584,6 +608,7 @@ describe(AnthaEngine.name, () => {
 
         it('records lastModExecution after executing', async () => {
             const mod: AnthaMod = {
+                modName: 'test',
                 execute() {},
             };
             const engine = new AnthaEngine({
@@ -605,6 +630,7 @@ describe(AnthaEngine.name, () => {
                     ticks: 3,
                 },
                 executeImmediately: true,
+                modName: 'test',
                 execute() {
                     return html`
                         <p>infrequent</p>
@@ -639,6 +665,7 @@ describe(AnthaEngine.name, () => {
                             ticks: 2,
                         },
                         executeImmediately: true,
+                        modName: 'test',
                         execute(params) {
                             capturedExecImmediate = params.executeImmediately;
                             capturedFrequency = params.frequency;
@@ -661,6 +688,7 @@ describe(AnthaEngine.name, () => {
                     defineAnthaMod<{
                         value: number;
                     }>({
+                        modName: 'test',
                         execute({state}) {
                             state.value = 99;
                         },
@@ -669,6 +697,7 @@ describe(AnthaEngine.name, () => {
                         value: number;
                         doubled: number;
                     }>({
+                        modName: 'test',
                         execute({state}) {
                             state.doubled = (state.value || 0) * 2;
                         },
@@ -687,6 +716,7 @@ describe(AnthaEngine.name, () => {
         it('returns true when no frequency is set', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
+                modName: 'test',
                 execute() {},
             };
 
@@ -696,6 +726,7 @@ describe(AnthaEngine.name, () => {
         it('returns true when no frequency is set, even with lastExecution', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
+                modName: 'test',
                 execute() {},
             };
             const lastExecution: LastExecution = {
@@ -713,6 +744,7 @@ describe(AnthaEngine.name, () => {
                     ticks: 10,
                 },
                 executeImmediately: true,
+                modName: 'test',
                 execute() {},
             };
 
@@ -725,6 +757,7 @@ describe(AnthaEngine.name, () => {
                 frequency: {
                     ticks: 10,
                 },
+                modName: 'test',
                 execute() {},
             };
 
@@ -738,6 +771,7 @@ describe(AnthaEngine.name, () => {
                 frequency: {
                     ticks: 5,
                 },
+                modName: 'test',
                 execute() {},
             };
             const lastExecution: LastExecution = {
@@ -755,6 +789,7 @@ describe(AnthaEngine.name, () => {
                 frequency: {
                     ticks: 5,
                 },
+                modName: 'test',
                 execute() {},
             };
             const lastExecution: LastExecution = {
@@ -777,6 +812,7 @@ describe(AnthaEngine.name, () => {
                 frequency: {
                     durationMs: 160,
                 },
+                modName: 'test',
                 execute() {},
             };
             const lastExecution: LastExecution = {
@@ -799,6 +835,7 @@ describe(AnthaEngine.name, () => {
                 frequency: {
                     durationMs: 160,
                 },
+                modName: 'test',
                 execute() {},
             };
             const lastExecution: LastExecution = {
@@ -815,6 +852,7 @@ describe(AnthaEngine.name, () => {
                 frequency: {
                     ticks: 0,
                 },
+                modName: 'test',
                 execute() {},
             };
             const lastExecution: LastExecution = {
@@ -835,6 +873,7 @@ describe(AnthaEngine.name, () => {
                 frequency: {
                     durationMs: 0,
                 },
+                modName: 'test',
                 execute() {},
             };
             const lastExecution: LastExecution = {
@@ -853,6 +892,7 @@ describe(AnthaEngine.name, () => {
                     ticks: 5,
                 },
                 executeImmediately: true,
+                modName: 'test',
                 execute() {},
             };
             const lastExecution: LastExecution = {
@@ -868,6 +908,7 @@ describe(AnthaEngine.name, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {},
                 },
             ],
@@ -910,6 +951,7 @@ describe(AnthaEngine.name, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute(params) {
                         capturedMs = params.msSinceLastExecute;
                     },
@@ -931,6 +973,7 @@ describe(AnthaEngine.name, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute(params) {
                         msTimes.push(params.msSinceLastExecute);
                     },
@@ -955,6 +998,7 @@ describe(AnthaEngine.name, () => {
                 ticks: 100,
             },
             executeImmediately: true,
+            modName: 'test',
             execute() {
                 executeCount++;
                 return html`
@@ -982,6 +1026,7 @@ describe(AnthaEngine.name, () => {
                 ticks: 100,
             },
             executeImmediately: true,
+            modName: 'test',
             execute() {
                 executeCount++;
                 return SkipExecution;
@@ -1004,6 +1049,7 @@ describe(AnthaEngine.name, () => {
                 ticks: 100,
             },
             executeImmediately: true,
+            modName: 'test',
             execute() {
                 executeCount++;
                 if (!ready) {
@@ -1046,6 +1092,7 @@ describe(AnthaEngine.name, () => {
     it('preserves previous template when SkipExecution is returned after a successful run', async () => {
         let shouldSkip = false;
         const mod: AnthaMod = {
+            modName: 'test',
             execute() {
                 if (shouldSkip) {
                     return SkipExecution;
@@ -1076,6 +1123,7 @@ describe(AnthaEngine.name, () => {
         assert.isLengthExactly(engine.currentTemplateArray, 0);
 
         engine.currentMods.push({
+            modName: 'test',
             execute() {
                 return html`
                     <p>dynamic</p>
@@ -1091,6 +1139,7 @@ describe(AnthaEngine.name, () => {
         const engine = new AnthaEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {
                         return html`
                             <p>removable</p>
@@ -1117,6 +1166,7 @@ describe(AnthaEngine.name, () => {
         const engine = new ExposedEngine({
             mods: [
                 {
+                    modName: 'test',
                     execute() {},
                 },
             ],

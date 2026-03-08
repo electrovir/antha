@@ -9,7 +9,7 @@ export type AnthaDemo = {
     /** The id used to access this demo in the browser's URL path. Should be URL safe. */
     demoPathId: string;
     /** The date on which this demo was created. This affects sort order in the demo pick list. */
-    sortDate: Readonly<FullDate>;
+    demoSortDate: Readonly<FullDate>;
 } & RequireExactlyOne<{
     /** The element to render for this demo. This should require no inputs. */
     element: DeclarativeElementDefinition;
