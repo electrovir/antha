@@ -6,8 +6,8 @@ import {
     type RequiredAndNotNull,
 } from '@augment-vir/common';
 import {colorCss} from '@electrovir/color';
-import {css, defineAnthaMod, html} from 'antha';
-import {viraThemeDarkOverride} from 'vira';
+import {css, defineAnthaMod, html, listen} from 'antha';
+import {ViraButton, viraThemeDarkOverride} from 'vira';
 import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
 
 /**
@@ -25,8 +25,14 @@ export const pixiCanvasZIndex = 1_000_000;
 export type ShowCountersState = {
     /** Show a FPS (frames per second) counter. */
     showFps: boolean;
-    /** Show a TSP (ticks per second) counter. */
+    /** Show a TPS (ticks per second) counter. */
     showTps: boolean;
+    /** If `true`, TPS stutters are shown under the counter. */
+    debugTps: boolean;
+    /** If `true`, a pause/play button shows up for playing / pausing the icon. */
+    enableTickPause: boolean;
+    /** Stores TPS stutters when `debugTps` is turned on. */
+    tpsStutters: number[];
 };
 
 /**
@@ -38,7 +44,7 @@ export type PixiFpsModOptions = PartialWithUndefined<
     {
         /** How frequently the FPS display updates, in milliseconds. */
         updateIntervalMs: number;
-    } & ShowCountersState
+    } & Omit<ShowCountersState, 'tpsStutters'>
 >;
 
 /**
@@ -50,6 +56,8 @@ export const defaultPixiFpsModOptions = {
     updateIntervalMs: 500,
     showFps: true,
     showTps: true,
+    debugTps: false,
+    enableTickPause: false,
 } as const satisfies Required<PixiFpsModOptions>;
 
 /**
@@ -70,12 +78,18 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
             durationMs: options.updateIntervalMs,
         },
         executeImmediately: true,
-        execute({state, msSinceLastExecute, ticksSinceLastExecute}) {
+        execute({state, engine, msSinceLastExecute, ticksSinceLastExecute}) {
             if (state.showFps == undefined) {
                 state.showFps = options.showFps;
             }
             if (state.showTps == undefined) {
                 state.showTps = options.showTps;
+            }
+            if (state.debugTps == undefined) {
+                state.debugTps = options.debugTps;
+            }
+            if (state.tpsStutters == undefined) {
+                state.tpsStutters = [];
             }
 
             const elapsedSeconds = msSinceLastExecute / 1000;
@@ -86,7 +100,31 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
                       })
                     : 0;
 
+            const expectedTps = Math.floor(1000 / engine.options.tickDurationMs);
+
+            if (state.debugTps && tps > 0 && tps < expectedTps * 0.98) {
+                state.tpsStutters.push(tps);
+                if (state.tpsStutters.length > 10) {
+                    state.tpsStutters.splice(0, state.tpsStutters.length - 10);
+                }
+            }
+
             const counters = [
+                state.enableTickPause
+                    ? html`
+                          <${ViraButton.assign({
+                              text: engine.isLoopRunning ? 'X' : '>',
+                          })}
+                              ${listen('click', () => {
+                                  if (engine.isLoopRunning) {
+                                      engine.stopLoop();
+                                  } else {
+                                      engine.startLoop();
+                                  }
+                              })}
+                          ></${ViraButton}>
+                      `
+                    : undefined,
                 state.showFps &&
                     html`
                         <div
@@ -118,6 +156,29 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
                             `}
                         >
                             ${Math.round(tps).toFixed(0)} TPS
+                        </div>
+                    `,
+                state.debugTps &&
+                    state.tpsStutters.length > 0 &&
+                    html`
+                        <div
+                            title="TPS Stutters"
+                            style=${css`
+                                ${colorCss(
+                                    viraThemeDarkOverride.asTheme.colors[
+                                        'vira-orange-foreground-body'
+                                    ],
+                                )}
+                                padding: 1px 3px;
+                                display: flex;
+                                flex-direction: column;
+                            `}
+                        >
+                            ${state.tpsStutters.map(
+                                (stutter) => html`
+                                    <span>${Math.round(stutter)}</span>
+                                `,
+                            )}
                         </div>
                     `,
             ].filter(check.isTruthy);

@@ -1,8 +1,7 @@
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {Container, Graphics} from 'pixi.js';
-import {defineEntitySuite} from './entity-suite.js';
-import {createMockPixi} from './pixi.mock.js';
+import {Container} from 'pixi.js';
+import {createMockPixi} from './mock-pixi.js';
 
 describe(createMockPixi.name, () => {
     it('creates a mock', () => {
@@ -34,36 +33,13 @@ describe(createMockPixi.name, () => {
             }).canvas,
         );
     });
-    it('allows a view child to be destroyed', () => {
-        const {EntityStore, defineEntity} = defineEntitySuite();
-        let updateCount = 0;
+    it('destroys ticker and stage', () => {
+        const mock = createMockPixi();
 
-        class MyEntity extends defineEntity({
-            key: 'MyEntity',
-            paramsShape: undefined,
-        }) {
-            public override update(): void {
-                updateCount++;
-            }
-            public override createView() {
-                return {
-                    view: new Graphics().rect(0, 0, 10, 10).fill('red'),
-                };
-            }
-        }
-        const entityStore = new EntityStore({
-            pixi: createMockPixi(),
-            state: {},
-        });
+        assert.isFalse(mock.stage.destroyed);
 
-        MyEntity.paramsMap;
+        mock.destroy();
 
-        const instance = entityStore.addEntity(MyEntity);
-
-        entityStore.updateAllEntities();
-        entityStore.updateAllEntities();
-        assert.strictEquals(updateCount, 2);
-
-        instance.destroy();
+        assert.isTrue(mock.stage.destroyed);
     });
 });

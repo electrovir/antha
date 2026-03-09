@@ -1,6 +1,6 @@
 import {mapObject} from '@augment-vir/common';
 import {PathTree, SpaRouter, type FullSpaRoute, type SpaRouteByPath} from 'spa-router-vir';
-import {joinUrlPaths} from 'url-vir';
+import {joinUrlPaths, parseUrl} from 'url-vir';
 
 export const demoPathTree = new PathTree({
     allowBare: true,
@@ -60,11 +60,17 @@ function sanitizeSearch(
     });
 }
 
+export const githubPagesBasePathname = joinUrlPaths('antha', 'demo');
+
+export function isOnGitHubPages(): boolean {
+    return parseUrl(window.location.href).pathname.startsWith(githubPagesBasePathname);
+}
+
 export type DemoRouter = SpaRouter<DemoRoutePaths, DemoRouteSearchParams, string | undefined>;
 
 export function createDemoRouter() {
     return new SpaRouter({
-        basePath: joinUrlPaths('antha', 'demo'),
+        basePath: githubPagesBasePathname,
         sanitizeRoute(rawRoute) {
             const sanitizedPaths = demoPathTree.sanitizePaths(rawRoute.paths);
 

@@ -1,3 +1,4 @@
+import {createMockPixi} from '@antha/pixi-canvas';
 import {assert} from '@augment-vir/assert';
 import {SeededRandom, type AnyObject} from '@augment-vir/common';
 import {describe, it, itCases} from '@augment-vir/test';
@@ -14,7 +15,6 @@ import {
     type EntityStore,
     type ViewCreation,
 } from './entity.js';
-import {createMockPixi} from './pixi.mock.js';
 
 describe(defineEntitySuite.name, () => {
     it('infers defined state type', () => {
@@ -230,6 +230,38 @@ describe(defineEntitySuite.name, () => {
         assert.instanceOf(instance, MyLogicEntity);
         assert.instanceOf(instance, BaseEntity);
     });
+    it('allows a view child to be destroyed', () => {
+        const {EntityStore, defineEntity} = defineEntitySuite();
+        let updateCount = 0;
+
+        class MyEntity extends defineEntity({
+            key: 'MyEntity',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {
+                updateCount++;
+            }
+            public override createView() {
+                return {
+                    view: new Graphics().rect(0, 0, 10, 10).fill('red'),
+                };
+            }
+        }
+        const entityStore = new EntityStore({
+            pixi: createMockPixi(),
+            state: {},
+        });
+
+        MyEntity.paramsMap;
+
+        const instance = entityStore.addEntity(MyEntity);
+
+        entityStore.updateAllEntities();
+        entityStore.updateAllEntities();
+        assert.strictEquals(updateCount, 2);
+
+        instance.destroy();
+    });
 });
 
 describe(reverseParamsMap.name, () => {
@@ -271,6 +303,20 @@ describe(reverseParamsMap.name, () => {
                 angle: {
                     hitbox: ['angle'],
                 },
+                w: {
+                    hitbox: ['width'],
+                },
+            },
+        },
+        {
+            it: 'skips falsy mapping values',
+            input: {
+                hitbox: {
+                    angle: false as any,
+                    width: 'w',
+                },
+            },
+            expect: {
                 w: {
                     hitbox: ['width'],
                 },

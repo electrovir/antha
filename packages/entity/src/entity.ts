@@ -1,11 +1,10 @@
 import {type PixiApplication} from '@antha/pixi-canvas';
-import {assert, assertWrap, check} from '@augment-vir/assert';
+import {assert, check} from '@augment-vir/assert';
 import {
     ConstructorInstanceMap,
     getObjectTypedEntries,
     log,
     makeWritable,
-    wrapInTry,
     type AnyObject,
     type ExtractKeysWithMatchingValues,
     type PartialWithUndefined,
@@ -169,22 +168,10 @@ export class EntityStore<State extends AnyObject = any> {
          */
         this.hitboxSystem.checkAll((response) => {
             try {
-                const primaryEntity = wrapInTry(
-                    () => {
-                        return assertWrap.instanceOf(response.a.userData, BaseEntity);
-                    },
-                    {
-                        fallbackValue: undefined,
-                    },
-                );
-                const secondaryEntity = wrapInTry(
-                    () => {
-                        return assertWrap.instanceOf(response.b.userData, BaseEntity);
-                    },
-                    {
-                        fallbackValue: undefined,
-                    },
-                );
+                const primaryEntity =
+                    response.a.userData instanceof BaseEntity ? response.a.userData : undefined;
+                const secondaryEntity =
+                    response.b.userData instanceof BaseEntity ? response.b.userData : undefined;
 
                 /* node:coverage ignore next 3 */
                 if (

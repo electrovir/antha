@@ -37,6 +37,9 @@ export function createAnthaEntityStoreMod<State extends AnyObject>(
 
     const mod = defineAnthaMod<AnthaEntityStoreModState<State>>({
         modName: 'antha-entity-store',
+        cleanup({state}) {
+            state.entityStore?.destroy();
+        },
         execute({state}) {
             if (state.debugHitboxes == undefined) {
                 state.debugHitboxes = !!options.debug;

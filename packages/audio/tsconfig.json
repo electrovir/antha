@@ -12,10 +12,5 @@
         "./test-files/",
         "src/all-files-for-code-coverage.test.ts"
     ],
-    "extends": "../../configs/tsconfig.base.json",
-    "references": [
-        {
-            "path": "../pixi-canvas"
-        }
-    ]
+    "extends": "../../configs/tsconfig.base.json"
 }

@@ -1,38 +1,33 @@
 /* eslint-disable sonarjs/pseudo-random */
 import {
     createAnthaEntityStoreMod,
-    type AnthaEntityStoreModState,
-} from '@antha/entity/src/antha-entity-store.mod.js';
-import {
     EntityEvent,
     standardParamsMap,
+    type AnthaEntityStoreModState,
     type BaseEntity,
     type EntityStore,
     type ViewCreation,
-} from '@antha/entity/src/entity.js';
+} from '@antha/entity';
 import {createAnthaPixiCanvasMod, createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {assertWrap} from '@augment-vir/assert';
 import {executeCount, randomInteger} from '@augment-vir/common';
 import {AnthaEngine, SkipExecution, type AnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {Circle, Polygon} from 'detect-collisions';
-import {css, html} from 'element-vir';
+import {css, html, listen} from 'element-vir';
 import {defineShape} from 'object-shape-tester';
 import {Graphics} from 'pixi.js';
+import {ViraButton, ViraColorVariant} from 'vira';
 import {type AnthaDemo} from '../demo.js';
 
 /** Multiplier for all game speeds. >1 = faster, <1 = slower. */
 const gameSpeed = 2;
-
-/** Milliseconds to wait before restarting after game over. */
-const gameOverRestartMs = 3000;
 
 type AsteroidsGameState = {
     score: number;
     gameOver: boolean;
     spawnTickCounter: number;
     totalTicks: number;
-    gameOverAt: number;
     listenersInitialized: boolean;
 };
 
@@ -492,7 +487,7 @@ function spawnAsteroidFromEdge(entityStore: EntityStore<Partial<AsteroidsState>>
 
 const asteroidsGameMod: AnthaMod<AsteroidsState> = {
     modName: 'asteroids-game',
-    execute({state}) {
+    execute({state, engine}) {
         /** Save off for type guarding purposes. */
         const entityStore = state.entityStore;
         if (!entityStore) {
@@ -504,7 +499,6 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
             state.gameOver = false;
             state.spawnTickCounter = 0;
             state.totalTicks = 0;
-            state.gameOverAt = 0;
 
             entityStore.addEntity(PlayerEntity, {
                 x: entityStore.pixi.screen.width / 2,
@@ -528,19 +522,10 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
 
             entityStore.listenTarget.listen(PlayerDeathEvent, () => {
                 state.gameOver = true;
-                state.gameOverAt = Date.now();
             });
         }
 
         if (state.gameOver) {
-            if (Date.now() - (state.gameOverAt ?? 0) >= gameOverRestartMs) {
-                /** Destroy all entities and reset game state to trigger re-init. */
-                entityStore.currentEntityInstances.forEach((entity) => {
-                    entity.destroy();
-                });
-                state.score = undefined as unknown as number;
-            }
-
             return html`
                 <div
                     style=${css`
@@ -567,10 +552,20 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
                     <div
                         style=${css`
                             font-size: 24px;
+                            margin-bottom: 24px;
                         `}
                     >
                         Final Score: ${String(state.score)}
                     </div>
+                    <${ViraButton.assign({
+                        text: 'Restart',
+                        colorVariant: ViraColorVariant.Neutral,
+                    })}
+                        ${listen('click', async () => {
+                            await engine.reset();
+                            engine.startLoop();
+                        })}
+                    ></${ViraButton}>
                 </div>
             `;
         }
@@ -625,7 +620,9 @@ export const entitiesDemo: AnthaDemo = {
                         border: 2px solid red;
                     `,
                 }),
-                createAnthaPixiFpsMod(),
+                createAnthaPixiFpsMod({
+                    debugTps: true,
+                }),
                 entityStoreMod,
                 asteroidsGameMod,
             ],

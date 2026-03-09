@@ -3,25 +3,34 @@ import {createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {AnthaEngine, SkipExecution, type AnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {css, html, listen} from 'element-vir';
+import {joinUrlPaths} from 'url-vir';
 import {ViraButton} from 'vira';
+import {githubPagesBasePathname, isOnGitHubPages} from '../demo-router.js';
 import {type AnthaDemo} from '../demo.js';
 
-const audioFiles: ReadonlyArray<
-    {
-        label: string;
-    } & AudioSetupParams
-> = [
+function resolveAudioPath(fileName: string): string {
+    if (isOnGitHubPages()) {
+        return joinUrlPaths(githubPagesBasePathname, 'audio', fileName);
+    } else {
+        return joinUrlPaths('', 'audio', fileName);
+    }
+}
+
+const audioFileNames: ReadonlyArray<{
+    label: string;
+    fileName: string;
+}> = [
     {
         label: 'Back',
-        sources: '/audio/back_004.mp3',
+        fileName: 'back_004.mp3',
     },
     {
         label: 'Confirmation',
-        sources: '/audio/confirmation_002.mp3',
+        fileName: 'confirmation_002.mp3',
     },
     {
         label: 'Power Up',
-        sources: '/audio/powerUp3.mp3',
+        fileName: 'powerUp3.mp3',
     },
 ];
 
@@ -32,12 +41,21 @@ const audioControlsMod: AnthaMod<AnthaAudioState> = {
             return SkipExecution;
         }
 
+        const audioFiles: ReadonlyArray<{label: string} & AudioSetupParams> = audioFileNames.map(
+            (config) => {
+                return {
+                    label: config.label,
+                    sources: resolveAudioPath(config.fileName),
+                };
+            },
+        );
+
         const buttonTemplates = audioFiles.map((audioFile) => {
             return html`
                 <${ViraButton.assign({
                     text: `▶️ ${audioFile.label}`,
                 })}
-                    ${listen('mousedown', async () => {
+                    ${listen('click', async () => {
                         await state.audioPlayer?.play(audioFile);
                     })}
                 ></${ViraButton}>

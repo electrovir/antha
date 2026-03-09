@@ -187,6 +187,15 @@ export function defineAnthaMod<State extends AnyObject = never>(
 export type AnthaEngineOptions = {
     /** The minimum milliseconds between each tick. */
     tickDurationMs: number;
+    /**
+     * Maximum number of ticks to execute per scheduling frame. When the engine falls behind (e.g.
+     * the browser throttled the tab), it will run up to this many ticks to catch up before yielding
+     * back to the scheduler. This prevents entities from freezing when ticks are delayed while also
+     * capping runaway catch-up after long pauses.
+     *
+     * @default 4
+     */
+    maxTicksPerFrame: number;
 };
 
 /**
@@ -196,6 +205,7 @@ export type AnthaEngineOptions = {
  */
 export const defaultAnthaEngineOptions: AnthaEngineOptions = {
     tickDurationMs: 16,
+    maxTicksPerFrame: 4,
 };
 
 /**
@@ -324,7 +334,7 @@ export class AnthaEngine {
         }
     }
 
-    /** Reset the engine back to its initial state. */
+    /** Reset the engine back to its initial state and run all mod cleanup callbacks. */
     public async reset() {
         this.stopLoop();
         await waitUntil.isFalse(() => this.isTickRunning);
@@ -379,24 +389,37 @@ export class AnthaEngine {
     /** When the next tick should execute. */
     protected nextTickTarget: DOMHighResTimeStamp = 0;
 
-    /** Execute ticks in a loop. */
+    /**
+     * Execute ticks in a loop using a fixed-timestep accumulator. When the engine falls behind
+     * (e.g. setTimeout fires late, GC pause, background tab), multiple ticks run to catch up
+     * instead of being silently skipped. A per-frame cap prevents runaway catch-up after long
+     * pauses.
+     */
     protected async runTickInLoop() {
         if (!this.isLoopRunning) {
             return;
         }
 
-        await this.runSingleTick();
-
-        this.nextTickTarget += this.options.tickDurationMs;
-
         const now = performance.now();
+        let ticksThisFrame = 0;
 
-        if (this.nextTickTarget < now - this.options.tickDurationMs) {
-            /** Prevent burst catch-up after the browser throttles the engine in the background. */
-            this.nextTickTarget = now;
+        while (this.nextTickTarget <= now && ticksThisFrame < this.options.maxTicksPerFrame) {
+            await this.runSingleTick();
+            this.nextTickTarget += this.options.tickDurationMs;
+            ticksThisFrame++;
         }
 
-        const nextDelay = Math.max(0, this.nextTickTarget - now);
+        const afterTickTime = performance.now();
+
+        if (this.nextTickTarget < afterTickTime) {
+            /**
+             * Still behind after the per-frame cap. Skip ahead to prevent permanent lag spiral
+             * (e.g. returning from a long background-tab throttle).
+             */
+            this.nextTickTarget = afterTickTime + this.options.tickDurationMs;
+        }
+
+        const nextDelay = Math.max(0, this.nextTickTarget - afterTickTime);
 
         setTimeout(() => this.runTickInLoop(), nextDelay);
     }
@@ -411,33 +434,47 @@ export class AnthaEngine {
         this.currentTemplateArray.length = 0;
         const executionStart = performance.now();
 
-        await awaitedForEach(this.currentMods, async (mod, index) => {
+        /**
+         * Use a plain `for` loop instead of `awaitedForEach` so that synchronous mods execute
+         * without microtask boundaries between them. Only yield when a mod actually returns a
+         * `Promise`.
+         */
+        for (let index = 0; index < this.currentMods.length; index++) {
+            const mod = this.currentMods[index];
+            /* node:coverage ignore next 3: this is not reliable to trigger but is needed for type guarding. */
+            if (!mod) {
+                continue;
+            }
             const lastExecution = this.lastModExecution.get(mod);
             const shouldExecute = this.shouldModExecute(mod, lastExecution);
 
-            const executeResult = shouldExecute
-                ? await mod.execute({
-                      engine: this,
-                      modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
-                          applyBrand<ModInstanceId>(createId()),
-                      ),
-                      currentTick: this.currentTick,
-                      state: this.state,
-                      ticksSinceLastExecute: this.currentTick - (lastExecution?.tick ?? 0),
-                      executeImmediately: mod.executeImmediately || false,
-                      frequency: mod.frequency || undefined,
-                      lastExecution,
-                      hostElement: this.hostElement,
-                      msSinceLastExecute:
-                          executionStart - (lastExecution?.timeMs ?? this.engineStartTime),
-                  })
-                : undefined;
+            let executeResult: HtmlInterpolation | void | SkipExecution | undefined;
+
+            if (shouldExecute) {
+                const rawResult = mod.execute({
+                    engine: this,
+                    modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
+                        applyBrand<ModInstanceId>(createId()),
+                    ),
+                    currentTick: this.currentTick,
+                    state: this.state,
+                    ticksSinceLastExecute: this.currentTick - (lastExecution?.tick ?? 0),
+                    executeImmediately: mod.executeImmediately || false,
+                    frequency: mod.frequency || undefined,
+                    lastExecution,
+                    hostElement: this.hostElement,
+                    msSinceLastExecute:
+                        executionStart - (lastExecution?.timeMs ?? this.engineStartTime),
+                });
+
+                executeResult = rawResult instanceof Promise ? await rawResult : rawResult;
+            }
 
             const skipped = executeResult === SkipExecution;
 
-            const modTemplate =
+            const modTemplate: HtmlInterpolation =
                 shouldExecute && !skipped
-                    ? executeResult || undefined
+                    ? (executeResult as Exclude<typeof executeResult, SkipExecution>) || undefined
                     : this.currentTemplateMap.get(mod);
 
             this.currentTemplateArray[index] = modTemplate;
@@ -449,7 +486,7 @@ export class AnthaEngine {
                     timeMs: executionStart,
                 });
             }
-        });
+        }
 
         this.currentTick++;
         this.observable.setValue(this.currentTemplateArray);

@@ -47,4 +47,10 @@ export class MockPixiApp {
             this.screen.height = options.height;
         }
     }
+
+    /** Destroy the mock pixi app. */
+    public destroy() {
+        this.ticker.destroy();
+        this.stage.destroy();
+    }
 }
