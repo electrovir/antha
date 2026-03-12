@@ -10,5 +10,6 @@ module.exports = {
         'antha',
         'lerp',
         'paralleldrive',
+        'spritesheet',
     ],
 };

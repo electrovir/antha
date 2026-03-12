@@ -7,6 +7,7 @@ import {
     makeWritable,
     type AnyObject,
     type ExtractKeysWithMatchingValues,
+    type MaybePromise,
     type PartialWithUndefined,
 } from '@augment-vir/common';
 import {
@@ -143,23 +144,23 @@ export class EntityStore<State extends AnyObject = any> {
      *
      * @returns All detected hitbox collisions (if any).
      */
-    public updateAllEntities(): void {
+    public async updateAllEntities(): Promise<void> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
         }
-        this.currentEntityInstances.forEach((entity) => {
+        for (const entity of this.currentEntityInstances) {
             /** Check if the entity was destroyed outside of an update cycle. */
             if (entity.isDestroyed) {
                 entity.immediatelyDestroy();
                 return;
             }
-            entity.update();
+            await entity.update();
             /** Check if the entity was destroyed while updating. */
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (entity.isDestroyed) {
                 entity.immediatelyDestroy();
             }
-        });
+        }
 
         this.hitboxSystem.update();
         /**
@@ -495,7 +496,7 @@ export abstract class BaseEntity<
      * Called every game tick. Run all entity updates in here. This should be overridden in all
      * entity definition classes.
      */
-    public abstract update(): void;
+    public abstract update(): MaybePromise<void>;
 
     /** The game's current state. */
     public state: State;

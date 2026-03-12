@@ -230,7 +230,7 @@ describe(defineEntitySuite.name, () => {
         assert.instanceOf(instance, MyLogicEntity);
         assert.instanceOf(instance, BaseEntity);
     });
-    it('allows a view child to be destroyed', () => {
+    it('allows a view child to be destroyed', async () => {
         const {EntityStore, defineEntity} = defineEntitySuite();
         let updateCount = 0;
 
@@ -256,8 +256,8 @@ describe(defineEntitySuite.name, () => {
 
         const instance = entityStore.addEntity(MyEntity);
 
-        entityStore.updateAllEntities();
-        entityStore.updateAllEntities();
+        await entityStore.updateAllEntities();
+        await entityStore.updateAllEntities();
         assert.strictEquals(updateCount, 2);
 
         instance.destroy();

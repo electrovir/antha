@@ -30,16 +30,16 @@ function createTestStore(suite: {EntityStore: new (...args: any[]) => EntityStor
 }
 
 describe('EntityStore', () => {
-    it('throws when calling updateAllEntities on a destroyed store', () => {
+    it('throws when calling updateAllEntities on a destroyed store', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
         store.destroy();
-        assert.throws(() => store.updateAllEntities(), {
+        await assert.throws(() => store.updateAllEntities(), {
             matchMessage: 'Cannot operate on a destroyed entity store.',
         });
     });
 
-    it('cleans up entities destroyed outside update cycle', () => {
+    it('cleans up entities destroyed outside update cycle', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -54,11 +54,11 @@ describe('EntityStore', () => {
         /** Mark as destroyed outside an update cycle. */
         makeWritable(instance).isDestroyed = true;
 
-        store.updateAllEntities();
+        await store.updateAllEntities();
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
-    it('cleans up entities that destroy themselves during update', () => {
+    it('cleans up entities that destroy themselves during update', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -72,11 +72,11 @@ describe('EntityStore', () => {
         }
 
         store.addEntity(SelfDestroyer);
-        store.updateAllEntities();
+        await store.updateAllEntities();
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
-    it('triggers collision callback between overlapping hitboxes', () => {
+    it('triggers collision callback between overlapping hitboxes', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
         let collisionDetected = false;
@@ -108,11 +108,11 @@ describe('EntityStore', () => {
         store.addEntity(CollidingEntity);
         store.addEntity(CollidingEntity);
 
-        store.updateAllEntities();
+        await store.updateAllEntities();
         assert.isTrue(collisionDetected);
     });
 
-    it('calls the base collide no-op for entities without override', () => {
+    it('calls the base collide no-op for entities without override', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -137,10 +137,10 @@ describe('EntityStore', () => {
 
         store.addEntity(NoOverride);
         store.addEntity(NoOverride);
-        store.updateAllEntities();
+        await store.updateAllEntities();
     });
 
-    it('handles collisions with non-entity hitboxes', () => {
+    it('handles collisions with non-entity hitboxes', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -175,7 +175,7 @@ describe('EntityStore', () => {
         );
         store.hitboxSystem.insert(rawHitbox);
 
-        store.updateAllEntities();
+        await store.updateAllEntities();
     });
 
     it('returns entities from getEntities', () => {

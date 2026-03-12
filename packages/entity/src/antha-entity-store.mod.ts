@@ -40,7 +40,7 @@ export function createAnthaEntityStoreMod<State extends AnyObject>(
         cleanup({state}) {
             state.entityStore?.destroy();
         },
-        execute({state}) {
+        async execute({state}) {
             if (state.debugHitboxes == undefined) {
                 state.debugHitboxes = !!options.debug;
             }
@@ -52,7 +52,7 @@ export function createAnthaEntityStoreMod<State extends AnyObject>(
             }
 
             if (state.entityStore) {
-                state.entityStore.updateAllEntities();
+                await state.entityStore.updateAllEntities();
             } else {
                 state.entityStore = new EntityStore(
                     mergeDefinedProperties(
