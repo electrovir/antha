@@ -16,29 +16,29 @@
         "@antha/audio": "*",
         "@antha/entity": "*",
         "@antha/pixi-canvas": "*",
-        "@augment-vir/assert": "^31.68.0",
-        "@augment-vir/common": "^31.68.0",
-        "@electrovir/color": "^1.7.8",
+        "@augment-vir/assert": "^31.68.2",
+        "@augment-vir/common": "^31.68.2",
+        "@electrovir/color": "^1.7.9",
         "antha": "*",
-        "date-vir": "^8.2.0",
+        "date-vir": "^8.2.1",
         "detect-collisions": "^10.10.2025",
         "element-vir": "^26.14.6",
         "object-shape-tester": "^6.11.0",
-        "pixi.js": "^8.16.0",
+        "pixi.js": "^8.17.1",
         "spa-router-vir": "^6.4.1",
-        "theme-vir": "^28.22.0",
-        "type-fest": "^5.4.4",
-        "url-vir": "^2.1.7",
-        "vira": "^31.3.0"
+        "theme-vir": "^28.25.0",
+        "type-fest": "^5.5.0",
+        "url-vir": "^2.1.8",
+        "vira": "^31.10.0"
     },
     "devDependencies": {
-        "@augment-vir/test": "^31.68.0",
+        "@augment-vir/test": "^31.68.2",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-playwright": "^0.11.1",
         "istanbul-smart-text-reporter": "^1.1.5",
         "typescript": "^5.9.3",
-        "vite": "^7.3.1"
+        "vite": "^8.0.2"
     },
     "engines": {
         "node": ">=22"
