@@ -1,3 +1,4 @@
+import {type AnthaAsset, type AnthaAssetLoader, type AnthaAssetValue} from '@antha/asset';
 import {type PixiApplication} from '@antha/pixi-canvas';
 import {assert, check} from '@augment-vir/assert';
 import {
@@ -5,6 +6,7 @@ import {
     getObjectTypedEntries,
     log,
     makeWritable,
+    mapObjectValues,
     type AnyObject,
     type ExtractKeysWithMatchingValues,
     type MaybePromise,
@@ -20,6 +22,7 @@ import {ParticleContainer, type ViewContainer} from 'pixi.js';
 import {
     type AbstractConstructor,
     type Constructor,
+    type EmptyObject,
     type IsEqual,
     type IsNever,
     type UnknownArray,
@@ -30,6 +33,24 @@ import {defineTypedCustomEvent, GenericListenTarget} from 'typed-event-target';
 import {type StaticEntityParts} from './entity-suite.js';
 
 export {System as HitboxSystem} from 'detect-collisions';
+
+export type BaseEntityAssetDefinitions<Params> = Record<
+    string,
+    Omit<
+        AnthaAsset<Params>,
+        /** Name will be the value's key in this object. */
+        'name'
+    >
+>;
+
+export type BaseEntityAssets = Record<string, AnthaAsset>;
+
+export type MappedEntityAssets<Definitions extends BaseEntityAssetDefinitions<any> | undefined> =
+    Definitions extends undefined
+        ? EmptyObject
+        : {
+              [Key in keyof Definitions]: Definitions[Key] & {name: string};
+          };
 
 /**
  * Parameters for {@link EntityStore.addEntity}. Flattens itself to an empty array if there are no
@@ -59,6 +80,7 @@ export type EntityStoreConstructorParams<State extends AnyObject = any> = {
      */
     pixi: PixiApplication;
     state: State;
+    assetLoader: AnthaAssetLoader;
 } & PartialWithUndefined<{
     /**
      * A `System` instance from the
@@ -101,9 +123,11 @@ export class EntityStore<State extends AnyObject = any> {
     /** Listen target for events emitted from any child entities. */
     public listenTarget = new GenericListenTarget();
     public readonly state: State;
+    public readonly assetLoader: AnthaAssetLoader;
 
     constructor(args: Readonly<EntityStoreConstructorParams>) {
         this.pixi = args.pixi;
+        this.assetLoader = args.assetLoader;
         this.hitboxSystem = args.customHitboxSystem || new HitboxSystem();
         this.state = args.state;
         if (args.preregisteredEntities) {
@@ -216,7 +240,10 @@ export class EntityStore<State extends AnyObject = any> {
      * Create an entity instance by finding the registered constructor with the given `entityKey`
      * and then deserializing and passing the given `serializedParams` to that constructor.
      */
-    public deserializeEntity(entityKey: string, serializedParams: string | undefined): BaseEntity {
+    public async deserializeEntity(
+        entityKey: string,
+        serializedParams: string | undefined,
+    ): Promise<BaseEntity> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
         }
@@ -225,17 +252,19 @@ export class EntityStore<State extends AnyObject = any> {
             throw new Error(`No entity registered for key '${entityKey}'`);
         }
 
-        return this.addEntity(
+        return await this.addEntity(
             entityConstructor as any,
             entityConstructor.deserialize(serializedParams) as any,
         );
     }
 
     /** Create a new instance of the given entity class and add it to this entity store. */
-    public addEntity<const EntityConstructor extends Constructor<BaseEntity> & StaticEntityParts>(
+    public async addEntity<
+        const EntityConstructor extends Constructor<BaseEntity> & StaticEntityParts,
+    >(
         entityClass: EntityConstructor,
         ...params: AddEntityParams<EntityConstructor>
-    ): InstanceType<EntityConstructor> {
+    ): Promise<InstanceType<EntityConstructor>> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
         }
@@ -251,6 +280,7 @@ export class EntityStore<State extends AnyObject = any> {
             params: (params as UnknownArray)[0],
             hitboxSystem: this.hitboxSystem,
         } satisfies EntityConstructorParams<any, any>);
+        await child.initInstance();
         this.currentEntityInstances.add(child);
         this.entityInstanceMap.add(child);
         return child as InstanceType<EntityConstructor>;
@@ -432,6 +462,7 @@ export type ReverseParamsMap = Record<string, Partial<Record<'hitbox' | 'view', 
 export abstract class BaseEntity<
     State extends AnyObject = any,
     Params extends Record<string, any> | undefined = any,
+    EntityAssets extends BaseEntityAssetDefinitions<any> | undefined = any,
 > {
     /**
      * This key is used for deserialization of entities to track which class needs to be
@@ -440,6 +471,11 @@ export abstract class BaseEntity<
     public static readonly entityKey: string = 'BaseEntity';
     /** Shape definition of this entity's parameters. */
     public static readonly paramsShape: Shape<AnyObject> | undefined;
+
+    public static readonly assets:
+        | MappedEntityAssets<BaseEntityAssetDefinitions<any> | undefined>
+        | undefined;
+
     /**
      * Defines which properties from {@link BaseEntity.params} will be mapped to hitbox and/or view
      * properties.
@@ -477,12 +513,14 @@ export abstract class BaseEntity<
 
     /** The entity store to add all entities to. */
     public readonly entityStore: EntityStore<State>;
+
     /** Writable entity params. These should be serializable. */
     public readonly params: Params;
     /** Original pixi app. */
     public readonly pixi: PixiApplication;
     /** Collision detection system. */
     public readonly hitboxSystem: HitboxSystem;
+    public getAsset: EntityAssetAccessor<Params, MappedEntityAssets<EntityAssets>>;
 
     constructor(args: Readonly<EntityConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
         this.entityStore = args.entityStore;
@@ -490,6 +528,16 @@ export abstract class BaseEntity<
         this.pixi = args.pixi;
         this.hitboxSystem = args.hitboxSystem;
         this.state = args.state;
+
+        const assets = (this.constructor as typeof ViewEntity).assets as
+            | MappedEntityAssets<BaseEntityAssetDefinitions<Params> | undefined>
+            | undefined;
+
+        this.getAsset = createEntityAssetAccessor<Params, MappedEntityAssets<EntityAssets>>({
+            assetLoader: args.entityStore.assetLoader,
+            entityAssets: assets,
+            params: args.params as Params,
+        });
     }
 
     /**
@@ -498,18 +546,24 @@ export abstract class BaseEntity<
      */
     public abstract update(): MaybePromise<void>;
 
+    public initInstance(): MaybePromise<void> {
+        return;
+    }
+
     /** The game's current state. */
     public state: State;
 
     /** Add a new entity to the entity store. */
-    public addEntity<const EntityConstructor extends Constructor<BaseEntity> & StaticEntityParts>(
+    public async addEntity<
+        const EntityConstructor extends Constructor<BaseEntity> & StaticEntityParts,
+    >(
         entityClass: EntityConstructor,
         ...params: AddEntityParams<EntityConstructor>
-    ): InstanceType<EntityConstructor> {
+    ): Promise<InstanceType<EntityConstructor>> {
         if (this.isDestroyed) {
             throw new Error('Cannot add entity through destroyed entity.');
         }
-        return this.entityStore.addEntity(entityClass, ...params);
+        return await this.entityStore.addEntity(entityClass, ...params);
     }
 
     /** Marks the entity for destruction in the next entity store update. */
@@ -578,6 +632,46 @@ export type ViewCreation = {
     hitbox?: Hitbox | undefined;
 };
 
+export type EntityAssetAccessor<
+    Params,
+    EntityAssets extends BaseEntityAssetDefinitions<Params> | undefined,
+> = EntityAssets extends undefined
+    ? EmptyObject
+    : {
+          [Key in keyof EntityAssets]: () => Promise<
+              AnthaAssetValue<NonNullable<EntityAssets>[Key]>
+          >;
+      };
+
+function createEntityAssetAccessor<
+    Params,
+    EntityAssets extends BaseEntityAssets | undefined = any,
+>({
+    assetLoader,
+    entityAssets,
+    params,
+}: Readonly<{
+    params: Params;
+    entityAssets: EntityAssets | undefined | EmptyObject;
+    assetLoader: AnthaAssetLoader;
+}>): EntityAssetAccessor<Params, EntityAssets> {
+    if (!entityAssets || check.isEmpty(entityAssets)) {
+        return {} as EntityAssetAccessor<Params, EntityAssets>;
+    }
+
+    return mapObjectValues(entityAssets, (key, asset) => {
+        return async () => {
+            return assetLoader.loadIndividualAsset({
+                asset,
+                params,
+            });
+        };
+    }) satisfies Record<keyof EntityAssets, () => Promise<any>> as EntityAssetAccessor<
+        Params,
+        EntityAssets
+    >;
+}
+
 /**
  * Base view entity class, types, and functionality.
  *
@@ -586,13 +680,13 @@ export type ViewCreation = {
 export abstract class ViewEntity<
     State extends AnyObject = any,
     Params extends Record<string, any> | undefined = any,
-> extends BaseEntity<State, Params> {
+    EntityAssets extends BaseEntityAssetDefinitions<any> | undefined = any,
+> extends BaseEntity<State, Params, EntityAssets> {
     /** The entity's PixiJS view. */
-    public view: ViewContainer;
+    public view!: ViewContainer;
 
-    constructor(args: Readonly<EntityConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
-        super(args);
-        const {view, hitbox} = this.createView();
+    public override async initInstance() {
+        const {view, hitbox} = await this.createView();
 
         if (view) {
             this.view = view;
@@ -608,6 +702,10 @@ export abstract class ViewEntity<
             this.hitboxSystem.insert(this.hitbox);
         }
         this.wrapParamsInProxy();
+    }
+
+    constructor(args: Readonly<EntityConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
+        super(args);
     }
 
     private wrapParamsInProxy(): void {
@@ -655,7 +753,7 @@ export abstract class ViewEntity<
      * Creates the entity's PixiJS view. This will be called on entity construction and added to the
      * PixiJS application stage.
      */
-    public abstract createView(): ViewCreation;
+    public abstract createView(): MaybePromise<ViewCreation>;
 
     /** Detects if the current entity is still within the bounds of the render canvas. */
     public isInBounds(

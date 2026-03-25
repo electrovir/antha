@@ -12,6 +12,7 @@
         "test:coverage": "npm test"
     },
     "dependencies": {
+        "@antha/asset": "*",
         "@antha/audio": "*",
         "@antha/entity": "*",
         "@antha/pixi-canvas": "*",

@@ -14,6 +14,8 @@ import {createId} from '@paralleldrive/cuid2';
 import {type HtmlInterpolation} from 'element-vir';
 import {Observable} from 'observavir';
 import {type RequireExactlyOne} from 'type-fest';
+import {type AnthaLogger} from './logger/antha-logger.js';
+import {browserAnthaLogger} from './logger/browser-antha-logger.js';
 
 /**
  * A string type used for mod instances. In reality these are just strings, but this branded type
@@ -196,6 +198,11 @@ export type AnthaEngineOptions = {
      * @default 4
      */
     maxTicksPerFrame: number;
+    /**
+     * A custom logger to handle mod and engine logs. By default, this merely logs to the browser
+     * console.
+     */
+    logger: AnthaLogger;
 };
 
 /**
@@ -206,6 +213,7 @@ export type AnthaEngineOptions = {
 export const defaultAnthaEngineOptions: AnthaEngineOptions = {
     tickDurationMs: 16,
     maxTicksPerFrame: 4,
+    logger: browserAnthaLogger,
 };
 
 /**
@@ -271,7 +279,14 @@ export class AnthaEngine {
         this.options = mergeDefinedProperties(defaultAnthaEngineOptions, init?.options);
         this.currentMods = init?.mods || [];
         this.hostElement = init?.hostElement || globalThis.document.documentElement;
+        this.log = this.options.logger;
     }
+
+    /**
+     * Send a log through the engine. This will use the user's provided logger or default to browser
+     * logs.
+     */
+    public log: AnthaLogger;
 
     /** The element that this engine considers itself to be "hosted" in. */
     public hostElement: HTMLElement;
@@ -310,6 +325,8 @@ export class AnthaEngine {
      * modified at any time externally.
      */
     public readonly state: AnyObject = {};
+    /** Total milliseconds elapsed since the engine started. Updated each tick. */
+    public totalMs: DOMHighResTimeStamp = 0;
     /** When the engine started running its loop. */
     public engineStartTime: DOMHighResTimeStamp = performance.now();
     /**
@@ -433,6 +450,7 @@ export class AnthaEngine {
         /** Clear the array as we're about to populate it. */
         this.currentTemplateArray.length = 0;
         const executionStart = performance.now();
+        this.totalMs = executionStart - this.engineStartTime;
 
         /**
          * Use a plain `for` loop instead of `awaitedForEach` so that synchronous mods execute

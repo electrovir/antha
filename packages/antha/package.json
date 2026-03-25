@@ -41,6 +41,7 @@
         "date-vir": "^8.2.0",
         "element-vir": "^26.14.6",
         "observavir": "^2.3.2",
+        "sentry-vir": "^4.0.3",
         "type-fest": "^5.4.4"
     },
     "devDependencies": {

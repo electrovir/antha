@@ -50,7 +50,7 @@ describe('EntityStore', () => {
             public override update(): void {}
         }
 
-        const instance = store.addEntity(TestEntity);
+        const instance = await store.addEntity(TestEntity);
         /** Mark as destroyed outside an update cycle. */
         makeWritable(instance).isDestroyed = true;
 
@@ -71,7 +71,7 @@ describe('EntityStore', () => {
             }
         }
 
-        store.addEntity(SelfDestroyer);
+        await store.addEntity(SelfDestroyer);
         await store.updateAllEntities();
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
@@ -105,8 +105,8 @@ describe('EntityStore', () => {
             }
         }
 
-        store.addEntity(CollidingEntity);
-        store.addEntity(CollidingEntity);
+        await store.addEntity(CollidingEntity);
+        await store.addEntity(CollidingEntity);
 
         await store.updateAllEntities();
         assert.isTrue(collisionDetected);
@@ -135,8 +135,8 @@ describe('EntityStore', () => {
             }
         }
 
-        store.addEntity(NoOverride);
-        store.addEntity(NoOverride);
+        await store.addEntity(NoOverride);
+        await store.addEntity(NoOverride);
         await store.updateAllEntities();
     });
 
@@ -163,7 +163,7 @@ describe('EntityStore', () => {
             }
         }
 
-        store.addEntity(GuardEntity);
+        await store.addEntity(GuardEntity);
 
         /** Insert a raw hitbox not associated with any entity. */
         const rawHitbox = new Circle(
@@ -178,7 +178,7 @@ describe('EntityStore', () => {
         await store.updateAllEntities();
     });
 
-    it('returns entities from getEntities', () => {
+    it('returns entities from getEntities', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -196,15 +196,15 @@ describe('EntityStore', () => {
             public override update(): void {}
         }
 
-        const instanceA = store.addEntity(EntityA);
-        store.addEntity(EntityB);
+        const instanceA = await store.addEntity(EntityA);
+        await store.addEntity(EntityB);
 
         const aEntities = store.getEntities(EntityA);
         assert.strictEquals(aEntities.size, 1);
         assert.isTrue(aEntities.has(instanceA));
     });
 
-    it('removes a view entity', () => {
+    it('removes a view entity', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -227,13 +227,13 @@ describe('EntityStore', () => {
             }
         }
 
-        const instance = store.addEntity(RemovableView);
+        const instance = await store.addEntity(RemovableView);
         assert.strictEquals(store.currentEntityInstances.size, 1 as number);
         store.removeEntity(instance);
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
-    it('removes a logic entity', () => {
+    it('removes a logic entity', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -244,12 +244,12 @@ describe('EntityStore', () => {
             public override update(): void {}
         }
 
-        const instance = store.addEntity(RemovableLogic);
+        const instance = await store.addEntity(RemovableLogic);
         store.removeEntity(instance);
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
-    it('throws when removing from a destroyed store', () => {
+    it('throws when removing from a destroyed store', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -260,7 +260,7 @@ describe('EntityStore', () => {
             public override update(): void {}
         }
 
-        const instance = store.addEntity(ToRemove);
+        const instance = await store.addEntity(ToRemove);
         store.destroy();
         assert.throws(() => store.removeEntity(instance), {
             matchMessage: 'Cannot operate on a destroyed entity store.',
@@ -315,25 +315,25 @@ describe('EntityStore', () => {
         assert.instanceOf(deserialized, NoParams);
     });
 
-    it('throws when deserializing with unknown key', () => {
+    it('throws when deserializing with unknown key', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
-        assert.throws(() => store.deserializeEntity('unknown', undefined), {
+        await assert.throws(() => store.deserializeEntity('unknown', undefined), {
             matchMessage: "No entity registered for key 'unknown'",
         });
     });
 
-    it('throws when deserializing on a destroyed store', () => {
+    it('throws when deserializing on a destroyed store', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
         store.destroy();
-        assert.throws(() => store.deserializeEntity('any', undefined), {
+        await assert.throws(() => store.deserializeEntity('any', undefined), {
             matchMessage: 'Cannot operate on a destroyed entity store.',
         });
     });
 
-    it('throws when adding to a destroyed store', () => {
+    it('throws when adding to a destroyed store', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -345,7 +345,7 @@ describe('EntityStore', () => {
         }
 
         store.destroy();
-        assert.throws(() => store.addEntity(CannotAdd), {
+        await assert.throws(() => store.addEntity(CannotAdd), {
             matchMessage: 'Cannot operate on a destroyed entity store.',
         });
     });
@@ -397,7 +397,7 @@ describe('BaseEntity', () => {
         assert.isUndefined(result);
     });
 
-    it('adds a child entity from within an entity', () => {
+    it('adds a child entity from within an entity', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -412,17 +412,17 @@ describe('BaseEntity', () => {
             key: 'Parent',
             paramsShape: undefined,
         }) {
-            public override update(): void {
-                this.addEntity(ChildEntity);
+            public override async update(): Promise<void> {
+                await this.addEntity(ChildEntity);
             }
         }
 
-        const parent = store.addEntity(ParentEntity);
-        parent.update();
+        const parent = await store.addEntity(ParentEntity);
+        await parent.update();
         assert.strictEquals(store.currentEntityInstances.size, 2);
     });
 
-    it('throws when adding through a destroyed entity', () => {
+    it('throws when adding through a destroyed entity', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -440,14 +440,14 @@ describe('BaseEntity', () => {
             public override update(): void {}
         }
 
-        const parent = store.addEntity(Parent2);
+        const parent = await store.addEntity(Parent2);
         parent.destroy();
-        assert.throws(() => parent.addEntity(Child2), {
+        await assert.throws(() => parent.addEntity(Child2), {
             matchMessage: 'Cannot add entity through destroyed entity.',
         });
     });
 
-    it('immediately destroys a logic entity', () => {
+    it('immediately destroys a logic entity', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
         let destroyEventReceived = false;
@@ -459,7 +459,7 @@ describe('BaseEntity', () => {
             public override update(): void {}
         }
 
-        const instance = store.addEntity(DestroyMe);
+        const instance = await store.addEntity(DestroyMe);
         store.listenTarget.listen(EntityDestroyEvent, () => {
             destroyEventReceived = true;
         });
@@ -469,7 +469,7 @@ describe('BaseEntity', () => {
         assert.isTrue(destroyEventReceived);
     });
 
-    it('serializes params to JSON', () => {
+    it('serializes params to JSON', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -480,7 +480,7 @@ describe('BaseEntity', () => {
             public override update(): void {}
         }
 
-        const instance = store.addEntity(WithParams, {
+        const instance = await store.addEntity(WithParams, {
             x: 42,
             y: 99,
         });
@@ -493,7 +493,7 @@ describe('BaseEntity', () => {
         );
     });
 
-    it('returns undefined from serialize when no params', () => {
+    it('returns undefined from serialize when no params', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -504,13 +504,13 @@ describe('BaseEntity', () => {
             public override update(): void {}
         }
 
-        const instance = store.addEntity(NoParamsSerialize);
+        const instance = await store.addEntity(NoParamsSerialize);
         assert.isUndefined(instance.serialize());
     });
 });
 
 describe('ViewEntity', () => {
-    it('creates a hidden ParticleContainer when createView returns no view', () => {
+    it('creates a hidden ParticleContainer when createView returns no view', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -524,12 +524,12 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = store.addEntity(NoView);
+        const instance = await store.addEntity(NoView);
         assert.instanceOf(instance.view, ParticleContainer);
         assert.isFalse(instance.view.visible);
     });
 
-    it('inserts a hitbox into the hitbox system', () => {
+    it('inserts a hitbox into the hitbox system', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -552,12 +552,12 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = store.addEntity(WithHitbox);
+        const instance = await store.addEntity(WithHitbox);
         assert.isDefined(instance.hitbox);
         assert.strictEquals(instance.hitbox.userData, instance);
     });
 
-    it('propagates params to view and hitbox via proxy', () => {
+    it('propagates params to view and hitbox via proxy', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -581,7 +581,7 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = store.addEntity(MappedEntity, {
+        const instance = await store.addEntity(MappedEntity, {
             x: 100,
             y: 200,
         });
@@ -597,7 +597,46 @@ describe('ViewEntity', () => {
         assert.strictEquals(instance.hitbox.x, 300);
     });
 
-    it('returns true for isInBounds when entity is within screen', () => {
+    it('preserves asset keys', () => {
+        const suite = createTestSuite();
+
+        class AssetEntity extends suite.defineEntity({
+            key: 'AssetEntity',
+            paramsShape: entityPositionParamsShape,
+            paramsMap: standardParamsMap,
+            assets: {
+                graphic: {
+                    maxProgress: 1,
+                    load({incrementProgressCallback}) {
+                        const graphic = new Graphics().rect(0, 0, 10, 10).fill('blue');
+                        incrementProgressCallback();
+                        return {
+                            value: graphic,
+                        };
+                    },
+                },
+            },
+        }) {
+            public override update(): void {}
+            public override async createView() {
+                const graphic = await this.getAsset.graphic();
+                assert.tsType(graphic).equals<Graphics>();
+
+                return {
+                    view: graphic,
+                    hitbox: new Circle(
+                        {
+                            x: 0,
+                            y: 0,
+                        },
+                        10,
+                    ),
+                };
+            }
+        }
+    });
+
+    it('returns true for isInBounds when entity is within screen', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -614,7 +653,7 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = store.addEntity(InBoundsEntity, {
+        const instance = await store.addEntity(InBoundsEntity, {
             x: 500,
             y: 500,
         });
@@ -627,7 +666,7 @@ describe('ViewEntity', () => {
         );
     });
 
-    it('returns false for isInBounds when entity is outside screen', () => {
+    it('returns false for isInBounds when entity is outside screen', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -644,7 +683,7 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = store.addEntity(OutBoundsEntity, {
+        const instance = await store.addEntity(OutBoundsEntity, {
             x: -9999,
             y: -9999,
         });
@@ -652,7 +691,7 @@ describe('ViewEntity', () => {
         assert.isFalse(instance.isInBounds());
     });
 
-    it('throws when calling isInBounds on a destroyed entity', () => {
+    it('throws when calling isInBounds on a destroyed entity', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -668,14 +707,14 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = store.addEntity(DestroyedBounds);
+        const instance = await store.addEntity(DestroyedBounds);
         instance.immediatelyDestroy();
         assert.throws(() => instance.isInBounds(), {
             matchMessage: 'Cannot check bounds on destroyed entity.',
         });
     });
 
-    it('immediately destroys a view entity with hitbox', () => {
+    it('immediately destroys a view entity with hitbox', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -698,14 +737,14 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = store.addEntity(DestroyableView);
+        const instance = await store.addEntity(DestroyableView);
         assert.isDefined(instance.hitbox);
         instance.immediatelyDestroy();
         assert.isTrue(instance.isDestroyed);
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
-    it('removes view entity without hitbox via removeEntity', () => {
+    it('removes view entity without hitbox via removeEntity', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -721,7 +760,7 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = store.addEntity(NoHitboxView);
+        const instance = await store.addEntity(NoHitboxView);
         store.removeEntity(instance);
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
