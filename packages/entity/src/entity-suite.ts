@@ -1,4 +1,4 @@
-import {type AnthaAsset} from '@antha/asset';
+import {type Asset} from '@antha/asset';
 import {check} from '@augment-vir/assert';
 import {type AnyObject, getObjectTypedEntries, getOrSet} from '@augment-vir/common';
 import {type Shape} from 'object-shape-tester';
@@ -22,13 +22,7 @@ import {
  */
 export type DefineEntityArgs<
     ParamsShape extends Shape<AnyObject> | undefined,
-    EntityAssets extends
-        | BaseEntityAssetDefinitions<
-              NoInfer<ParamsShape> extends undefined
-                  ? undefined
-                  : Exclude<NoInfer<ParamsShape>, undefined>['runtimeType']
-          >
-        | undefined,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined,
 > = {
     /**
      * This key is used for deserialization of entities to track which class needs to be
@@ -127,13 +121,7 @@ export type DefineEntityArgs<
  */
 export type StaticEntityParts<
     ParamsShape extends Shape<AnyObject> | undefined = any,
-    EntityAssets extends
-        | BaseEntityAssetDefinitions<
-              NoInfer<ParamsShape> extends undefined
-                  ? undefined
-                  : Exclude<NoInfer<ParamsShape>, undefined>['runtimeType']
-          >
-        | undefined = any,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined = any,
 > = {
     /**
      * This key is used for deserialization of entities to track which class needs to be
@@ -172,13 +160,7 @@ export type StaticEntityParts<
 export type DefinedViewEntityInstance<
     State extends AnyObject,
     ParamsShape extends Shape<Record<string, any>> | undefined,
-    EntityAssets extends
-        | BaseEntityAssetDefinitions<
-              NoInfer<ParamsShape> extends undefined
-                  ? undefined
-                  : Exclude<NoInfer<ParamsShape>, undefined>['runtimeType']
-          >
-        | undefined,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined,
 > = ViewEntity<
     State,
     ParamsShape extends Shape ? ParamsShape['runtimeType'] : undefined,
@@ -193,13 +175,7 @@ export type DefinedViewEntityInstance<
 export type DefinedViewEntityConstructor<
     State extends AnyObject,
     ParamsShape extends Shape<AnyObject> | undefined,
-    EntityAssets extends
-        | BaseEntityAssetDefinitions<
-              NoInfer<ParamsShape> extends undefined
-                  ? undefined
-                  : Exclude<NoInfer<ParamsShape>, undefined>['runtimeType']
-          >
-        | undefined,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined,
 > = Constructor<
     DefinedViewEntityInstance<State, ParamsShape, EntityAssets>,
     ConstructorParameters<
@@ -218,13 +194,7 @@ export type DefinedViewEntityConstructor<
  */
 export type DefineViewEntity<State extends AnyObject> = <
     const ParamsShape extends Shape<AnyObject> | undefined,
-    const EntityAssets extends
-        | BaseEntityAssetDefinitions<
-              NoInfer<ParamsShape> extends undefined
-                  ? undefined
-                  : Exclude<NoInfer<ParamsShape>, undefined>['runtimeType']
-          >
-        | undefined,
+    const EntityAssets extends BaseEntityAssetDefinitions | undefined,
 >(
     params: DefineEntityArgs<ParamsShape, EntityAssets>,
 ) => DefinedViewEntityConstructor<State, ParamsShape, EntityAssets> &
@@ -280,13 +250,7 @@ export type DefinedLogicEntityConstructor<
  */
 export type DefineLogicEntity<State extends AnyObject> = <
     const ParamsShape extends Shape<AnyObject> | undefined,
-    const EntityAssets extends
-        | BaseEntityAssetDefinitions<
-              NoInfer<ParamsShape> extends undefined
-                  ? undefined
-                  : Exclude<NoInfer<ParamsShape>, undefined>['runtimeType']
-          >
-        | undefined,
+    const EntityAssets extends BaseEntityAssetDefinitions | undefined,
 >(
     params: DefineEntityArgs<ParamsShape, EntityAssets>,
 ) => DefinedLogicEntityConstructor<State, ParamsShape>;
@@ -346,7 +310,10 @@ export function defineEntitySuite<State extends AnyObject>(): EntitySuite<State>
                         key,
                         rawAsset,
                     ]) => {
-                        (rawAsset as AnthaAsset).name = key;
+                        (rawAsset as Asset).name = [
+                            params.key,
+                            key,
+                        ].join(':');
                     },
                 );
             }
@@ -357,7 +324,7 @@ export function defineEntitySuite<State extends AnyObject>(): EntitySuite<State>
 
     function defineEntity(
         entityParent: typeof BaseEntity,
-        {key, paramsShape, paramsMap}: DefineEntityArgs<any, any>,
+        {key, paramsShape, paramsMap, assets}: DefineEntityArgs<any, any>,
     ) {
         if (entityKeys.has(key)) {
             throw new Error(`Entity key '${key}' has already been attached to an entity class.`);
@@ -369,6 +336,7 @@ export function defineEntitySuite<State extends AnyObject>(): EntitySuite<State>
             [key]: class extends entityParent {
                 public static override readonly entityKey = key;
                 public static override readonly paramsShape = paramsShape;
+                public static override readonly assets = assets;
 
                 public static override readonly paramsMap = paramsMap;
                 public static override readonly reverseParamsMap = reverseParamsMap(paramsMap);

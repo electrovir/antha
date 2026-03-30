@@ -1,8 +1,4 @@
-import {
-    createAnthaAssetLoaderMod,
-    type AnthaAsset,
-    type AnthaAssetLoaderModState,
-} from '@antha/asset';
+import {createAnthaAssetMod, defineAsset, type AnthaAssetModState} from '@antha/asset';
 import {randomInteger, wait} from '@augment-vir/common';
 import {AnthaEngine, css, defineAnthaMod, html} from 'antha';
 import {createUtcFullDate} from 'date-vir';
@@ -10,7 +6,7 @@ import {type AnthaDemo} from '../demo.js';
 
 const maxProgress = 100;
 
-const slowAsset: AnthaAsset<undefined> = {
+const slowAsset = defineAsset({
     name: 'slow asset',
     maxProgress,
     async load({incrementProgressCallback}) {
@@ -28,7 +24,7 @@ const slowAsset: AnthaAsset<undefined> = {
             value: 'done',
         };
     },
-};
+});
 
 export const assetLoadingDemo: AnthaDemo = {
     demoName: 'Asset Loading Screen',
@@ -37,9 +33,9 @@ export const assetLoadingDemo: AnthaDemo = {
     engine() {
         return new AnthaEngine({
             mods: [
-                createAnthaAssetLoaderMod(),
+                createAnthaAssetMod(),
                 defineAnthaMod<
-                    AnthaAssetLoaderModState & {
+                    AnthaAssetModState & {
                         loadStarted: boolean;
                     }
                 >({
@@ -48,10 +44,7 @@ export const assetLoadingDemo: AnthaDemo = {
                         if (state.assetLoader && !state.loadStarted) {
                             state.loadStarted = true;
                             void state.assetLoader.bulkLoadAssets([
-                                {
-                                    asset: slowAsset,
-                                    params: undefined,
-                                },
+                                slowAsset,
                             ]);
                         }
 
@@ -63,10 +56,7 @@ export const assetLoadingDemo: AnthaDemo = {
                             console.info('reloading assets');
                             await state.assetLoader.unloadAssets([slowAsset]);
                             void state.assetLoader.bulkLoadAssets([
-                                {
-                                    asset: slowAsset,
-                                    params: undefined,
-                                },
+                                slowAsset,
                             ]);
                         }
 

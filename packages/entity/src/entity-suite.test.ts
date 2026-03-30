@@ -1,3 +1,4 @@
+import {AssetLoader} from '@antha/asset';
 import {createMockPixi} from '@antha/pixi-canvas';
 import {assert} from '@augment-vir/assert';
 import {SeededRandom, type AnyObject} from '@augment-vir/common';
@@ -56,6 +57,7 @@ describe(defineEntitySuite.name, () => {
         const entityStore = new EntityStore({
             pixi: createMockPixi(),
             state: initState,
+            assetLoader: new AssetLoader(),
         });
         assert.tsType(entityStore).equals<EntityStore<typeof initState>>();
     });
@@ -92,10 +94,11 @@ describe(defineEntitySuite.name, () => {
         const entityStore = new EntityStore({
             pixi: createMockPixi(),
             state: {},
+            assetLoader: new AssetLoader(),
         });
         assert.tsType(entityStore).equals<EntityStore<AnyObject>>();
     });
-    it('assigns the events type parameter', () => {
+    it('assigns the events type parameter', async () => {
         const {defineEntity, EntityStore} = defineEntitySuite();
 
         class MyEvent extends EntityEvent<{value: number}> {}
@@ -158,9 +161,10 @@ describe(defineEntitySuite.name, () => {
                 MyEntity,
                 MyEntity2,
             ],
+            assetLoader: new AssetLoader(),
         });
 
-        const instance = entityStore.addEntity(MyEntity);
+        const instance = await entityStore.addEntity(MyEntity);
         assert.instanceOf(instance, MyEntity);
         assert.instanceOf(instance, BaseEntity);
         assert.instanceOf(instance, ViewEntity);
@@ -205,7 +209,7 @@ describe(defineEntitySuite.name, () => {
             }
         });
     });
-    it('allows logic entity definition', () => {
+    it('allows logic entity definition', async () => {
         const {defineLogicEntity, EntityStore} = defineEntitySuite();
 
         class MyLogicEntity extends defineLogicEntity({
@@ -221,11 +225,12 @@ describe(defineEntitySuite.name, () => {
             pixi: createMockPixi(),
             state: {},
             preregisteredEntities: [MyLogicEntity],
+            assetLoader: new AssetLoader(),
         });
 
         assert.tsType(MyLogicEntity.entityKey).equals<string>();
         assert.strictEquals(MyLogicEntity.entityKey, 'MyLogicEntity');
-        const instance = entityStore.addEntity(MyLogicEntity);
+        const instance = await entityStore.addEntity(MyLogicEntity);
 
         assert.instanceOf(instance, MyLogicEntity);
         assert.instanceOf(instance, BaseEntity);
@@ -250,11 +255,12 @@ describe(defineEntitySuite.name, () => {
         const entityStore = new EntityStore({
             pixi: createMockPixi(),
             state: {},
+            assetLoader: new AssetLoader(),
         });
 
         MyEntity.paramsMap;
 
-        const instance = entityStore.addEntity(MyEntity);
+        const instance = await entityStore.addEntity(MyEntity);
 
         await entityStore.updateAllEntities();
         await entityStore.updateAllEntities();

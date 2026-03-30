@@ -16,7 +16,7 @@ const webTestRunnerConfig = {
         pixiPlugin(),
         ...baseConfig.plugins,
     ],
-    port: 8003,
+    port: 8004,
 };
 
 export default webTestRunnerConfig;

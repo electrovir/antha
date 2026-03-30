@@ -89,7 +89,7 @@ class AsteroidEntity extends defineEntity({
         }
     }
 
-    public override collide(otherEntity: BaseEntity): void {
+    public override async collide(otherEntity: BaseEntity): Promise<void> {
         if (otherEntity instanceof PlayerBulletEntity) {
             const scoreValue = Math.floor(100 / this.params.size);
 
@@ -105,14 +105,14 @@ class AsteroidEntity extends defineEntity({
             const halfSize = Math.floor(this.params.size / 3);
 
             if (halfSize >= AsteroidEntity.minAsteroidSize) {
-                this.addEntity(AsteroidEntity, {
+                await this.addEntity(AsteroidEntity, {
                     x: this.params.x,
                     y: this.params.y,
                     directionX: this.params.directionY + (Math.random() - 0.5),
                     directionY: -this.params.directionX + (Math.random() - 0.5),
                     size: halfSize,
                 });
-                this.addEntity(AsteroidEntity, {
+                await this.addEntity(AsteroidEntity, {
                     x: this.params.x,
                     y: this.params.y,
                     directionX: -this.params.directionY + (Math.random() - 0.5),
@@ -289,7 +289,7 @@ class PlayerEntity extends defineEntity({
         };
     }
 
-    public override update(): void {
+    public override async update(): Promise<void> {
         this.shootCooldown += gameSpeed;
 
         const {width: screenWidth, height: screenHeight} = this.pixi.screen;
@@ -379,7 +379,7 @@ class PlayerEntity extends defineEntity({
 
         if (this.shootCooldown >= PlayerEntity.playerShootInterval) {
             this.shootCooldown = 0;
-            this.addEntity(PlayerBulletEntity, {
+            await this.addEntity(PlayerBulletEntity, {
                 x:
                     this.params.x +
                     Math.cos(this.params.direction) *
@@ -408,7 +408,9 @@ class PlayerEntity extends defineEntity({
 
 type AsteroidsState = AnthaEntityStoreModState<AsteroidsGameState>;
 
-function spawnAsteroidFromEdge(entityStore: EntityStore<Partial<AsteroidsState>>): void {
+async function spawnAsteroidFromEdge(
+    entityStore: EntityStore<Partial<AsteroidsState>>,
+): Promise<void> {
     const edgeIndex = randomInteger({
         min: 0,
         max: 3,
@@ -479,7 +481,7 @@ function spawnAsteroidFromEdge(entityStore: EntityStore<Partial<AsteroidsState>>
         `Failed to spawn asteroid on edge ${edgeIndex}`,
     )();
 
-    entityStore.addEntity(AsteroidEntity, {
+    await entityStore.addEntity(AsteroidEntity, {
         ...spawn,
         size,
     });
@@ -487,7 +489,7 @@ function spawnAsteroidFromEdge(entityStore: EntityStore<Partial<AsteroidsState>>
 
 const asteroidsGameMod: AnthaMod<AsteroidsState> = {
     modName: 'asteroids-game',
-    execute({state, engine}) {
+    async execute({state, engine}) {
         /** Save off for type guarding purposes. */
         const entityStore = state.entityStore;
         if (!entityStore) {
@@ -500,15 +502,15 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
             state.spawnTickCounter = 0;
             state.totalTicks = 0;
 
-            entityStore.addEntity(PlayerEntity, {
+            await entityStore.addEntity(PlayerEntity, {
                 x: entityStore.pixi.screen.width / 2,
                 y: entityStore.pixi.screen.height / 2,
                 direction: 0,
             });
 
             /** Spawn initial asteroids. */
-            executeCount(5, () => {
-                spawnAsteroidFromEdge(entityStore);
+            await executeCount(5, async () => {
+                await spawnAsteroidFromEdge(entityStore);
             });
         }
 
@@ -587,7 +589,7 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
 
         if (tickCounter >= currentSpawnInterval) {
             state.spawnTickCounter = 0;
-            spawnAsteroidFromEdge(entityStore);
+            await spawnAsteroidFromEdge(entityStore);
         }
 
         return html`

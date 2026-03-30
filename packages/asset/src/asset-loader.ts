@@ -17,40 +17,78 @@ import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
  *
  * @category Internal
  */
-export type AnthaAssetIncrementProgressCallback = (
+export type AssetIncrementProgressCallback = (
     /** The amount that the progress should be incremented with this call. */
     amount?: number | undefined,
 ) => void;
 
-export type AnthaAssetLoaderCallback<Params, AssetValue> = (
+/**
+ * A callback for loading / creating an {@link Asset} value.
+ *
+ * @category Internal
+ */
+export type AssetLoaderCallback<AssetValue> = (
     params: Readonly<{
         /**
          * Call this to increment the loading progress of this asset. It is expected that this gets
          * called enough times to increment the progress count until the asset's `maxProgress` is
          * reached.
          */
-        incrementProgressCallback: AnthaAssetIncrementProgressCallback;
-        params: Readonly<Params>;
+        incrementProgressCallback: AssetIncrementProgressCallback;
     }>,
-) => MaybePromise<AnthaAssetLoaderResult<AssetValue>>;
+) => MaybePromise<AssetLoaderResult<AssetValue>>;
 
-export type AnthaAssetLoaderResult<AssetValue = any> = {
+/**
+ * A loaded {@link Asset} result, returned from {@link AssetLoaderCallback}
+ *
+ * @category Internal
+ */
+export type AssetLoaderResult<AssetValue = any> = {
     value: AssetValue;
-    cleanup?: undefined | AnthaAssetCleanupCallback;
+    cleanup?: undefined | AssetCleanupCallback;
 };
 
-export type AnthaAssetCleanupCallback = () => MaybePromise<void>;
+/**
+ * Cleanup callback for {@link Asset}.
+ *
+ * @category Internal
+ */
+export type AssetCleanupCallback = () => MaybePromise<void>;
 
-export type AnthaAssetValue<Asset extends Pick<AnthaAsset, 'load'>> = Awaited<
-    ReturnType<Asset['load']>
+/**
+ * Extracts the loaded value type from an {@link Asset}.
+ *
+ * @category Internal
+ */
+export type AssetValue<SpecificAsset extends Pick<Asset, 'load'>> = Awaited<
+    ReturnType<SpecificAsset['load']>
 >['value'];
 
-export type AnthaAsset<Params = any, AssetValue = any> = {
+/**
+ * Defines a loadable asset.
+ *
+ * @category Asset
+ */
+export type Asset<AssetValue = any> = {
     name: string;
     maxProgress: number;
-    load: AnthaAssetLoaderCallback<Params, AssetValue>;
+    load: AssetLoaderCallback<AssetValue>;
 };
 
+/**
+ * A helper for defining and inferring the value type of an {@link Asset}.
+ *
+ * @category Asset
+ */
+export function defineAsset<AssetValue>(asset: Asset<AssetValue>): Asset<NoInfer<AssetValue>> {
+    return asset;
+}
+
+/**
+ * Options for {@link AssetLoader.bulkLoadAssets}.
+ *
+ * @category Internal
+ */
 export type AssetBulkLoaderLoadOptions = PartialWithUndefined<{
     /**
      * How many assets can be loaded in parallel at once.
@@ -65,14 +103,20 @@ export type AssetBulkLoaderLoadOptions = PartialWithUndefined<{
      * @default false
      */
     doNotUnload: boolean;
+    /**
+     * If `true`, the loading screen events will not be emitted.
+     *
+     * @default false
+     */
+    hideLoadingScreen: boolean;
 }>;
 
 /**
- * Options for {@link AnthaAssetLoader}.
+ * Options for {@link AssetLoader}.
  *
  * @category Internal
  */
-export type AnthaAssetLoaderOptions = PartialWithUndefined<{
+export type AssetLoaderOptions = PartialWithUndefined<{
     /**
      * A custom logger to handle mod and engine logs. By default, this merely logs to the browser
      * console.
@@ -80,7 +124,13 @@ export type AnthaAssetLoaderOptions = PartialWithUndefined<{
     logger: AnthaLogger;
 }>;
 
-export class AnthaAssetLoaderProgressUpdateEvent extends defineTypedCustomEvent<{
+/**
+ * Custom event dispatched by {@link AssetLoader} whenever bulk loading progress changes. Used for
+ * loading screen progression.
+ *
+ * @category Internal
+ */
+export class AssetLoaderProgressUpdateEvent extends defineTypedCustomEvent<{
     current: number;
     total: number;
     /**
@@ -90,8 +140,13 @@ export class AnthaAssetLoaderProgressUpdateEvent extends defineTypedCustomEvent<
     complete: boolean;
 }>()('antha-asset-loader-progress-update-event') {}
 
-export class AnthaAssetLoader extends ListenTarget<AnthaAssetLoaderProgressUpdateEvent> {
-    constructor(options: Readonly<AnthaAssetLoaderOptions> = {}) {
+/**
+ * Manages loading, caching, and cleanup of game assets with progress tracking.
+ *
+ * @category Asset
+ */
+export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
+    constructor(options: Readonly<AssetLoaderOptions> = {}) {
         super();
         this.log = options.logger || browserAnthaLogger;
     }
@@ -99,35 +154,28 @@ export class AnthaAssetLoader extends ListenTarget<AnthaAssetLoaderProgressUpdat
     /** Logs data. This will use the user's provided logger or default to browser logs. */
     protected readonly log: AnthaLogger;
 
-    protected readonly assetCache = new Map<
-        Readonly<AnthaAsset>,
-        Promise<AnthaAssetLoaderResult>
-    >();
+    protected readonly assetCache = new Map<Readonly<Asset>, Promise<AssetLoaderResult>>();
 
-    public async loadIndividualAsset<Params, Asset extends AnthaAsset<Params>>({
+    /** Loads a single asset, returning its cached value if already loaded. */
+    public async loadIndividualAsset<ThisAsset extends Asset>({
         asset,
         incrementProgressCallback,
-        params,
     }: Readonly<{
-        params: Params;
-        asset: Readonly<Asset>;
-        incrementProgressCallback?: AnthaAssetIncrementProgressCallback | undefined;
-    }>): Promise<AnthaAssetValue<Asset>> {
+        asset: Readonly<ThisAsset>;
+        incrementProgressCallback?: AssetIncrementProgressCallback | undefined;
+    }>): Promise<AssetValue<ThisAsset>> {
         const cached = this.assetCache.get(asset);
         if (cached) {
-            const assetResult: AnthaAssetLoaderResult<AnthaAssetValue<Asset>> = await cached;
+            const assetResult: AssetLoaderResult = await cached;
 
             return assetResult.value;
         }
 
-        const deferredLoadPromise = new DeferredPromise<
-            AnthaAssetLoaderResult<AnthaAssetValue<Asset>>
-        >();
+        const deferredLoadPromise = new DeferredPromise<AssetLoaderResult>();
 
         this.assetCache.set(asset, deferredLoadPromise.promise);
 
         const loadedAsset = await asset.load({
-            params,
             incrementProgressCallback(progressParams) {
                 incrementProgressCallback?.(progressParams);
             },
@@ -138,7 +186,8 @@ export class AnthaAssetLoader extends ListenTarget<AnthaAssetLoaderProgressUpdat
         return loadedAsset.value;
     }
 
-    public async unloadAssets(assets: ReadonlyArray<AnthaAsset>) {
+    /** Runs cleanup callbacks for the given assets and removes them from the cache. */
+    public async unloadAssets(assets: ReadonlyArray<Asset>) {
         await awaitedForEach(assets, async (asset) => {
             const entry = await this.assetCache.get(asset);
 
@@ -173,68 +222,48 @@ export class AnthaAssetLoader extends ListenTarget<AnthaAssetLoaderProgressUpdat
         );
     }
 
+    /** Loads multiple assets. */
     public async bulkLoadAssets(
-        assets: ReadonlyArray<{
-            params: any;
-            asset: AnthaAsset;
-        }>,
+        assets: ReadonlyArray<Readonly<Asset>>,
         options: Readonly<AssetBulkLoaderLoadOptions> = {},
     ): Promise<ReadonlyArray<unknown>> {
-        const rawAssets = assets.map((asset) => asset.asset);
-
         const assetsToCleanup = options.doNotUnload
             ? []
             : Array.from(this.assetCache.keys()).filter((asset) => {
-                  return rawAssets.includes(asset);
+                  return assets.includes(asset);
               });
 
         const cleanupCount = assetsToCleanup.length ? 1 : 0;
 
         const alreadyLoadedProgress = assets.reduce((sum, entry) => {
-            return sum + (this.assetCache.has(entry.asset) ? entry.asset.maxProgress : 0);
+            return sum + (this.assetCache.has(entry) ? entry.maxProgress : 0);
         }, 0);
 
         const maxProgress =
             assets.reduce((count, asset) => {
-                return count + asset.asset.maxProgress;
+                return count + asset.maxProgress;
             }, 0) + cleanupCount;
 
         let currentProgress = alreadyLoadedProgress;
 
-        this.dispatch(
-            new AnthaAssetLoaderProgressUpdateEvent({
-                detail: {
-                    current: 0,
-                    total: maxProgress,
-                    complete: false,
-                },
-            }),
-        );
+        if (!options.hideLoadingScreen) {
+            this.dispatch(
+                new AssetLoaderProgressUpdateEvent({
+                    detail: {
+                        current: 0,
+                        total: maxProgress,
+                        complete: false,
+                    },
+                }),
+            );
+        }
 
         await this.unloadAssets(assetsToCleanup);
 
         currentProgress += cleanupCount;
-
-        this.dispatch(
-            new AnthaAssetLoaderProgressUpdateEvent({
-                detail: {
-                    current: currentProgress,
-                    total: maxProgress,
-                    complete: false,
-                },
-            }),
-        );
-
-        const chunkedAssets: ArrayElement<typeof assets>[][] = options.maxParallelism
-            ? chunkArray(assets, {
-                  chunkSize: options.maxParallelism,
-              })
-            : [[...assets]];
-
-        const incrementProgressCallback: AnthaAssetIncrementProgressCallback = (amount) => {
-            currentProgress += amount ?? 1;
+        if (!options.hideLoadingScreen) {
             this.dispatch(
-                new AnthaAssetLoaderProgressUpdateEvent({
+                new AssetLoaderProgressUpdateEvent({
                     detail: {
                         current: currentProgress,
                         total: maxProgress,
@@ -242,16 +271,36 @@ export class AnthaAssetLoader extends ListenTarget<AnthaAssetLoaderProgressUpdat
                     },
                 }),
             );
+        }
+
+        const chunkedAssets: ArrayElement<typeof assets>[][] = options.maxParallelism
+            ? chunkArray(assets, {
+                  chunkSize: options.maxParallelism,
+              })
+            : [[...assets]];
+
+        const incrementProgressCallback: AssetIncrementProgressCallback = (amount) => {
+            currentProgress += amount ?? 1;
+            if (!options.hideLoadingScreen) {
+                this.dispatch(
+                    new AssetLoaderProgressUpdateEvent({
+                        detail: {
+                            current: currentProgress,
+                            total: maxProgress,
+                            complete: false,
+                        },
+                    }),
+                );
+            }
         };
 
         const results: unknown[] = (
             await awaitedBlockingMap(chunkedAssets, async (assetChunk) => {
                 return await Promise.all(
-                    assetChunk.map(async ({asset, params}) => {
+                    assetChunk.map(async (asset) => {
                         return await this.loadIndividualAsset({
                             incrementProgressCallback,
                             asset,
-                            params,
                         });
                     }),
                 );
@@ -266,7 +315,7 @@ export class AnthaAssetLoader extends ListenTarget<AnthaAssetLoaderProgressUpdat
                         currentProgress,
                         maxProgress,
                         assetCount: assets.length,
-                        assetNames: assets.map((entry) => entry.asset.name).filter(Boolean),
+                        assetNames: assets.map((entry) => entry.name).filter(Boolean),
                     },
                     tags: {
                         mod: '@antha/asset',
@@ -274,16 +323,17 @@ export class AnthaAssetLoader extends ListenTarget<AnthaAssetLoaderProgressUpdat
                 },
             );
         }
-
-        this.dispatch(
-            new AnthaAssetLoaderProgressUpdateEvent({
-                detail: {
-                    current: maxProgress,
-                    total: maxProgress,
-                    complete: true,
-                },
-            }),
-        );
+        if (!options.hideLoadingScreen) {
+            this.dispatch(
+                new AssetLoaderProgressUpdateEvent({
+                    detail: {
+                        current: maxProgress,
+                        total: maxProgress,
+                        complete: true,
+                    },
+                }),
+            );
+        }
 
         return results;
     }

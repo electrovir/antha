@@ -1,17 +1,19 @@
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
+import {emptyAnthaLogger} from 'antha';
 import {type SpritesheetData} from 'pixi.js';
 import {
-    type AnthaAsset,
-    AnthaAssetLoader,
-    AnthaAssetLoaderProgressUpdateEvent,
-    type AnthaAssetValue,
+    type Asset,
+    AssetLoader,
+    AssetLoaderProgressUpdateEvent,
+    type AssetValue,
+    defineAsset,
 } from './asset-loader.js';
 
 function createMockAsset(
     value: string,
     maxProgress = 1,
-): {asset: AnthaAsset<undefined>; cleanedUp: {value: boolean}} {
+): {asset: Asset<string>; cleanedUp: {value: boolean}} {
     const cleanedUp = {
         value: false,
     };
@@ -34,24 +36,23 @@ function createMockAsset(
     };
 }
 
-describe(AnthaAssetLoader.name, () => {
+describe(AssetLoader.name, () => {
     describe('loadIndividualAsset', () => {
         it('loads an asset and returns its value', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const {asset} = createMockAsset('loaded-value');
 
             const result = await loader.loadIndividualAsset({
                 asset,
-                params: undefined,
             });
 
             assert.strictEquals(result, 'loaded-value');
         });
 
         it('returns cached value on subsequent loads', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             let loadCount = 0;
-            const asset: AnthaAsset<undefined> = {
+            const asset = defineAsset({
                 name: 'cached',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
@@ -61,15 +62,13 @@ describe(AnthaAssetLoader.name, () => {
                         value: 'cached-value',
                     };
                 },
-            };
+            });
 
             const first = await loader.loadIndividualAsset({
                 asset,
-                params: undefined,
             });
             const second = await loader.loadIndividualAsset({
                 asset,
-                params: undefined,
             });
 
             assert.strictEquals(first, 'cached-value');
@@ -78,9 +77,9 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('calls incrementProgressCallback when provided', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const progressAmounts: (number | undefined)[] = [];
-            const asset: AnthaAsset<undefined> = {
+            const asset = defineAsset({
                 name: 'progress',
                 maxProgress: 3,
                 load({incrementProgressCallback}) {
@@ -90,11 +89,10 @@ describe(AnthaAssetLoader.name, () => {
                         value: 'progress-value',
                     };
                 },
-            };
+            });
 
             await loader.loadIndividualAsset({
                 asset,
-                params: undefined,
                 incrementProgressCallback(amount) {
                     progressAmounts.push(amount);
                 },
@@ -110,8 +108,8 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('works without incrementProgressCallback', async () => {
-            const loader = new AnthaAssetLoader();
-            const asset: AnthaAsset<undefined> = {
+            const loader = new AssetLoader();
+            const asset = defineAsset({
                 name: 'no-callback',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
@@ -120,52 +118,23 @@ describe(AnthaAssetLoader.name, () => {
                         value: 'no-callback',
                     };
                 },
-            };
+            });
 
             const result = await loader.loadIndividualAsset({
                 asset,
-                params: undefined,
             });
 
             assert.strictEquals(result, 'no-callback');
-        });
-
-        it('passes params to the load callback', async () => {
-            const loader = new AnthaAssetLoader();
-            let receivedParams: {resolution: number} | undefined;
-            const asset: AnthaAsset<{resolution: number}> = {
-                name: 'params-test',
-                maxProgress: 1,
-                load({params, incrementProgressCallback}) {
-                    receivedParams = params;
-                    incrementProgressCallback();
-                    return {
-                        value: 'params-value',
-                    };
-                },
-            };
-
-            await loader.loadIndividualAsset({
-                asset,
-                params: {
-                    resolution: 4,
-                },
-            });
-
-            assert.deepEquals(receivedParams, {
-                resolution: 4,
-            });
         });
     });
 
     describe('unloadAssets', () => {
         it('calls cleanup on loaded assets', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const {asset, cleanedUp} = createMockAsset('cleanup-test');
 
             await loader.loadIndividualAsset({
                 asset,
-                params: undefined,
             });
             assert.isFalse(cleanedUp.value);
 
@@ -174,8 +143,8 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('handles assets without cleanup callbacks', async () => {
-            const loader = new AnthaAssetLoader();
-            const asset: AnthaAsset<undefined> = {
+            const loader = new AssetLoader();
+            const asset = defineAsset({
                 name: 'no-cleanup',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
@@ -184,17 +153,16 @@ describe(AnthaAssetLoader.name, () => {
                         value: 'no-cleanup',
                     };
                 },
-            };
+            });
 
             await loader.loadIndividualAsset({
                 asset,
-                params: undefined,
             });
             await loader.unloadAssets([asset]);
         });
 
         it('handles assets that were never loaded', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const {asset} = createMockAsset('never-loaded');
 
             await loader.unloadAssets([asset]);
@@ -203,17 +171,15 @@ describe(AnthaAssetLoader.name, () => {
 
     describe('destroy', () => {
         it('cleans up all cached assets', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const mock1 = createMockAsset('asset-1');
             const mock2 = createMockAsset('asset-2');
 
             await loader.loadIndividualAsset({
                 asset: mock1.asset,
-                params: undefined,
             });
             await loader.loadIndividualAsset({
                 asset: mock2.asset,
-                params: undefined,
             });
 
             await loader.destroy();
@@ -223,8 +189,8 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('handles assets without cleanup on destroy', async () => {
-            const loader = new AnthaAssetLoader();
-            const asset: AnthaAsset<undefined> = {
+            const loader = new AssetLoader();
+            const asset = defineAsset({
                 name: 'no-cleanup-destroy',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
@@ -233,11 +199,10 @@ describe(AnthaAssetLoader.name, () => {
                         value: 'no-cleanup-destroy',
                     };
                 },
-            };
+            });
 
             await loader.loadIndividualAsset({
                 asset,
-                params: undefined,
             });
             await loader.destroy();
         });
@@ -245,19 +210,13 @@ describe(AnthaAssetLoader.name, () => {
 
     describe('bulkLoadAssets', () => {
         it('loads multiple assets and returns their values', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const mock1 = createMockAsset('bulk-1');
             const mock2 = createMockAsset('bulk-2');
 
             const results = await loader.bulkLoadAssets([
-                {
-                    asset: mock1.asset,
-                    params: undefined,
-                },
-                {
-                    asset: mock2.asset,
-                    params: undefined,
-                },
+                mock1.asset,
+                mock2.asset,
             ]);
 
             assert.deepEquals(results, [
@@ -267,19 +226,16 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('dispatches progress events including complete flag', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const {asset} = createMockAsset('events-test');
             const events: {current: number; total: number; complete: boolean}[] = [];
 
-            loader.listen(AnthaAssetLoaderProgressUpdateEvent, (event) => {
+            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
                 events.push(event.detail);
             });
 
             await loader.bulkLoadAssets([
-                {
-                    asset,
-                    params: undefined,
-                },
+                asset,
             ]);
 
             assert.deepEquals(events, [
@@ -307,14 +263,14 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('dispatches progress update events', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const progressUpdates: {current: number; total: number; complete: boolean}[] = [];
 
-            loader.listen(AnthaAssetLoaderProgressUpdateEvent, (event) => {
+            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
                 progressUpdates.push(event.detail);
             });
 
-            const asset1: AnthaAsset<undefined> = {
+            const asset1 = defineAsset({
                 name: 'asset-a',
                 maxProgress: 2,
                 load({incrementProgressCallback}) {
@@ -324,8 +280,8 @@ describe(AnthaAssetLoader.name, () => {
                         value: 'a',
                     };
                 },
-            };
-            const asset2: AnthaAsset<undefined> = {
+            });
+            const asset2 = defineAsset({
                 name: 'asset-b',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
@@ -334,17 +290,11 @@ describe(AnthaAssetLoader.name, () => {
                         value: 'b',
                     };
                 },
-            };
+            });
 
             await loader.bulkLoadAssets([
-                {
-                    asset: asset1,
-                    params: undefined,
-                },
-                {
-                    asset: asset2,
-                    params: undefined,
-                },
+                asset1,
+                asset2,
             ]);
 
             assert.deepEquals(progressUpdates, [
@@ -382,10 +332,10 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('respects maxParallelism option', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const loadOrder: string[] = [];
 
-            function createOrderedAsset(assetName: string): AnthaAsset<undefined> {
+            function createOrderedAsset(assetName: string): Asset<string> {
                 return {
                     name: assetName,
                     maxProgress: 1,
@@ -401,18 +351,9 @@ describe(AnthaAssetLoader.name, () => {
 
             const results = await loader.bulkLoadAssets(
                 [
-                    {
-                        asset: createOrderedAsset('a'),
-                        params: undefined,
-                    },
-                    {
-                        asset: createOrderedAsset('b'),
-                        params: undefined,
-                    },
-                    {
-                        asset: createOrderedAsset('c'),
-                        params: undefined,
-                    },
+                    createOrderedAsset('a'),
+                    createOrderedAsset('b'),
+                    createOrderedAsset('c'),
                 ],
                 {
                     maxParallelism: 2,
@@ -428,47 +369,35 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('cleans up previous assets not in new batch by default', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const mock1 = createMockAsset('old');
             const mock2 = createMockAsset('new');
 
             await loader.bulkLoadAssets([
-                {
-                    asset: mock1.asset,
-                    params: undefined,
-                },
+                mock1.asset,
             ]);
 
             assert.isFalse(mock1.cleanedUp.value);
 
             await loader.bulkLoadAssets([
-                {
-                    asset: mock2.asset,
-                    params: undefined,
-                },
+                mock2.asset,
             ]);
 
             assert.isFalse(mock1.cleanedUp.value);
         });
 
         it('does not clean up previous assets when doNotUnload is true', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const mock1 = createMockAsset('keep');
             const mock2 = createMockAsset('add');
 
             await loader.bulkLoadAssets([
-                {
-                    asset: mock1.asset,
-                    params: undefined,
-                },
+                mock1.asset,
             ]);
 
             await loader.bulkLoadAssets(
                 [
-                    {
-                        asset: mock2.asset,
-                        params: undefined,
-                    },
+                    mock2.asset,
                 ],
                 {
                     doNotUnload: true,
@@ -479,7 +408,7 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('handles empty asset list', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
 
             const results = await loader.bulkLoadAssets([]);
 
@@ -487,14 +416,14 @@ describe(AnthaAssetLoader.name, () => {
         });
 
         it('increments progress by custom amount', async () => {
-            const loader = new AnthaAssetLoader();
+            const loader = new AssetLoader();
             const progressUpdates: {current: number; total: number; complete: boolean}[] = [];
 
-            loader.listen(AnthaAssetLoaderProgressUpdateEvent, (event) => {
+            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
                 progressUpdates.push(event.detail);
             });
 
-            const asset: AnthaAsset<undefined> = {
+            const asset = defineAsset({
                 name: 'custom-increment',
                 maxProgress: 5,
                 load({incrementProgressCallback}) {
@@ -504,13 +433,10 @@ describe(AnthaAssetLoader.name, () => {
                         value: 'custom-increment',
                     };
                 },
-            };
+            });
 
             await loader.bulkLoadAssets([
-                {
-                    asset,
-                    params: undefined,
-                },
+                asset,
             ]);
 
             assert.deepEquals(progressUpdates, [
@@ -555,10 +481,12 @@ describe(AnthaAssetLoader.name, () => {
             },
         };
 
+        const resolution = 4;
+
         const asset = {
             name: 'test',
             maxProgress: 2,
-            load({params: {resolution}, incrementProgressCallback}) {
+            load({incrementProgressCallback}) {
                 const spritesheetData = {
                     frames: {
                         enemy1: {
@@ -644,18 +572,124 @@ describe(AnthaAssetLoader.name, () => {
                     value: spritesheetData,
                 };
             },
-        } satisfies AnthaAsset<{resolution: number}, SpritesheetData>;
+        } satisfies Asset<SpritesheetData>;
 
-        const loader = new AnthaAssetLoader();
+        const loader = new AssetLoader();
         const result = await loader.loadIndividualAsset({
             asset,
-            params: {
-                resolution: 4,
-            },
         });
 
-        assert.isDefined(result.animations?.enemy);
-        assert.isDefined(result.animations?.player);
-        assert.tsType(result).equals<AnthaAssetValue<typeof asset>>();
+        assert.isDefined(result.animations.enemy);
+        assert.isDefined(result.animations.player);
+        assert.tsType(result).equals<AssetValue<typeof asset>>();
+    });
+
+    describe('unloadAssets', () => {
+        it('catches and logs cleanup errors', async () => {
+            const errors: unknown[] = [];
+            const loader = new AssetLoader({
+                logger: {
+                    ...emptyAnthaLogger,
+                    error(message) {
+                        errors.push(message);
+                    },
+                },
+            });
+
+            const asset = defineAsset({
+                name: 'failing-cleanup',
+                maxProgress: 1,
+                load({incrementProgressCallback}) {
+                    incrementProgressCallback();
+                    return {
+                        value: 'value',
+                        cleanup() {
+                            throw new Error('cleanup failed');
+                        },
+                    };
+                },
+            });
+
+            await loader.loadIndividualAsset({
+                asset,
+            });
+            await loader.unloadAssets([asset]);
+            assert.isLengthExactly(errors, 1);
+        });
+    });
+
+    describe('bulkLoadAssets', () => {
+        it('logs error when progress does not reach max', async () => {
+            const errors: unknown[] = [];
+            const loader = new AssetLoader({
+                logger: {
+                    ...emptyAnthaLogger,
+                    error(message) {
+                        errors.push(message);
+                    },
+                },
+            });
+
+            const asset = defineAsset({
+                name: 'no-progress',
+                maxProgress: 5,
+                load() {
+                    /** Intentionally do not call incrementProgressCallback. */
+                    return {
+                        value: 'loaded',
+                    };
+                },
+            });
+
+            await loader.bulkLoadAssets([
+                asset,
+            ]);
+
+            assert.isLengthExactly(errors, 1);
+        });
+
+        it('suppresses progress events when hideLoadingScreen is true', async () => {
+            const loader = new AssetLoader();
+            const events: unknown[] = [];
+
+            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
+                events.push(event.detail);
+            });
+
+            const {asset} = createMockAsset('hidden');
+
+            await loader.bulkLoadAssets(
+                [
+                    asset,
+                ],
+                {
+                    hideLoadingScreen: true,
+                },
+            );
+
+            assert.isLengthExactly(events, 0);
+        });
+
+        it('accounts for already loaded assets and cleanup in progress', async () => {
+            const loader = new AssetLoader();
+            const mock1 = createMockAsset('overlap-1');
+            const mock2 = createMockAsset('overlap-2');
+
+            /** Pre-load mock1 so it is already cached. */
+            await loader.bulkLoadAssets([
+                mock1.asset,
+            ]);
+
+            /** Load again with mock1 (overlap) and mock2 (new). */
+            const results = await loader.bulkLoadAssets([
+                mock1.asset,
+                mock2.asset,
+            ]);
+
+            assert.deepEquals(results, [
+                'overlap-1',
+                'overlap-2',
+            ]);
+        });
     });
 });

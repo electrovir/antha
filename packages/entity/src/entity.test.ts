@@ -1,3 +1,4 @@
+import {AssetLoader} from '@antha/asset';
 import {createMockPixi} from '@antha/pixi-canvas';
 import {assert} from '@augment-vir/assert';
 import {makeWritable} from '@augment-vir/common';
@@ -9,6 +10,8 @@ import {
     EntityDestroyEvent,
     entityPositionParamsShape,
     standardParamsMap,
+    type BaseEntity,
+    type Collision,
     type EntityStore,
     type ViewCreation,
 } from './entity.js';
@@ -22,10 +25,14 @@ function createTestSuite() {
     };
 }
 
-function createTestStore(suite: {EntityStore: new (...args: any[]) => EntityStore}) {
+function createTestStore(
+    suite: {EntityStore: new (...args: any[]) => EntityStore},
+    options?: {assetLoader?: AssetLoader},
+) {
     return new suite.EntityStore({
         pixi: createMockPixi(),
         state: {},
+        assetLoader: options?.assetLoader,
     });
 }
 
@@ -267,7 +274,7 @@ describe('EntityStore', () => {
         });
     });
 
-    it('deserializes an entity with params', () => {
+    it('deserializes an entity with params', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -282,7 +289,7 @@ describe('EntityStore', () => {
             entities: [Serializable],
         });
 
-        const deserialized = store.deserializeEntity(
+        const deserialized = await store.deserializeEntity(
             'Serializable',
             JSON.stringify({
                 x: 10,
@@ -296,7 +303,7 @@ describe('EntityStore', () => {
         });
     });
 
-    it('deserializes a entity with params', () => {
+    it('deserializes a entity with params', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
@@ -311,7 +318,7 @@ describe('EntityStore', () => {
             entities: [NoParams],
         });
 
-        const deserialized = store.deserializeEntity('NoParams', undefined);
+        const deserialized = await store.deserializeEntity('NoParams', undefined);
         assert.instanceOf(deserialized, NoParams);
     });
 
@@ -357,6 +364,82 @@ describe('EntityStore', () => {
         assert.throws(() => store.destroy(), {
             matchMessage: 'Entity store is already destroyed.',
         });
+    });
+
+    it('loads entity assets via loadEntityAssets', async () => {
+        const suite = createTestSuite();
+        const assetLoader = new AssetLoader();
+        const store = createTestStore(suite, {
+            assetLoader,
+        });
+        let loadCalled = false;
+
+        class AssetEntity extends suite.defineEntity({
+            key: 'AssetEntityLoad',
+            paramsShape: undefined,
+            assets: {
+                graphic: {
+                    maxProgress: 1,
+                    load({incrementProgressCallback}) {
+                        loadCalled = true;
+                        incrementProgressCallback();
+                        return {
+                            value: new Graphics().rect(0, 0, 10, 10).fill('red'),
+                        };
+                    },
+                },
+            },
+        }) {
+            public override update(): void {}
+            public override createView(): ViewCreation {
+                return {
+                    view: new Graphics().rect(0, 0, 10, 10).fill('red'),
+                };
+            }
+        }
+
+        await store.loadEntityAssets([AssetEntity]);
+        assert.isTrue(loadCalled);
+    });
+
+    it('handles async collide returning a Promise', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        let asyncCollisionResolved = false;
+
+        class AsyncCollideEntity extends suite.defineEntity({
+            key: 'AsyncCollide',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation {
+                return {
+                    view: new Graphics().rect(0, 0, 50, 50).fill('orange'),
+                    hitbox: new Circle(
+                        {
+                            x: 0,
+                            y: 0,
+                        },
+                        100,
+                    ),
+                };
+            }
+
+            public override async collide(
+                _otherEntity: BaseEntity,
+                _collision: Readonly<Collision>,
+            ): Promise<void> {
+                asyncCollisionResolved = true;
+                return Promise.resolve();
+            }
+        }
+
+        await store.addEntity(AsyncCollideEntity);
+        await store.addEntity(AsyncCollideEntity);
+
+        await store.updateAllEntities();
+        assert.isTrue(asyncCollisionResolved);
     });
 });
 
@@ -636,6 +719,45 @@ describe('ViewEntity', () => {
         }
     });
 
+    it('accesses assets via getAsset accessor', async () => {
+        const suite = createTestSuite();
+        const assetLoader = new AssetLoader();
+        const store = createTestStore(suite, {
+            assetLoader,
+        });
+
+        class AssetAccessEntity extends suite.defineEntity({
+            key: 'AssetAccessEntity',
+            paramsShape: entityPositionParamsShape,
+            paramsMap: standardParamsMap,
+            assets: {
+                sprite: {
+                    maxProgress: 1,
+                    load({incrementProgressCallback}) {
+                        incrementProgressCallback();
+                        return {
+                            value: 'sprite-data',
+                        };
+                    },
+                },
+            },
+        }) {
+            public override update(): void {}
+            public override createView(): ViewCreation {
+                return {
+                    view: new Graphics().rect(0, 0, 10, 10).fill('blue'),
+                };
+            }
+        }
+
+        const instance = await store.addEntity(AssetAccessEntity, {
+            x: 0,
+            y: 0,
+        });
+        const spriteData = await instance.getAsset.sprite();
+        assert.strictEquals(spriteData, 'sprite-data');
+    });
+
     it('returns true for isInBounds when entity is within screen', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
@@ -678,7 +800,7 @@ describe('ViewEntity', () => {
             public override update(): void {}
             public override createView(): ViewCreation {
                 return {
-                    view: new Graphics().rect(0, 0, 10, 10).fill('red'),
+                    view: new Graphics().rect(0, 0, 10, 10).fill('lime'),
                 };
             }
         }
@@ -755,7 +877,7 @@ describe('ViewEntity', () => {
             public override update(): void {}
             public override createView(): ViewCreation {
                 return {
-                    view: new Graphics().rect(0, 0, 10, 10).fill('blue'),
+                    view: new Graphics().rect(0, 0, 10, 10).fill('indigo'),
                 };
             }
         }

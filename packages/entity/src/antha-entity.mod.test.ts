@@ -3,10 +3,7 @@ import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {AnthaEngine} from 'antha';
 import {Graphics} from 'pixi.js';
-import {
-    createAnthaEntityStoreMod,
-    type AnthaEntityStoreModState,
-} from './antha-entity-store.mod.js';
+import {createAnthaEntityStoreMod, type AnthaEntityStoreModState} from './antha-entity.mod.js';
 import {type ViewCreation} from './entity.js';
 
 describe(createAnthaEntityStoreMod.name, () => {
@@ -73,7 +70,7 @@ describe(createAnthaEntityStoreMod.name, () => {
         const state = engine.state as Partial<AnthaEntityStoreModState<{score: number}>>;
 
         assert.isDefined(state.entityStore);
-        const instance = state.entityStore.addEntity(TestEntity);
+        const instance = await state.entityStore.addEntity(TestEntity);
         assert.instanceOf(instance, TestEntity);
     });
 
@@ -147,7 +144,7 @@ describe(createAnthaEntityStoreMod.name, () => {
         const state = engine.state as Partial<AnthaEntityStoreModState<Record<string, never>>>;
 
         assert.isDefined(state.entityStore);
-        state.entityStore.addEntity(TickEntity);
+        await state.entityStore.addEntity(TickEntity);
 
         /** Second tick calls updateAllEntities. */
         await engine.runSingleTick();

@@ -166,7 +166,7 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
                             style=${css`
                                 ${colorCss(
                                     viraThemeDarkOverride.asTheme.colors[
-                                        'vira-orange-foreground-body'
+                                        'vira-yellow-foreground-body'
                                     ],
                                 )}
                                 padding: 1px 3px;

@@ -1,3 +1,4 @@
+import {anthaAssetModName, AssetLoader, type AnthaAssetModState} from '@antha/asset';
 import {type AnthaPixiCanvasModState} from '@antha/pixi-canvas';
 import {
     mergeDefinedProperties,
@@ -17,7 +18,8 @@ export type AnthaEntityStoreModState<State extends AnyObject> = {
     entityStore: EntityStore<Partial<AnthaEntityStoreModState<State>>>;
     debugHitboxes: boolean;
 } & State &
-    AnthaPixiCanvasModState;
+    AnthaPixiCanvasModState &
+    AnthaAssetModState;
 
 /**
  * A mod for rendering entities and handling collisions between them.
@@ -40,9 +42,20 @@ export function createAnthaEntityStoreMod<State extends AnyObject>(
         cleanup({state}) {
             state.entityStore?.destroy();
         },
-        async execute({state}) {
+        async execute({state, engine}) {
             if (state.debugHitboxes == undefined) {
                 state.debugHitboxes = !!options.debug;
+            }
+
+            /**
+             * If we don't have a mod that is expected to create the asset loader, then we create
+             * one ourself.
+             */
+            if (
+                !state.assetLoader &&
+                !engine.currentMods.some((mod) => mod.modName === anthaAssetModName)
+            ) {
+                state.assetLoader = new AssetLoader();
             }
 
             const pixiApplication = state.pixi?.pixiApplication;
@@ -53,12 +66,13 @@ export function createAnthaEntityStoreMod<State extends AnyObject>(
 
             if (state.entityStore) {
                 await state.entityStore.updateAllEntities();
-            } else {
+            } else if (state.assetLoader) {
                 state.entityStore = new EntityStore(
                     mergeDefinedProperties(
                         {
                             pixi: pixiApplication,
                             state,
+                            assetLoader: state.assetLoader,
                         },
                         options,
                     ),

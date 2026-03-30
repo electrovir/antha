@@ -67,7 +67,6 @@ const tpsTrackerMod: AnthaMod<{
 
 const colorCyclePairs = [
     viraTheme.colors['vira-red-on-self-body'],
-    viraTheme.colors['vira-orange-on-self-body'],
     viraTheme.colors['vira-yellow-on-self-body'],
     viraTheme.colors['vira-green-on-self-body'],
     viraTheme.colors['vira-teal-on-self-body'],

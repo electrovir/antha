@@ -183,7 +183,7 @@ const dynamicSpriteMod = defineAnthaMod<AnthaEntityStoreModState<SpritesGameStat
         }
 
         if (!state.playerEntity) {
-            state.playerEntity = state.entityStore.addEntity(PlayerEntity, {
+            state.playerEntity = await state.entityStore.addEntity(PlayerEntity, {
                 x: 0,
                 y: 0,
                 angle: 0,

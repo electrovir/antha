@@ -1,4 +1,9 @@
-import {type AnthaAsset, type AnthaAssetLoader, type AnthaAssetValue} from '@antha/asset';
+import {
+    type Asset,
+    type AssetBulkLoaderLoadOptions,
+    type AssetLoader,
+    type AssetValue,
+} from '@antha/asset';
 import {type PixiApplication} from '@antha/pixi-canvas';
 import {assert, check} from '@augment-vir/assert';
 import {
@@ -32,20 +37,35 @@ import {
 import {defineTypedCustomEvent, GenericListenTarget} from 'typed-event-target';
 import {type StaticEntityParts} from './entity-suite.js';
 
-export {System as HitboxSystem} from 'detect-collisions';
+export {System as HitboxSystem, type Response as Collision} from 'detect-collisions';
 
-export type BaseEntityAssetDefinitions<Params> = Record<
+/**
+ * Definition of entity assets used when defining an entity.
+ *
+ * @category Internal
+ */
+export type BaseEntityAssetDefinitions = Record<
     string,
     Omit<
-        AnthaAsset<Params>,
+        Asset,
         /** Name will be the value's key in this object. */
         'name'
     >
 >;
 
-export type BaseEntityAssets = Record<string, AnthaAsset>;
+/**
+ * A record of `Asset` entries.
+ *
+ * @category Internal
+ */
+export type BaseEntityAssets = Record<string, Asset>;
 
-export type MappedEntityAssets<Definitions extends BaseEntityAssetDefinitions<any> | undefined> =
+/**
+ * Maps {@link BaseEntityAssetDefinitions} into full `Asset` instances.
+ *
+ * @category Internal
+ */
+export type MappedEntityAssets<Definitions extends BaseEntityAssetDefinitions | undefined> =
     Definitions extends undefined
         ? EmptyObject
         : {
@@ -80,7 +100,7 @@ export type EntityStoreConstructorParams<State extends AnyObject = any> = {
      */
     pixi: PixiApplication;
     state: State;
-    assetLoader: AnthaAssetLoader;
+    assetLoader: AssetLoader;
 } & PartialWithUndefined<{
     /**
      * A `System` instance from the
@@ -92,8 +112,16 @@ export type EntityStoreConstructorParams<State extends AnyObject = any> = {
      * An array of all entity constructors that will be pre-registered with this {@link EntityStore}
      * instance.
      */
-    preregisteredEntities: ReadonlyArray<Constructor<BaseEntity> & StaticEntityParts>;
+    preregisteredEntities: ReadonlyArray<EntityConstructor>;
 }>;
+
+/**
+ * A constructor that creates an Entity, as well as the static entity data that should be attached
+ * to it.
+ *
+ * @category Internal
+ */
+export type EntityConstructor = Constructor<BaseEntity> & StaticEntityParts;
 
 /**
  * The top level storage class of all entities. Add entities with {@link EntityStore.addEntity}.
@@ -118,12 +146,11 @@ export class EntityStore<State extends AnyObject = any> {
     /** Collision detection system. */
     public readonly hitboxSystem: HitboxSystem;
     /** A map of all entity keys to their registered Entity constructors. */
-    public entityKeyConstructorMap: Record<string, Constructor<BaseEntity> & StaticEntityParts> =
-        {};
+    public entityKeyConstructorMap: Record<string, EntityConstructor> = {};
     /** Listen target for events emitted from any child entities. */
     public listenTarget = new GenericListenTarget();
     public readonly state: State;
-    public readonly assetLoader: AnthaAssetLoader;
+    public readonly assetLoader: AssetLoader;
 
     constructor(args: Readonly<EntityStoreConstructorParams>) {
         this.pixi = args.pixi;
@@ -139,6 +166,22 @@ export class EntityStore<State extends AnyObject = any> {
     }
 
     /**
+     * Load all the assets for all the given entities. Without this, assets will be loaded on demand
+     * only.
+     */
+    public async loadEntityAssets(
+        entities: ReadonlyArray<EntityConstructor>,
+        options?: Readonly<AssetBulkLoaderLoadOptions> | undefined,
+    ) {
+        const assets: ReadonlyArray<Readonly<Asset>> = entities.flatMap((entity) =>
+            Object.values(entity.assets).map((asset) => {
+                return asset;
+            }),
+        );
+        return await this.assetLoader.bulkLoadAssets(assets, options);
+    }
+
+    /**
      * Register a set of entities so that they can be deserialized (for example, when transferring
      * game state in across the network for multilayer).
      */
@@ -147,7 +190,7 @@ export class EntityStore<State extends AnyObject = any> {
         entities,
     }: Readonly<
         {
-            entities: ReadonlyArray<Constructor<BaseEntity> & StaticEntityParts>;
+            entities: ReadonlyArray<EntityConstructor>;
         } & PartialWithUndefined<{
             /** If set to true, all previous registrations will be removed. */
             clearPreviousRegistrations: boolean;
@@ -187,15 +230,18 @@ export class EntityStore<State extends AnyObject = any> {
         }
 
         this.hitboxSystem.update();
+
+        const collisionPromises: Promise<void>[] = [];
+
         /**
          * This `checkAll` method is synchronous, so even though its using a callback it'll still
          * finish before this `updateAllEntities` method exits.
          */
         this.hitboxSystem.checkAll((response) => {
             try {
-                const primaryEntity =
+                const primaryEntity: BaseEntity | undefined =
                     response.a.userData instanceof BaseEntity ? response.a.userData : undefined;
-                const secondaryEntity =
+                const secondaryEntity: BaseEntity | undefined =
                     response.b.userData instanceof BaseEntity ? response.b.userData : undefined;
 
                 /* node:coverage ignore next 3 */
@@ -207,12 +253,16 @@ export class EntityStore<State extends AnyObject = any> {
                 ) {
                     return;
                 }
-                primaryEntity.collide(secondaryEntity, response);
+                const result = primaryEntity.collide(secondaryEntity, response);
+                if (result instanceof Promise) {
+                    collisionPromises.push(result);
+                }
                 /* node:coverage ignore next 3: catch all edge cases just in case */
             } catch (error) {
                 log.error(error);
             }
         });
+        await Promise.all(collisionPromises);
     }
 
     /** Get all current instances of the given entity class constructor. */
@@ -259,12 +309,10 @@ export class EntityStore<State extends AnyObject = any> {
     }
 
     /** Create a new instance of the given entity class and add it to this entity store. */
-    public async addEntity<
-        const EntityConstructor extends Constructor<BaseEntity> & StaticEntityParts,
-    >(
-        entityClass: EntityConstructor,
-        ...params: AddEntityParams<EntityConstructor>
-    ): Promise<InstanceType<EntityConstructor>> {
+    public async addEntity<const NewEntityConstructor extends EntityConstructor>(
+        entityClass: NewEntityConstructor,
+        ...params: AddEntityParams<NewEntityConstructor>
+    ): Promise<InstanceType<NewEntityConstructor>> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
         }
@@ -283,7 +331,7 @@ export class EntityStore<State extends AnyObject = any> {
         await child.initInstance();
         this.currentEntityInstances.add(child);
         this.entityInstanceMap.add(child);
-        return child as InstanceType<EntityConstructor>;
+        return child as InstanceType<NewEntityConstructor>;
     }
 
     /** Destroys the entity store and all entities contained inside it. */
@@ -462,7 +510,7 @@ export type ReverseParamsMap = Record<string, Partial<Record<'hitbox' | 'view', 
 export abstract class BaseEntity<
     State extends AnyObject = any,
     Params extends Record<string, any> | undefined = any,
-    EntityAssets extends BaseEntityAssetDefinitions<any> | undefined = any,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined = any,
 > {
     /**
      * This key is used for deserialization of entities to track which class needs to be
@@ -473,7 +521,7 @@ export abstract class BaseEntity<
     public static readonly paramsShape: Shape<AnyObject> | undefined;
 
     public static readonly assets:
-        | MappedEntityAssets<BaseEntityAssetDefinitions<any> | undefined>
+        | MappedEntityAssets<BaseEntityAssetDefinitions | undefined>
         | undefined;
 
     /**
@@ -520,7 +568,7 @@ export abstract class BaseEntity<
     public readonly pixi: PixiApplication;
     /** Collision detection system. */
     public readonly hitboxSystem: HitboxSystem;
-    public getAsset: EntityAssetAccessor<Params, MappedEntityAssets<EntityAssets>>;
+    public getAsset: EntityAssetAccessor<MappedEntityAssets<EntityAssets>>;
 
     constructor(args: Readonly<EntityConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
         this.entityStore = args.entityStore;
@@ -529,14 +577,11 @@ export abstract class BaseEntity<
         this.hitboxSystem = args.hitboxSystem;
         this.state = args.state;
 
-        const assets = (this.constructor as typeof ViewEntity).assets as
-            | MappedEntityAssets<BaseEntityAssetDefinitions<Params> | undefined>
-            | undefined;
+        const assets = (this.constructor as typeof ViewEntity).assets;
 
-        this.getAsset = createEntityAssetAccessor<Params, MappedEntityAssets<EntityAssets>>({
+        this.getAsset = createEntityAssetAccessor<MappedEntityAssets<EntityAssets>>({
             assetLoader: args.entityStore.assetLoader,
             entityAssets: assets,
-            params: args.params as Params,
         });
     }
 
@@ -546,6 +591,7 @@ export abstract class BaseEntity<
      */
     public abstract update(): MaybePromise<void>;
 
+    /** Called after construction to perform async initialization (e.g. creating views). */
     public initInstance(): MaybePromise<void> {
         return;
     }
@@ -554,12 +600,10 @@ export abstract class BaseEntity<
     public state: State;
 
     /** Add a new entity to the entity store. */
-    public async addEntity<
-        const EntityConstructor extends Constructor<BaseEntity> & StaticEntityParts,
-    >(
-        entityClass: EntityConstructor,
-        ...params: AddEntityParams<EntityConstructor>
-    ): Promise<InstanceType<EntityConstructor>> {
+    public async addEntity<const NewEntityConstructor extends EntityConstructor>(
+        entityClass: NewEntityConstructor,
+        ...params: AddEntityParams<NewEntityConstructor>
+    ): Promise<InstanceType<NewEntityConstructor>> {
         if (this.isDestroyed) {
             throw new Error('Cannot add entity through destroyed entity.');
         }
@@ -595,7 +639,7 @@ export abstract class BaseEntity<
      * it.
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public collide(otherEntity: BaseEntity, collision: Readonly<Collision>): void {}
+    public collide(otherEntity: BaseEntity, collision: Readonly<Collision>): MaybePromise<void> {}
 
     /**
      * Serialize the entity params for sharing across the network (for multiplayer play). By default
@@ -632,44 +676,41 @@ export type ViewCreation = {
     hitbox?: Hitbox | undefined;
 };
 
-export type EntityAssetAccessor<
-    Params,
-    EntityAssets extends BaseEntityAssetDefinitions<Params> | undefined,
-> = EntityAssets extends undefined
-    ? EmptyObject
-    : {
-          [Key in keyof EntityAssets]: () => Promise<
-              AnthaAssetValue<NonNullable<EntityAssets>[Key]>
-          >;
-      };
+/**
+ * Creates async accessors for all entity assets.
+ *
+ * @category Internal
+ */
+export type EntityAssetAccessor<EntityAssets extends BaseEntityAssetDefinitions | undefined> =
+    EntityAssets extends undefined
+        ? EmptyObject
+        : {
+              [Key in keyof EntityAssets]: () => Promise<
+                  AssetValue<NonNullable<EntityAssets>[Key]>
+              >;
+          };
 
-function createEntityAssetAccessor<
-    Params,
-    EntityAssets extends BaseEntityAssets | undefined = any,
->({
+function createEntityAssetAccessor<EntityAssets extends BaseEntityAssets | undefined = any>({
     assetLoader,
     entityAssets,
-    params,
 }: Readonly<{
-    params: Params;
     entityAssets: EntityAssets | undefined | EmptyObject;
-    assetLoader: AnthaAssetLoader;
-}>): EntityAssetAccessor<Params, EntityAssets> {
+    assetLoader: AssetLoader;
+}>): EntityAssetAccessor<EntityAssets> {
     if (!entityAssets || check.isEmpty(entityAssets)) {
-        return {} as EntityAssetAccessor<Params, EntityAssets>;
+        return {} as EntityAssetAccessor<EntityAssets>;
     }
 
     return mapObjectValues(entityAssets, (key, asset) => {
         return async () => {
             return assetLoader.loadIndividualAsset({
                 asset,
-                params,
             });
         };
-    }) satisfies Record<keyof EntityAssets, () => Promise<any>> as EntityAssetAccessor<
-        Params,
-        EntityAssets
-    >;
+    }) satisfies Record<
+        keyof EntityAssets,
+        () => Promise<any>
+    > as EntityAssetAccessor<EntityAssets>;
 }
 
 /**
@@ -680,11 +721,12 @@ function createEntityAssetAccessor<
 export abstract class ViewEntity<
     State extends AnyObject = any,
     Params extends Record<string, any> | undefined = any,
-    EntityAssets extends BaseEntityAssetDefinitions<any> | undefined = any,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined = any,
 > extends BaseEntity<State, Params, EntityAssets> {
     /** The entity's PixiJS view. */
     public view!: ViewContainer;
 
+    /** Creates the view and hitbox, adds the view to the stage, and sets up the params proxy. */
     public override async initInstance() {
         const {view, hitbox} = await this.createView();
 

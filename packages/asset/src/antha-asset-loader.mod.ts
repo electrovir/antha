@@ -1,6 +1,6 @@
 import {type PartialWithUndefined} from '@augment-vir/common';
 import {css, defineAnthaMod, defineElement, html} from 'antha';
-import {AnthaAssetLoader, AnthaAssetLoaderProgressUpdateEvent} from './asset-loader.js';
+import {AssetLoader, AssetLoaderProgressUpdateEvent} from './asset-loader.js';
 
 /**
  * Engine state for the Antha asset mod loading screen.
@@ -18,13 +18,23 @@ export type AnthaAssetLoaderModLoadingScreenState = {
     completedAt: DOMHighResTimeStamp | undefined;
 };
 
-export type AnthaAssetLoaderModState = {
-    assetLoader: AnthaAssetLoader;
+/**
+ * State for {@link AnthaAssetMod}.
+ *
+ * @category Internal
+ */
+export type AnthaAssetModState = {
+    assetLoader: AssetLoader;
     isShowingLoadingScreen: boolean;
     loadingScreenState: AnthaAssetLoaderModLoadingScreenState | undefined;
 };
 
-export type AnthaAssetLoaderModOptions = PartialWithUndefined<{
+/**
+ * Configuration options for {@link createAnthaAssetMod}.
+ *
+ * @category Internal
+ */
+export type AnthaAssetModOptions = PartialWithUndefined<{
     /**
      * If set to `true`, the default loading screen is not rendered. You should probably make your
      * own loading screen in that case.
@@ -34,9 +44,24 @@ export type AnthaAssetLoaderModOptions = PartialWithUndefined<{
     hideLoadingScreen: boolean;
 }>;
 
+/**
+ * Duration in milliseconds for the loading screen fade-out animation.
+ *
+ * @category Internal
+ */
 export const loadingScreenFadeMs = 1000;
+/**
+ * Duration in milliseconds for the progress bar grow transition.
+ *
+ * @category Internal
+ */
 export const loadingScreenProgressGrowMs = 200;
 
+/**
+ * Default loading screen element rendered by the Antha asset mod while assets are being loaded.
+ *
+ * @category Internal
+ */
 export const AnthaAssetLoadingScreen = defineElement<{
     progressPercent: number;
     dotCount: number;
@@ -109,9 +134,28 @@ export const AnthaAssetLoadingScreen = defineElement<{
     },
 });
 
-export function createAnthaAssetLoaderMod(options: Readonly<AnthaAssetLoaderModOptions> = {}) {
-    return defineAnthaMod<AnthaAssetLoaderModState>({
-        modName: 'antha-asset-loader',
+/**
+ * The Antha Asset mod, created by {@link createAnthaAssetMod}.
+ *
+ * @category Pre-Built Mods
+ */
+export type AnthaAssetMod = ReturnType<typeof createAnthaAssetMod>;
+
+/**
+ * Name for the mod {@link AnthaAssetMod}.
+ *
+ * @category Internal
+ */
+export const anthaAssetModName = 'antha-asset';
+
+/**
+ * Creates the Antha asset mod which manages asset loading and an optional loading screen overlay.
+ *
+ * @category Pre-Built Mods
+ */
+export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}) {
+    return defineAnthaMod<AnthaAssetModState>({
+        modName: anthaAssetModName,
         async cleanup({state}) {
             await state.assetLoader?.destroy();
             state.loadingScreenState = undefined;
@@ -119,12 +163,12 @@ export function createAnthaAssetLoaderMod(options: Readonly<AnthaAssetLoaderModO
         },
         execute({state, engine}) {
             if (!state.assetLoader) {
-                state.assetLoader = new AnthaAssetLoader({
+                state.assetLoader = new AssetLoader({
                     logger: engine.log,
                 });
 
                 if (!options.hideLoadingScreen) {
-                    state.assetLoader.listen(AnthaAssetLoaderProgressUpdateEvent, (event) => {
+                    state.assetLoader.listen(AssetLoaderProgressUpdateEvent, (event) => {
                         if (event.detail.complete) {
                             state.loadingScreenState = {
                                 current: 1,
