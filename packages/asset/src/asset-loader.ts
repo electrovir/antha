@@ -230,27 +230,27 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
         const assetsToCleanup = options.doNotUnload
             ? []
             : Array.from(this.assetCache.keys()).filter((asset) => {
-                  return assets.includes(asset);
+                  return !assets.includes(asset);
               });
+
+        const assetsToLoad = assets.filter((asset) => {
+            return !this.assetCache.has(asset);
+        });
 
         const cleanupCount = assetsToCleanup.length ? 1 : 0;
 
-        const alreadyLoadedProgress = assets.reduce((sum, entry) => {
-            return sum + (this.assetCache.has(entry) ? entry.maxProgress : 0);
-        }, 0);
-
         const maxProgress =
-            assets.reduce((count, asset) => {
+            assetsToLoad.reduce((count, asset) => {
                 return count + asset.maxProgress;
             }, 0) + cleanupCount;
 
-        let currentProgress = alreadyLoadedProgress;
+        let currentProgress = 0;
 
-        if (!options.hideLoadingScreen) {
+        if (!options.hideLoadingScreen && assetsToLoad.length) {
             this.dispatch(
                 new AssetLoaderProgressUpdateEvent({
                     detail: {
-                        current: 0,
+                        current: currentProgress,
                         total: maxProgress,
                         complete: false,
                     },
@@ -259,6 +259,10 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
         }
 
         await this.unloadAssets(assetsToCleanup);
+
+        if (!assetsToLoad.length) {
+            return assets.map((asset) => this.assetCache.get(asset));
+        }
 
         currentProgress += cleanupCount;
         if (!options.hideLoadingScreen) {
@@ -273,7 +277,7 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
             );
         }
 
-        const chunkedAssets: ArrayElement<typeof assets>[][] = options.maxParallelism
+        const chunkedAssets: ArrayElement<typeof assetsToLoad>[][] = options.maxParallelism
             ? chunkArray(assets, {
                   chunkSize: options.maxParallelism,
               })
@@ -298,6 +302,10 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
             await awaitedBlockingMap(chunkedAssets, async (assetChunk) => {
                 return await Promise.all(
                     assetChunk.map(async (asset) => {
+                        if (this.assetCache.has(asset)) {
+                            return (await this.assetCache.get(asset))?.value;
+                        }
+
                         return await this.loadIndividualAsset({
                             incrementProgressCallback,
                             asset,
@@ -314,8 +322,8 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
                     context: {
                         currentProgress,
                         maxProgress,
-                        assetCount: assets.length,
-                        assetNames: assets.map((entry) => entry.name).filter(Boolean),
+                        assetCount: assetsToLoad.length,
+                        assetNames: assetsToLoad.map((entry) => entry.name).filter(Boolean),
                     },
                     tags: {
                         mod: '@antha/asset',

@@ -9,7 +9,7 @@ import {defineEntitySuite} from './entity-suite.js';
 import {
     EntityDestroyEvent,
     entityPositionParamsShape,
-    standardParamsMap,
+    positionParamsMap,
     type BaseEntity,
     type Collision,
     type EntityStore,
@@ -647,7 +647,7 @@ describe('ViewEntity', () => {
         class MappedEntity extends suite.defineEntity({
             key: 'MappedEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: standardParamsMap,
+            paramsMap: positionParamsMap,
         }) {
             public override update(): void {}
             public override createView(): ViewCreation {
@@ -686,7 +686,7 @@ describe('ViewEntity', () => {
         class AssetEntity extends suite.defineEntity({
             key: 'AssetEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: standardParamsMap,
+            paramsMap: positionParamsMap,
             assets: {
                 graphic: {
                     maxProgress: 1,
@@ -729,7 +729,7 @@ describe('ViewEntity', () => {
         class AssetAccessEntity extends suite.defineEntity({
             key: 'AssetAccessEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: standardParamsMap,
+            paramsMap: positionParamsMap,
             assets: {
                 sprite: {
                     maxProgress: 1,
@@ -765,7 +765,7 @@ describe('ViewEntity', () => {
         class InBoundsEntity extends suite.defineEntity({
             key: 'InBoundsEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: standardParamsMap,
+            paramsMap: positionParamsMap,
         }) {
             public override update(): void {}
             public override createView(): ViewCreation {
@@ -795,7 +795,7 @@ describe('ViewEntity', () => {
         class OutBoundsEntity extends suite.defineEntity({
             key: 'OutBoundsEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: standardParamsMap,
+            paramsMap: positionParamsMap,
         }) {
             public override update(): void {}
             public override createView(): ViewCreation {

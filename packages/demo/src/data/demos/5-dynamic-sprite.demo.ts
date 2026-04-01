@@ -1,8 +1,4 @@
-import {
-    createAnthaEntityStoreMod,
-    type AnthaEntityStoreModState,
-    type ViewCreation,
-} from '@antha/entity';
+import {createAnthaEntityMod, type AnthaEntityModState, type ViewCreation} from '@antha/entity';
 import {createAnthaPixiCanvasMod, createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {AnthaEngine, SkipExecution, css, defineAnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
@@ -24,7 +20,7 @@ type SpritesGameState = {
     playerEntity: PlayerEntity;
 };
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityStoreMod<SpritesGameState>({});
+const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod<SpritesGameState>({});
 
 class PlayerEntity extends defineEntity({
     key: 'PlayerSprite',
@@ -174,7 +170,7 @@ class PlayerEntity extends defineEntity({
     }
 }
 
-const dynamicSpriteMod = defineAnthaMod<AnthaEntityStoreModState<SpritesGameState>>({
+const dynamicSpriteMod = defineAnthaMod<AnthaEntityModState<SpritesGameState>>({
     modName: 'demo-dynamic-sprite',
     executeImmediately: true,
     async execute({state}) {

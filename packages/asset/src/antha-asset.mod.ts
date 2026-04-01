@@ -7,7 +7,7 @@ import {AssetLoader, AssetLoaderProgressUpdateEvent} from './asset-loader.js';
  *
  * @category Internal
  */
-export type AnthaAssetLoaderModLoadingScreenState = {
+export type AnthaAssetModLoadingScreenState = {
     /** The total number to load. Once `current` reaches this, loading is considered complete. */
     total: number;
     /**
@@ -26,7 +26,7 @@ export type AnthaAssetLoaderModLoadingScreenState = {
 export type AnthaAssetModState = {
     assetLoader: AssetLoader;
     isShowingLoadingScreen: boolean;
-    loadingScreenState: AnthaAssetLoaderModLoadingScreenState | undefined;
+    loadingScreenState: AnthaAssetModLoadingScreenState | undefined;
 };
 
 /**
@@ -188,7 +188,7 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
                 }
             }
 
-            if (!options.hideLoadingScreen) {
+            if (options.hideLoadingScreen) {
                 return;
             }
 

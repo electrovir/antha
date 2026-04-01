@@ -86,6 +86,7 @@ export function createAnthaPixiCanvasMod(
                       <div
                           style=${css`
                               box-sizing: border-box;
+                              z-index: -1;
                               position: absolute;
                               inset: 0;
                               display: flex;

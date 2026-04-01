@@ -3,12 +3,12 @@ import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {AnthaEngine} from 'antha';
 import {Graphics} from 'pixi.js';
-import {createAnthaEntityStoreMod, type AnthaEntityStoreModState} from './antha-entity.mod.js';
+import {createAnthaEntityMod, type AnthaEntityModState} from './antha-entity.mod.js';
 import {type ViewCreation} from './entity.js';
 
-describe(createAnthaEntityStoreMod.name, () => {
+describe(createAnthaEntityMod.name, () => {
     it('skips execution when pixi is not available', async () => {
-        const {mod} = createAnthaEntityStoreMod({});
+        const {mod} = createAnthaEntityMod({});
 
         const engine = new AnthaEngine({
             mods: [
@@ -18,13 +18,13 @@ describe(createAnthaEntityStoreMod.name, () => {
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaEntityStoreModState<Record<string, never>>>;
+        const state = engine.state as Partial<AnthaEntityModState<Record<string, never>>>;
 
         assert.isUndefined(state.entityStore);
     });
 
     it('creates an entity store when pixi is available', async () => {
-        const {mod} = createAnthaEntityStoreMod({});
+        const {mod} = createAnthaEntityMod({});
 
         const engine = new AnthaEngine({
             mods: [
@@ -35,13 +35,13 @@ describe(createAnthaEntityStoreMod.name, () => {
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaEntityStoreModState<Record<string, never>>>;
+        const state = engine.state as Partial<AnthaEntityModState<Record<string, never>>>;
 
         assert.isDefined(state.entityStore);
     });
 
     it('defines entities that can be added to the store', async () => {
-        const {mod, defineEntity} = createAnthaEntityStoreMod<{score: number}>({});
+        const {mod, defineEntity} = createAnthaEntityMod<{score: number}>({});
 
         class TestEntity extends defineEntity({
             key: 'TestEntity',
@@ -67,7 +67,7 @@ describe(createAnthaEntityStoreMod.name, () => {
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaEntityStoreModState<{score: number}>>;
+        const state = engine.state as Partial<AnthaEntityModState<{score: number}>>;
 
         assert.isDefined(state.entityStore);
         const instance = await state.entityStore.addEntity(TestEntity);
@@ -75,7 +75,7 @@ describe(createAnthaEntityStoreMod.name, () => {
     });
 
     it('cleans up entity store on cleanup', async () => {
-        const {mod} = createAnthaEntityStoreMod({});
+        const {mod} = createAnthaEntityMod({});
 
         const engine = new AnthaEngine({
             mods: [
@@ -86,7 +86,7 @@ describe(createAnthaEntityStoreMod.name, () => {
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaEntityStoreModState<Record<string, never>>>;
+        const state = engine.state as Partial<AnthaEntityModState<Record<string, never>>>;
 
         assert.isDefined(state.entityStore);
 
@@ -94,7 +94,7 @@ describe(createAnthaEntityStoreMod.name, () => {
     });
 
     it('initializes debugHitboxes from options', async () => {
-        const {mod} = createAnthaEntityStoreMod({
+        const {mod} = createAnthaEntityMod({
             debug: true,
         });
 
@@ -107,13 +107,13 @@ describe(createAnthaEntityStoreMod.name, () => {
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaEntityStoreModState<Record<string, never>>>;
+        const state = engine.state as Partial<AnthaEntityModState<Record<string, never>>>;
 
         assert.isTrue(state.debugHitboxes);
     });
 
     it('updates entities on subsequent ticks', async () => {
-        const {mod, defineEntity} = createAnthaEntityStoreMod({});
+        const {mod, defineEntity} = createAnthaEntityMod({});
         let updateCount = 0;
 
         class TickEntity extends defineEntity({
@@ -141,7 +141,7 @@ describe(createAnthaEntityStoreMod.name, () => {
         /** First tick creates the entity store. */
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaEntityStoreModState<Record<string, never>>>;
+        const state = engine.state as Partial<AnthaEntityModState<Record<string, never>>>;
 
         assert.isDefined(state.entityStore);
         await state.entityStore.addEntity(TickEntity);

@@ -10,12 +10,12 @@ import {defineEntitySuite} from './entity-suite.js';
 import {type EntityStore, type EntityStoreConstructorParams} from './entity.js';
 
 /**
- * State for {@link createAnthaEntityStoreMod}.
+ * State for {@link createAnthaEntityMod}.
  *
  * @category Internal
  */
-export type AnthaEntityStoreModState<State extends AnyObject> = {
-    entityStore: EntityStore<Partial<AnthaEntityStoreModState<State>>>;
+export type AnthaEntityModState<State extends AnyObject> = {
+    entityStore: EntityStore<Partial<AnthaEntityModState<State>>>;
     debugHitboxes: boolean;
 } & State &
     AnthaPixiCanvasModState &
@@ -26,7 +26,7 @@ export type AnthaEntityStoreModState<State extends AnyObject> = {
  *
  * @category Pre-built Mods
  */
-export function createAnthaEntityStoreMod<State extends AnyObject>(
+export function createAnthaEntityMod<State extends AnyObject>(
     options: Readonly<
         PartialWithUndefined<
             EntityStoreConstructorParams & {
@@ -35,10 +35,10 @@ export function createAnthaEntityStoreMod<State extends AnyObject>(
         >
     >,
 ) {
-    const {EntityStore, ...entitySuite} = defineEntitySuite<AnthaEntityStoreModState<State>>();
+    const {EntityStore, ...entitySuite} = defineEntitySuite<AnthaEntityModState<State>>();
 
-    const mod = defineAnthaMod<AnthaEntityStoreModState<State>>({
-        modName: 'antha-entity-store',
+    const mod = defineAnthaMod<AnthaEntityModState<State>>({
+        modName: 'antha-entity',
         cleanup({state}) {
             state.entityStore?.destroy();
         },

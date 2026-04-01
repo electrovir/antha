@@ -11,7 +11,7 @@ import {
     type PartialWithUndefined,
 } from '@augment-vir/common';
 import {createId} from '@paralleldrive/cuid2';
-import {type HtmlInterpolation} from 'element-vir';
+import {css, html, type HtmlInterpolation} from 'element-vir';
 import {Observable} from 'observavir';
 import {type RequireExactlyOne} from 'type-fest';
 import {type AnthaLogger} from './logger/antha-logger.js';
@@ -490,9 +490,25 @@ export class AnthaEngine {
 
             const skipped = executeResult === SkipExecution;
 
-            const modTemplate: HtmlInterpolation =
+            const rawTemplate: HtmlInterpolation =
                 shouldExecute && !skipped
                     ? (executeResult as Exclude<typeof executeResult, SkipExecution>) || undefined
+                    : undefined;
+
+            const modTemplate: HtmlInterpolation =
+                shouldExecute && !skipped
+                    ? rawTemplate
+                        ? html`
+                              <div
+                                  data-antha-mod=${mod.modName}
+                                  style=${css`
+                                      display: contents;
+                                  `}
+                              >
+                                  ${rawTemplate}
+                              </div>
+                          `
+                        : undefined
                     : this.currentTemplateMap.get(mod);
 
             this.currentTemplateArray[index] = modTemplate;

@@ -383,7 +383,7 @@ describe(AssetLoader.name, () => {
                 mock2.asset,
             ]);
 
-            assert.isFalse(mock1.cleanedUp.value);
+            assert.isTrue(mock1.cleanedUp.value);
         });
 
         it('does not clean up previous assets when doNotUnload is true', async () => {

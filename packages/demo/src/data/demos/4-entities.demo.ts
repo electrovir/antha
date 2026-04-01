@@ -1,9 +1,9 @@
 /* eslint-disable sonarjs/pseudo-random */
 import {
-    createAnthaEntityStoreMod,
+    createAnthaEntityMod,
     EntityEvent,
-    standardParamsMap,
-    type AnthaEntityStoreModState,
+    positionParamsMap,
+    type AnthaEntityModState,
     type BaseEntity,
     type EntityStore,
     type ViewCreation,
@@ -34,7 +34,7 @@ type AsteroidsGameState = {
 class PlayerDeathEvent extends EntityEvent<void> {}
 class AsteroidHitEvent extends EntityEvent<{score: number}> {}
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityStoreMod<AsteroidsGameState>({});
+const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod<AsteroidsGameState>({});
 
 class AsteroidEntity extends defineEntity({
     key: 'Asteroid',
@@ -45,7 +45,7 @@ class AsteroidEntity extends defineEntity({
         directionY: 0,
         size: 30,
     }),
-    paramsMap: standardParamsMap,
+    paramsMap: positionParamsMap,
 }) {
     public static readonly minAsteroidSize = 7;
     public static readonly initialSpawnInterval = 120;
@@ -135,7 +135,7 @@ class PlayerBulletEntity extends defineEntity({
         directionX: 0,
         directionY: 0,
     }),
-    paramsMap: standardParamsMap,
+    paramsMap: positionParamsMap,
 }) {
     public static readonly bulletRadius = 3;
     public static readonly bulletSpeed = 8;
@@ -406,7 +406,7 @@ class PlayerEntity extends defineEntity({
     }
 }
 
-type AsteroidsState = AnthaEntityStoreModState<AsteroidsGameState>;
+type AsteroidsState = AnthaEntityModState<AsteroidsGameState>;
 
 async function spawnAsteroidFromEdge(
     entityStore: EntityStore<Partial<AsteroidsState>>,

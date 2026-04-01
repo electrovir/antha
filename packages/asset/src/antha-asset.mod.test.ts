@@ -7,7 +7,7 @@ import {
     anthaAssetModName,
     createAnthaAssetMod,
     loadingScreenFadeMs,
-} from './antha-asset-loader.mod.js';
+} from './antha-asset.mod.js';
 
 describe(createAnthaAssetMod.name, () => {
     it('creates a mod with the correct name', () => {
@@ -74,10 +74,8 @@ describe(createAnthaAssetMod.name, () => {
         assert.isFalse(stateAfterReset.isShowingLoadingScreen || false);
     });
 
-    it('renders loading screen template when hideLoadingScreen is true', async () => {
-        const mod = createAnthaAssetMod({
-            hideLoadingScreen: true,
-        });
+    it('renders loading screen template', async () => {
+        const mod = createAnthaAssetMod();
         const engine = new AnthaEngine({
             mods: [mod],
         });
@@ -100,9 +98,7 @@ describe(createAnthaAssetMod.name, () => {
     });
 
     it('renders completed loading screen with fade-out', async () => {
-        const mod = createAnthaAssetMod({
-            hideLoadingScreen: true,
-        });
+        const mod = createAnthaAssetMod();
         const engine = new AnthaEngine({
             mods: [mod],
         });
@@ -121,9 +117,7 @@ describe(createAnthaAssetMod.name, () => {
     });
 
     it('returns undefined when loading screen fade has completed', async () => {
-        const mod = createAnthaAssetMod({
-            hideLoadingScreen: true,
-        });
+        const mod = createAnthaAssetMod();
         const engine = new AnthaEngine({
             mods: [mod],
         });
@@ -170,9 +164,7 @@ describe(createAnthaAssetMod.name, () => {
     });
 
     it('renders zero progress when total is zero', async () => {
-        const mod = createAnthaAssetMod({
-            hideLoadingScreen: true,
-        });
+        const mod = createAnthaAssetMod();
         const engine = new AnthaEngine({
             mods: [mod],
         });

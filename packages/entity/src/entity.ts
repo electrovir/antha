@@ -23,7 +23,7 @@ import {
     type Body as Hitbox,
 } from 'detect-collisions';
 import {assertValidShape, defineShape, type Shape} from 'object-shape-tester';
-import {ParticleContainer, type ViewContainer} from 'pixi.js';
+import {ParticleContainer, type Container, type ViewContainer} from 'pixi.js';
 import {
     type AbstractConstructor,
     type Constructor,
@@ -173,11 +173,11 @@ export class EntityStore<State extends AnyObject = any> {
         entities: ReadonlyArray<EntityConstructor>,
         options?: Readonly<AssetBulkLoaderLoadOptions> | undefined,
     ) {
-        const assets: ReadonlyArray<Readonly<Asset>> = entities.flatMap((entity) =>
-            Object.values(entity.assets).map((asset) => {
+        const assets: ReadonlyArray<Readonly<Asset>> = entities.flatMap((entity) => {
+            return Object.values(entity.assets).map((asset) => {
                 return asset;
-            }),
-        );
+            });
+        });
         return await this.assetLoader.bulkLoadAssets(assets, options);
     }
 
@@ -484,7 +484,7 @@ export class EntityDestroyEvent extends EntityEvent<void> {}
  *
  * @category Internal
  */
-export const standardParamsMap = {
+export const positionParamsMap = {
     hitbox: {
         x: true,
         y: true,
@@ -663,7 +663,7 @@ export type ViewCreation = {
      * Graphics`](https://pixijs.download/release/docs/scene.Graphics.html), etc. imported from the
      * [`pixi.js`](https://www.npmjs.com/package/pixi.js) package.
      */
-    view?: ViewContainer | undefined;
+    view?: Container | undefined;
     /**
      * A Body instance for hitbox collision detection. Create one with, for example,
      * `this.hitboxSystem.createBox()` or import directly from the
@@ -724,7 +724,7 @@ export abstract class ViewEntity<
     EntityAssets extends BaseEntityAssetDefinitions | undefined = any,
 > extends BaseEntity<State, Params, EntityAssets> {
     /** The entity's PixiJS view. */
-    public view!: ViewContainer;
+    public view!: Container;
 
     /** Creates the view and hitbox, adds the view to the stage, and sets up the params proxy. */
     public override async initInstance() {

@@ -1,2 +1,2 @@
-export * from './antha-asset-loader.mod.js';
+export * from './antha-asset.mod.js';
 export * from './asset-loader.js';
