@@ -1,6 +1,6 @@
+import {AnthaEngine, html} from '@antha/engine';
 import {assert, waitUntil} from '@augment-vir/assert';
 import {describe, it, testWeb} from '@augment-vir/test';
-import {AnthaEngine, html} from 'antha';
 import {
     AnthaAssetLoadingScreen,
     type AnthaAssetModState,

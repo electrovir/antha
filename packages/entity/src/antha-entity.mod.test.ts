@@ -1,7 +1,7 @@
+import {AnthaEngine} from '@antha/engine';
 import {AnthaMockPixiMod} from '@antha/pixi-canvas';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {AnthaEngine} from 'antha';
 import {Graphics} from 'pixi.js';
 import {createAnthaEntityMod, type AnthaEntityModState} from './antha-entity.mod.js';
 import {type ViewCreation} from './entity.js';

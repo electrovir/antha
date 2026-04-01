@@ -1,6 +1,6 @@
+import {AnthaEngine} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {AnthaEngine} from 'antha';
 import {createAnthaAudioMod, type AnthaAudioState} from './antha-audio.mod.js';
 import {AudioPlayer} from './audio-player.js';
 

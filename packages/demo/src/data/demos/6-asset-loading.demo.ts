@@ -1,6 +1,6 @@
 import {createAnthaAssetMod, defineAsset, type AnthaAssetModState} from '@antha/asset';
+import {AnthaEngine, css, defineAnthaMod, html} from '@antha/engine';
 import {randomInteger, wait} from '@augment-vir/common';
-import {AnthaEngine, css, defineAnthaMod, html} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {type AnthaDemo} from '../demo.js';
 

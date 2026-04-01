@@ -14,12 +14,12 @@
     "dependencies": {
         "@antha/asset": "*",
         "@antha/audio": "*",
+        "@antha/engine": "*",
         "@antha/entity": "*",
         "@antha/pixi-canvas": "*",
         "@augment-vir/assert": "^31.68.2",
         "@augment-vir/common": "^31.68.2",
         "@electrovir/color": "^1.7.9",
-        "antha": "*",
         "date-vir": "^8.2.1",
         "detect-collisions": "^10.10.2025",
         "element-vir": "^26.14.6",

@@ -1,3 +1,4 @@
+import {css, defineAnthaMod, html, listen} from '@antha/engine';
 import {check} from '@augment-vir/assert';
 import {
     mergeDefinedProperties,
@@ -6,7 +7,6 @@ import {
     type RequiredAndNotNull,
 } from '@augment-vir/common';
 import {colorCss} from '@electrovir/color';
-import {css, defineAnthaMod, html, listen} from 'antha';
 import {ViraButton, viraThemeDarkOverride} from 'vira';
 import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
 

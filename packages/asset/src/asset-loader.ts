@@ -1,3 +1,4 @@
+import {type AnthaLogger, browserAnthaLogger} from '@antha/engine';
 import {
     type ArrayElement,
     awaitedBlockingMap,
@@ -8,7 +9,6 @@ import {
     type MaybePromise,
     type PartialWithUndefined,
 } from '@augment-vir/common';
-import {type AnthaLogger, browserAnthaLogger} from 'antha';
 import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
 
 /**

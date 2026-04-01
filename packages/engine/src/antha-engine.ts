@@ -117,7 +117,7 @@ export type ModOptions = {
  * @example
  *
  * ```ts
- * import {AnthaMod, html} from 'antha';
+ * import {AnthaMod, html} from '@antha/engine';
  *
  * const myMod: AnthaMod<{count: number}> = {
  *     execute({state}) {
@@ -162,7 +162,7 @@ export type AnthaMod<State extends AnyObject = AnyObject> = {
  * @example
  *
  * ```ts
- * import {defineAnthaMod, html} from 'antha';
+ * import {defineAnthaMod, html} from '@antha/engine';
  *
  * defineAnthaMod<{count: number}>({
  *     execute({state}) {
@@ -258,7 +258,7 @@ export type AnthaEngineInit = PartialWithUndefined<{
  * @example
  *
  * ```ts
- * import {AnthaEngine, defineAnthaMod, html} from 'antha';
+ * import {AnthaEngine, defineAnthaMod, html} from '@antha/engine';
  *
  * new AnthaEngine({
  *     mods: [

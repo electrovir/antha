@@ -1,5 +1,5 @@
+import {css, defineAnthaMod, defineElement, html} from '@antha/engine';
 import {type PartialWithUndefined} from '@augment-vir/common';
-import {css, defineAnthaMod, defineElement, html} from 'antha';
 import {AssetLoader, AssetLoaderProgressUpdateEvent} from './asset-loader.js';
 
 /**

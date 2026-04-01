@@ -1,3 +1,4 @@
+import {AnthaEngine, SkipExecution, css, type AnthaMod} from '@antha/engine';
 import {
     createAnthaPixiCanvasMod,
     createAnthaPixiFpsMod,
@@ -6,7 +7,6 @@ import {
 } from '@antha/pixi-canvas';
 import {assertWrap} from '@augment-vir/assert';
 import {createArray, randomInteger} from '@augment-vir/common';
-import {AnthaEngine, SkipExecution, css, type AnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {Graphics} from 'pixi.js';
 import {type AnthaDemo} from '../demo.js';

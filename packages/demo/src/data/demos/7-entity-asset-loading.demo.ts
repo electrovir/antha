@@ -4,6 +4,15 @@ import {
     type AssetIncrementProgressCallback,
 } from '@antha/asset';
 import {
+    AnthaEngine,
+    SkipExecution,
+    css,
+    defineAnthaMod,
+    defineElement,
+    html,
+    listen,
+} from '@antha/engine';
+import {
     createAnthaEntityMod,
     positionParamsMap,
     type AnthaEntityModState,
@@ -16,7 +25,6 @@ import {
 } from '@antha/pixi-canvas';
 import {check} from '@augment-vir/assert';
 import {randomInteger, wait, type MinMax} from '@augment-vir/common';
-import {AnthaEngine, SkipExecution, css, defineAnthaMod, defineElement, html, listen} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {defineShape} from 'object-shape-tester';
 import {Container, Graphics, Text} from 'pixi.js';

@@ -1,6 +1,6 @@
+import {AnthaEngine, AnthaUi, html} from '@antha/engine';
 import {assert, waitUntil} from '@augment-vir/assert';
 import {describe, it, testWeb} from '@augment-vir/test';
-import {AnthaEngine, AnthaUi, html} from 'antha';
 import {createAnthaPixiCanvasMod, type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
 import {createMockPixi} from './mock-pixi.js';
 

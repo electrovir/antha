@@ -47,7 +47,7 @@
         "pixi.js": "^8.17.1"
     },
     "peerDependencies": {
-        "antha": "*"
+        "@antha/engine": "*"
     },
     "engines": {
         "node": ">=22"

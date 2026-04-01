@@ -1,6 +1,6 @@
+import {emptyAnthaLogger} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {emptyAnthaLogger} from 'antha';
 import {type SpritesheetData} from 'pixi.js';
 import {
     type Asset,

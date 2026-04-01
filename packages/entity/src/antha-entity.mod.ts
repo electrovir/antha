@@ -1,11 +1,11 @@
 import {anthaAssetModName, AssetLoader, type AnthaAssetModState} from '@antha/asset';
+import {defineAnthaMod, html, SkipExecution} from '@antha/engine';
 import {type AnthaPixiCanvasModState} from '@antha/pixi-canvas';
 import {
     mergeDefinedProperties,
     type AnyObject,
     type PartialWithUndefined,
 } from '@augment-vir/common';
-import {defineAnthaMod, html, SkipExecution} from 'antha';
 import {defineEntitySuite} from './entity-suite.js';
 import {type EntityStore, type EntityStoreConstructorParams} from './entity.js';
 

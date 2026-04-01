@@ -1,4 +1,5 @@
 /* eslint-disable sonarjs/pseudo-random */
+import {AnthaEngine, SkipExecution, type AnthaMod} from '@antha/engine';
 import {
     createAnthaEntityMod,
     EntityEvent,
@@ -11,7 +12,6 @@ import {
 import {createAnthaPixiCanvasMod, createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {assertWrap} from '@augment-vir/assert';
 import {executeCount, randomInteger} from '@augment-vir/common';
-import {AnthaEngine, SkipExecution, type AnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {Circle, Polygon} from 'detect-collisions';
 import {css, html, listen} from 'element-vir';

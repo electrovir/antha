@@ -1,6 +1,6 @@
+import {css, defineAnthaMod, html, onDomCreated, unsafeCSS, type CSSResult} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {getOrSet, type PartialWithUndefined} from '@augment-vir/common';
-import {css, defineAnthaMod, html, onDomCreated, unsafeCSS, type CSSResult} from 'antha';
 import {Application as PixiApplication, type ApplicationOptions} from 'pixi.js';
 
 export {Application as PixiApplication} from 'pixi.js';

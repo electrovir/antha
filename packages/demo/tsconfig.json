@@ -15,7 +15,7 @@
     "extends": "../../configs/tsconfig.base.json",
     "references": [
         {
-            "path": "../antha"
+            "path": "../engine"
         },
         {
             "path": "../audio"

@@ -1,6 +1,6 @@
 import {createAnthaAudioMod, type AnthaAudioState, type AudioSetupParams} from '@antha/audio';
+import {AnthaEngine, SkipExecution, type AnthaMod} from '@antha/engine';
 import {createAnthaPixiFpsMod} from '@antha/pixi-canvas';
-import {AnthaEngine, SkipExecution, type AnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {css, html, listen} from 'element-vir';
 import {joinUrlPaths} from 'url-vir';

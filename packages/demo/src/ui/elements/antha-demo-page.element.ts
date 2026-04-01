@@ -1,6 +1,6 @@
+import {type AnthaEngine, AnthaUi} from '@antha/engine';
 import {pixiCanvasZIndex} from '@antha/pixi-canvas';
 import {colorCss} from '@electrovir/color';
-import {type AnthaEngine, AnthaUi} from 'antha';
 import {css, defineElement, html, nothing} from 'element-vir';
 import {themeDefaultKey} from 'theme-vir';
 import {type RequireExactlyOne} from 'type-fest';

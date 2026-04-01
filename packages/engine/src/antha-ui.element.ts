@@ -31,7 +31,7 @@ export type AnthaUiOptions = {
  * @example
  *
  * ```ts
- * import {AnthaUi, AnthaEngine} from 'antha';
+ * import {AnthaUi, AnthaEngine} from '@antha/engine';
  *
  * const engine = new AnthaEngine();
  * ```

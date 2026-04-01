@@ -1,4 +1,4 @@
-import {defineAnthaMod} from 'antha';
+import {defineAnthaMod} from '@antha/engine';
 import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
 import {createMockPixi, MockPixiApp} from './mock-pixi.js';
 

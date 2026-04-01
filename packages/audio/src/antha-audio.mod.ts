@@ -1,5 +1,5 @@
+import {defineAnthaMod} from '@antha/engine';
 import {type PartialWithUndefined} from '@augment-vir/common';
-import {defineAnthaMod} from 'antha';
 import {AudioPlayer, type AudioPlayerOptions} from './audio-player.js';
 
 /**

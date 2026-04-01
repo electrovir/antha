@@ -1,7 +1,7 @@
+import {AnthaEngine, type AnthaMod} from '@antha/engine';
 import {assertWrap} from '@augment-vir/assert';
 import {round} from '@augment-vir/common';
 import {colorCss} from '@electrovir/color';
-import {AnthaEngine, type AnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {css, html} from 'element-vir';
 import {viraAnimationDurations, viraTheme, viraThemeDarkOverride} from 'vira';

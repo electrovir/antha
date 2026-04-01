@@ -1,6 +1,6 @@
+import {AnthaEngine, SkipExecution, css, defineAnthaMod} from '@antha/engine';
 import {createAnthaEntityMod, type AnthaEntityModState, type ViewCreation} from '@antha/entity';
 import {createAnthaPixiCanvasMod, createAnthaPixiFpsMod} from '@antha/pixi-canvas';
-import {AnthaEngine, SkipExecution, css, defineAnthaMod} from 'antha';
 import {createUtcFullDate} from 'date-vir';
 import {defineShape} from 'object-shape-tester';
 import {AnimatedSprite, Assets, Spritesheet, type SpritesheetData} from 'pixi.js';
