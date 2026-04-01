@@ -357,6 +357,44 @@ describe('EntityStore', () => {
         });
     });
 
+    it('adds an entity without params when paramsShape is undefined', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class NoParamsEntity extends suite.defineLogicEntity({
+            key: 'NoParamsAdd',
+        }) {
+            public override update(): void {}
+        }
+
+        await store.addEntity(NoParamsEntity);
+        // @ts-expect-error: this entity does not accept params
+        await store.addEntity(NoParamsEntity, {
+            x: 10,
+            y: 20,
+        });
+    });
+
+    it('requires correct params when paramsShape is defined', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class ParamsEntity extends suite.defineLogicEntity({
+            key: 'ParamsAdd',
+            paramsShape: entityPositionParamsShape,
+        }) {
+            public override update(): void {}
+        }
+
+        // @ts-expect-error: missing params input
+        await store.addEntity(ParamsEntity);
+
+        await store.addEntity(ParamsEntity, {
+            x: 10,
+            y: 20,
+        });
+    });
+
     it('throws on double destroy', () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);

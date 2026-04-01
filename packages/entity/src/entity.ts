@@ -78,15 +78,13 @@ export type MappedEntityAssets<Definitions extends BaseEntityAssetDefinitions | 
  *
  * @category Internal
  */
-export type AddEntityParams<EntityConstructor extends Constructor<BaseEntity>> =
-    ConstructorParameters<EntityConstructor>[0] extends infer Args extends Pick<
-        EntityConstructorParams<any, any>,
-        'params'
-    >
-        ? Args['params'] extends undefined
-            ? []
-            : [Args['params']]
-        : ['ERROR: invalid entity constructor'];
+export type AddEntityParams<ThisConstructor extends EntityConstructor> = ThisConstructor extends {
+    ConstructorArgsType: infer Args extends EntityConstructorParams<any, any>;
+}
+    ? Args['params'] extends undefined
+        ? []
+        : [Args['params']]
+    : ['ERROR: invalid entity constructor'];
 
 /**
  * Parameters for the constructor of {@link EntityStore}.
@@ -311,7 +309,7 @@ export class EntityStore<State extends AnyObject = any> {
     /** Create a new instance of the given entity class and add it to this entity store. */
     public async addEntity<const NewEntityConstructor extends EntityConstructor>(
         entityClass: NewEntityConstructor,
-        ...params: AddEntityParams<NewEntityConstructor>
+        ...params: AddEntityParams<NoInfer<NewEntityConstructor>>
     ): Promise<InstanceType<NewEntityConstructor>> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
@@ -602,7 +600,7 @@ export abstract class BaseEntity<
     /** Add a new entity to the entity store. */
     public async addEntity<const NewEntityConstructor extends EntityConstructor>(
         entityClass: NewEntityConstructor,
-        ...params: AddEntityParams<NewEntityConstructor>
+        ...params: AddEntityParams<NoInfer<NewEntityConstructor>>
     ): Promise<InstanceType<NewEntityConstructor>> {
         if (this.isDestroyed) {
             throw new Error('Cannot add entity through destroyed entity.');

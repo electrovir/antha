@@ -1,5 +1,1 @@
--   move antha engine into new @antha/engine package
 -   make the `antha` package the easy-to-drop-in use-all-built-in-mods solution
--   can we remove the "key" requirement when defining an entity and just use the class name?
--   allow params Map and params to be undefined when defining an entity
-    -   remove them from demo 7

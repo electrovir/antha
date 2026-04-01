@@ -12,12 +12,7 @@ import {
     html,
     listen,
 } from '@antha/engine';
-import {
-    createAnthaEntityMod,
-    positionParamsMap,
-    type AnthaEntityModState,
-    type EntityStore,
-} from '@antha/entity';
+import {createAnthaEntityMod, type AnthaEntityModState, type EntityStore} from '@antha/entity';
 import {
     createAnthaPixiCanvasMod,
     createAnthaPixiFpsMod,
@@ -26,7 +21,6 @@ import {
 import {check} from '@augment-vir/assert';
 import {randomInteger, wait, type MinMax} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
-import {defineShape} from 'object-shape-tester';
 import {Container, Graphics, Text} from 'pixi.js';
 import {ViraError} from 'vira';
 import {type AnthaDemo} from '../demo.js';
@@ -57,11 +51,6 @@ const {mod: entityMod, defineEntity} = createAnthaEntityMod<EntityAssetDemoGameS
 
 class RedCircleEntity extends defineEntity({
     key: 'RedCircleEntity',
-    paramsShape: defineShape({
-        x: 0,
-        y: 0,
-    }),
-    paramsMap: positionParamsMap,
     assets: {
         circleGraphic: {
             maxProgress: 50,
@@ -125,8 +114,8 @@ class RedCircleEntity extends defineEntity({
             ],
         });
 
-        this.params.x = this.pixi.screen.width / 2;
-        this.params.y = this.pixi.screen.height / 2;
+        viewContainer.x = this.pixi.screen.width / 2;
+        viewContainer.y = this.pixi.screen.height / 2;
 
         return {
             view: viewContainer,
@@ -138,11 +127,6 @@ class RedCircleEntity extends defineEntity({
 
 class YellowCircleEntity extends defineEntity({
     key: 'YellowCircle',
-    paramsShape: defineShape({
-        x: 0,
-        y: 0,
-    }),
-    paramsMap: positionParamsMap,
     assets: {
         circleGraphic: {
             maxProgress: 50,
@@ -206,8 +190,8 @@ class YellowCircleEntity extends defineEntity({
             ],
         });
 
-        this.params.x = this.pixi.screen.width / 2;
-        this.params.y = this.pixi.screen.height / 2 - 200;
+        viewContainer.x = this.pixi.screen.width / 2;
+        viewContainer.y = this.pixi.screen.height / 2 - 200;
 
         return {
             view: viewContainer,
@@ -219,11 +203,6 @@ class YellowCircleEntity extends defineEntity({
 
 class BlueDotEntity extends defineEntity({
     key: 'BlueDot',
-    paramsShape: defineShape({
-        x: 0,
-        y: 0,
-    }),
-    paramsMap: positionParamsMap,
     assets: {
         dotGraphic: {
             maxProgress: 100,
@@ -266,11 +245,11 @@ class BlueDotEntity extends defineEntity({
             ],
         });
 
-        this.params.x = randomInteger({
+        viewContainer.x = randomInteger({
             min: 100,
             max: this.pixi.screen.width - 100,
         });
-        this.params.y = randomInteger({
+        viewContainer.y = randomInteger({
             min: 100,
             max: this.pixi.screen.height - 100,
         });
@@ -316,10 +295,7 @@ const EntityAssetDemoControls = defineElement<{
             </button>
             <button
                 ${listen('click', async () => {
-                    await inputs.entityStore.addEntity(BlueDotEntity, {
-                        x: 0,
-                        y: 0,
-                    });
+                    await inputs.entityStore.addEntity(BlueDotEntity);
                 })}
             >
                 Add Dynamic
@@ -350,15 +326,9 @@ const entityAssetDemoMod = defineAnthaMod<
                     ].filter(check.isTruthy),
                 );
                 if (state.yellowToggle) {
-                    await entityStore.addEntity(YellowCircleEntity, {
-                        x: 0,
-                        y: 0,
-                    });
+                    await entityStore.addEntity(YellowCircleEntity);
                 }
-                await entityStore.addEntity(RedCircleEntity, {
-                    x: 0,
-                    y: 0,
-                });
+                await entityStore.addEntity(RedCircleEntity);
             })();
         }
 
