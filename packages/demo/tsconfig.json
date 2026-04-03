@@ -15,13 +15,22 @@
     "extends": "../../configs/tsconfig.base.json",
     "references": [
         {
-            "path": "../engine"
+            "path": "../asset"
         },
         {
             "path": "../audio"
         },
         {
+            "path": "../engine"
+        },
+        {
+            "path": "../entity"
+        },
+        {
             "path": "../pixi-canvas"
+        },
+        {
+            "path": "../input"
         }
     ]
 }

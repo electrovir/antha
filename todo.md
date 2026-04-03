@@ -1,1 +1,3 @@
 -   make the `antha` package the easy-to-drop-in use-all-built-in-mods solution
+-   add input handling
+-   make (inside input-device-handler) more InputDeviceHandlerOptions properties so that they can be modified at any point during run time and updates read the changes successfully

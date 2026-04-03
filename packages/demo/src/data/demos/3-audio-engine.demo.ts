@@ -86,7 +86,7 @@ export const audioEngineDemo: AnthaDemo = {
             mods: [
                 createAnthaAudioMod(),
                 createAnthaPixiFpsMod({
-                    showFps: false,
+                    hideFps: true,
                 }),
                 audioControlsMod,
             ],

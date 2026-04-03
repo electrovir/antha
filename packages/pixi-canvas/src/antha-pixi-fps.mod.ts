@@ -23,10 +23,18 @@ export const pixiCanvasZIndex = 1_000_000;
  * @category Internal
  */
 export type ShowCountersState = {
-    /** Show a FPS (frames per second) counter. */
-    showFps: boolean;
-    /** Show a TPS (ticks per second) counter. */
-    showTps: boolean;
+    /**
+     * Show a FPS (frames per second) counter.
+     *
+     * @default false
+     */
+    hideFps: boolean;
+    /**
+     * Show a TPS (ticks per second) counter.
+     *
+     * @default false
+     */
+    hideTps: boolean;
     /** If `true`, TPS stutters are shown under the counter. */
     debugTps: boolean;
     /** If `true`, a pause/play button shows up for playing / pausing the icon. */
@@ -54,8 +62,8 @@ export type PixiFpsModOptions = PartialWithUndefined<
  */
 export const defaultPixiFpsModOptions = {
     updateIntervalMs: 500,
-    showFps: true,
-    showTps: true,
+    hideFps: true,
+    hideTps: true,
     debugTps: false,
     enableTickPause: false,
 } as const satisfies Required<PixiFpsModOptions>;
@@ -79,11 +87,11 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
         },
         executeImmediately: true,
         execute({state, engine, msSinceLastExecute, ticksSinceLastExecute}) {
-            if (state.showFps == undefined) {
-                state.showFps = options.showFps;
+            if (state.hideFps == undefined) {
+                state.hideFps = options.hideFps;
             }
-            if (state.showTps == undefined) {
-                state.showTps = options.showTps;
+            if (state.hideTps == undefined) {
+                state.hideTps = options.hideTps;
             }
             if (state.debugTps == undefined) {
                 state.debugTps = options.debugTps;
@@ -125,7 +133,7 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
                           ></${ViraButton}>
                       `
                     : undefined,
-                state.showFps &&
+                !state.hideFps &&
                     html`
                         <div
                             title="Frames Per Second"
@@ -142,7 +150,7 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
                             FPS
                         </div>
                     `,
-                state.showTps &&
+                !state.hideTps &&
                     html`
                         <div
                             title="Ticks Per Second"

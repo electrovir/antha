@@ -12,7 +12,7 @@
     "dependencies": {
         "@augment-vir/common": "^31.68.2",
         "@augment-vir/node": "^31.68.2",
-        "element-vir": "^26.14.6"
+        "element-vir": "^26.15.1"
     },
     "engines": {
         "node": ">=22"

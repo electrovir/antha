@@ -21,8 +21,8 @@ describe(createAnthaPixiFpsMod.name, () => {
     it('creates a mod with custom options', () => {
         const mod = createAnthaPixiFpsMod({
             updateIntervalMs: 1000,
-            showFps: false,
-            showTps: false,
+            hideFps: false,
+            hideTps: false,
             debugTps: true,
         });
 
@@ -34,8 +34,8 @@ describe(createAnthaPixiFpsMod.name, () => {
 
     it('initializes state defaults via execute', async () => {
         const mod = createAnthaPixiFpsMod({
-            showFps: true,
-            showTps: false,
+            hideFps: true,
+            hideTps: false,
         });
 
         const engine = new AnthaEngine({
@@ -48,15 +48,15 @@ describe(createAnthaPixiFpsMod.name, () => {
 
         const state = engine.state as Partial<AnthaPixiCanvasModState & ShowCountersState>;
 
-        assert.isTrue(state.showFps);
-        assert.isFalse(state.showTps);
+        assert.isTrue(state.hideFps);
+        assert.isFalse(state.hideTps);
         assert.isDefined(state.tpsStutters);
     });
 
     it('returns undefined when no counters are enabled', async () => {
         const mod = createAnthaPixiFpsMod({
-            showFps: false,
-            showTps: false,
+            hideFps: false,
+            hideTps: false,
             debugTps: false,
         });
 
@@ -74,8 +74,8 @@ describe(createAnthaPixiFpsMod.name, () => {
     it('records stutters when debugTps is enabled', async () => {
         const mod = createAnthaPixiFpsMod({
             debugTps: true,
-            showFps: false,
-            showTps: false,
+            hideFps: false,
+            hideTps: false,
         });
 
         const engine = new AnthaEngine({
@@ -109,8 +109,8 @@ describe(createAnthaPixiFpsMod.name, () => {
     it('caps stutters at 10 entries', async () => {
         const mod = createAnthaPixiFpsMod({
             debugTps: true,
-            showFps: false,
-            showTps: false,
+            hideFps: false,
+            hideTps: false,
         });
 
         const engine = new AnthaEngine({
@@ -147,8 +147,8 @@ describe(createAnthaPixiFpsMod.name, () => {
     it('renders a pause button when enableTickPause is enabled', async () => {
         const mod = createAnthaPixiFpsMod({
             enableTickPause: true,
-            showFps: false,
-            showTps: false,
+            hideFps: false,
+            hideTps: false,
         });
 
         const engine = new AnthaEngine({
@@ -180,8 +180,8 @@ describe(createAnthaPixiFpsMod.name, () => {
 
     it('renders the FPS display with a non-zero value', async () => {
         const mod = createAnthaPixiFpsMod({
-            showFps: true,
-            showTps: false,
+            hideFps: true,
+            hideTps: false,
         });
 
         const engine = new AnthaEngine({
@@ -205,8 +205,8 @@ describe(createAnthaPixiFpsMod.name, () => {
 
     it('renders the TPS display when showTps is enabled', async () => {
         const mod = createAnthaPixiFpsMod({
-            showFps: false,
-            showTps: true,
+            hideFps: false,
+            hideTps: true,
         });
 
         const engine = new AnthaEngine({
@@ -223,8 +223,8 @@ describe(createAnthaPixiFpsMod.name, () => {
     it('click handler toggles the engine loop via pause button', async () => {
         const mod = createAnthaPixiFpsMod({
             enableTickPause: true,
-            showFps: false,
-            showTps: false,
+            hideFps: false,
+            hideTps: false,
         });
 
         const engine = new AnthaEngine({
@@ -263,8 +263,8 @@ describe(createAnthaPixiFpsMod.name, () => {
     it('renders stutter list when debugTps has recorded stutters', async () => {
         const mod = createAnthaPixiFpsMod({
             debugTps: true,
-            showFps: false,
-            showTps: false,
+            hideFps: false,
+            hideTps: false,
         });
 
         const engine = new AnthaEngine({

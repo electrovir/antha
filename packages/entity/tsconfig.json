@@ -15,10 +15,13 @@
     "extends": "../../configs/tsconfig.base.json",
     "references": [
         {
-            "path": "../pixi-canvas"
+            "path": "../asset"
         },
         {
-            "path": "../asset"
+            "path": "../engine"
+        },
+        {
+            "path": "../pixi-canvas"
         }
     ]
 }

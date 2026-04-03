@@ -2,6 +2,7 @@ import {defineConfig} from '@virmator/test/configs/web-test-runner.config.base.m
 import {dirname} from 'path';
 import {fileURLToPath, pathToFileURL} from 'url';
 import {pixiPlugin} from 'web-test-runner-plugin-pixi';
+import {testPorts} from '../../../configs/test-ports.mjs';
 
 const baseConfig = defineConfig({
     coveragePercent: 100,
@@ -16,7 +17,7 @@ const webTestRunnerConfig = {
         pixiPlugin(),
         ...baseConfig.plugins,
     ],
-    port: 8005,
+    port: testPorts['pixi-canvas'],
 };
 
 export default webTestRunnerConfig;

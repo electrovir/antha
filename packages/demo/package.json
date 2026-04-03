@@ -16,20 +16,21 @@
         "@antha/audio": "*",
         "@antha/engine": "*",
         "@antha/entity": "*",
+        "@antha/input": "*",
         "@antha/pixi-canvas": "*",
         "@augment-vir/assert": "^31.68.2",
         "@augment-vir/common": "^31.68.2",
         "@electrovir/color": "^1.7.9",
         "date-vir": "^8.2.1",
         "detect-collisions": "^10.10.2025",
-        "element-vir": "^26.14.6",
+        "element-vir": "^26.15.1",
         "object-shape-tester": "^6.11.0",
         "pixi.js": "^8.17.1",
         "spa-router-vir": "^6.4.1",
         "theme-vir": "^28.25.0",
         "type-fest": "^5.5.0",
         "url-vir": "^2.1.8",
-        "vira": "^31.10.0"
+        "vira": "^31.13.1"
     },
     "devDependencies": {
         "@augment-vir/test": "^31.68.2",
@@ -38,7 +39,7 @@
         "@web/test-runner-playwright": "^0.11.1",
         "istanbul-smart-text-reporter": "^1.1.5",
         "typescript": "^5.9.3",
-        "vite": "^8.0.2"
+        "vite": "^8.0.3"
     },
     "engines": {
         "node": ">=22"
