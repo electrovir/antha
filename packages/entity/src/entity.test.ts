@@ -8,6 +8,7 @@ import {Graphics, ParticleContainer} from 'pixi.js';
 import {defineEntitySuite} from './entity-suite.js';
 import {
     EntityDestroyEvent,
+    EntityEvent,
     entityPositionParamsShape,
     positionParamsMap,
     type BaseEntity,
@@ -35,6 +36,23 @@ function createTestStore(
         assetLoader: options?.assetLoader,
     });
 }
+
+describe(EntityEvent.name, () => {
+    it('maintains the data type', () => {
+        class ScoreEvent extends EntityEvent<{score: number}> {}
+
+        const eventInstance = new ScoreEvent({
+            data: {
+                score: 1,
+            },
+            entityInstance: {} as any,
+        });
+
+        assert.tsType(eventInstance.detail.data).equals<{
+            score: number;
+        }>();
+    });
+});
 
 describe('EntityStore', () => {
     it('throws when calling updateAllEntities on a destroyed store', async () => {

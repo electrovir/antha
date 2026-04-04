@@ -161,6 +161,13 @@ export class EntityStore<State extends AnyObject = any> {
         }
     }
 
+    public listen<EventConstructor extends typeof EntityEvent | typeof EntityDestroyEvent>(
+        event: EventConstructor,
+        callback: () => MaybePromise<void>,
+    ) {
+        return this.listenTarget.listen(event, callback);
+    }
+
     /**
      * Load all the assets for all the given entities. Without this, assets will be loaded on demand
      * only.
@@ -443,7 +450,7 @@ export class EntityEvent<const Data = any> extends defineTypedCustomEvent<{
     entityInstance: BaseEntity;
 }>()('antha-entity-event') {
     constructor(
-        detail: Readonly<
+        public override readonly detail: Readonly<
             undefined | void extends Data
                 ? {
                       entityInstance: BaseEntity;

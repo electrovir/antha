@@ -519,8 +519,7 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
             state.listenersInitialized = true;
 
             entityStore.listenTarget.listen(AsteroidHitEvent, (event) => {
-                // todo: fix the listen type, perhaps add a listen method to entity store directly
-                state.score = (state.score ?? 0) + (event.detail.data as {score: number}).score;
+                state.score = (state.score ?? 0) + event.detail.data.score;
             });
 
             entityStore.listenTarget.listen(PlayerDeathEvent, () => {
