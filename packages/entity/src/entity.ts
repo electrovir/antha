@@ -12,6 +12,7 @@ import {
     makeWritable,
     mapObjectValues,
     type AnyObject,
+    type Coords,
     type ExtractKeysWithMatchingValues,
     type MaybePromise,
     type PartialWithUndefined,
@@ -161,13 +162,6 @@ export class EntityStore<State extends AnyObject = any> {
         }
     }
 
-    public listen<EventConstructor extends typeof EntityEvent | typeof EntityDestroyEvent>(
-        event: EventConstructor,
-        callback: () => MaybePromise<void>,
-    ) {
-        return this.listenTarget.listen(event, callback);
-    }
-
     /**
      * Load all the assets for all the given entities. Without this, assets will be loaded on demand
      * only.
@@ -214,7 +208,7 @@ export class EntityStore<State extends AnyObject = any> {
      *
      * @returns All detected hitbox collisions (if any).
      */
-    public async updateAllEntities(): Promise<void> {
+    public async updateAllEntities(updateParams: Readonly<EntityUpdateParams>): Promise<void> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
         }
@@ -224,7 +218,7 @@ export class EntityStore<State extends AnyObject = any> {
                 entity.immediatelyDestroy();
                 return;
             }
-            await entity.update();
+            await entity.update(updateParams);
             /** Check if the entity was destroyed while updating. */
             // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
             if (entity.isDestroyed) {
@@ -449,8 +443,20 @@ export class EntityEvent<const Data = any> extends defineTypedCustomEvent<{
     data?: any;
     entityInstance: BaseEntity;
 }>()('antha-entity-event') {
+    public declare readonly detail: Readonly<
+        undefined | void extends Data
+            ? {
+                  entityInstance: BaseEntity;
+                  data?: never;
+              }
+            : {
+                  entityInstance: BaseEntity;
+                  data: Data;
+              }
+    >;
+
     constructor(
-        public override readonly detail: Readonly<
+        detail: Readonly<
             undefined | void extends Data
                 ? {
                       entityInstance: BaseEntity;
@@ -476,8 +482,22 @@ export class EntityEvent<const Data = any> extends defineTypedCustomEvent<{
 export class EntityDestroyEvent extends EntityEvent<void> {}
 
 /**
+ * Default params shape for x, y position coordinates.
+ *
+ * Use with {@link positionParamsMap}, or something similar.
+ *
+ * @category Internal
+ */
+export const positionParamsShape = defineShape({
+    x: -1,
+    y: -1,
+} satisfies Coords);
+
+/**
  * Default value for the optional {@link ParamsMap}. This maps the top level params of `x` and `y` to
  * both `x` and `y` in the hitbox and view.
+ *
+ * Use with {@link positionParamsShape}, or something similar.
  *
  * @category Internal
  */
@@ -485,11 +505,11 @@ export const positionParamsMap = {
     hitbox: {
         x: true,
         y: true,
-    },
+    } satisfies Record<keyof Coords, true>,
     view: {
         x: true,
         y: true,
-    },
+    } satisfies Record<keyof Coords, true>,
 } as const satisfies ParamsMap;
 
 /**
@@ -498,6 +518,15 @@ export const positionParamsMap = {
  * @category Internal
  */
 export type ReverseParamsMap = Record<string, Partial<Record<'hitbox' | 'view', string[]>>>;
+
+/**
+ * The parameters given to entity update methods.
+ *
+ * @category Internal
+ */
+export type EntityUpdateParams = {
+    msSinceLastUpdate: number;
+};
 
 /**
  * Base entity class, types, and functionality.
@@ -586,7 +615,7 @@ export abstract class BaseEntity<
      * Called every game tick. Run all entity updates in here. This should be overridden in all
      * entity definition classes.
      */
-    public abstract update(): MaybePromise<void>;
+    public abstract update(updateParams: Readonly<EntityUpdateParams>): MaybePromise<void>;
 
     /** Called after construction to perform async initialization (e.g. creating views). */
     public initInstance(): MaybePromise<void> {

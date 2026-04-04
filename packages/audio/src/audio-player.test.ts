@@ -37,7 +37,8 @@ describe(AudioPlayer.name, () => {
             }),
         );
     });
-    it('allows a specified codec', () => {
+    it('allows a specified codec', async () => {
+        await makePlayable();
         assert.isDefined(
             new AudioPlayer().play({
                 sources: [

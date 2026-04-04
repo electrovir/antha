@@ -17,7 +17,7 @@ const webTestRunnerConfig = {
         pixiPlugin(),
         ...baseConfig.plugins,
     ],
-    port: testPorts.pixiCanvas,
+    port: testPorts.antha,
 };
 
 export default webTestRunnerConfig;

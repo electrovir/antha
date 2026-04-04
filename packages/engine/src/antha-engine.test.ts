@@ -8,6 +8,7 @@ import {
     defaultAnthaEngineOptions,
     defineAnthaMod,
     type AnthaMod,
+    type AnthaModeState,
     type LastExecution,
     type ModCleanupParams,
     type ModInstanceId,
@@ -24,7 +25,7 @@ describe(defineAnthaMod.name, () => {
             },
         };
 
-        assert.strictEquals(defineAnthaMod(mod), mod);
+        assert.strictEquals(defineAnthaMod<AnthaModeState<typeof mod>>(mod), mod);
     });
     it('requires explicit state type', () => {
         defineAnthaMod({
@@ -55,16 +56,6 @@ describe(AnthaEngine.name, () => {
             assert.deepEquals(engine.currentMods, []);
         });
 
-        it('accepts options', () => {
-            const engine = new AnthaEngine({
-                options: {
-                    tickDurationMs: 100,
-                },
-            });
-
-            assert.strictEquals(engine.options.tickDurationMs, 100);
-        });
-
         it('accepts mods', () => {
             const mod: AnthaMod = {
                 modName: 'test',
@@ -76,16 +67,6 @@ describe(AnthaEngine.name, () => {
 
             assert.isLengthExactly(engine.currentMods, 1);
             assert.strictEquals(engine.currentMods[0], mod);
-        });
-
-        it('uses defaults when config properties are undefined', () => {
-            const engine = new AnthaEngine({
-                options: {
-                    tickDurationMs: undefined,
-                },
-            });
-
-            assert.deepEquals(engine.options, defaultAnthaEngineOptions);
         });
     });
 
@@ -199,6 +180,7 @@ describe(AnthaEngine.name, () => {
 
             assert.isDefined(capturedParams);
             assert.isDefined(capturedParams.modInstanceId);
+            assert.isDefined(engine.hostElement);
             assert.deepEquals(
                 selectFrom(capturedParams, {
                     engine: true,
@@ -368,9 +350,6 @@ describe(AnthaEngine.name, () => {
                         execute() {},
                     },
                 ],
-                options: {
-                    tickDurationMs: 10,
-                },
             });
 
             engine.startLoop();
@@ -524,9 +503,6 @@ describe(AnthaEngine.name, () => {
                         },
                     }),
                 ],
-                options: {
-                    tickDurationMs: 50,
-                },
             });
 
             engine.state.myVal = 42;
@@ -621,6 +597,30 @@ describe(AnthaEngine.name, () => {
             assert.isDefined(lastExecution);
             assert.strictEquals(lastExecution.tick, 0);
             assert.isNumber(lastExecution.timeMs);
+        });
+
+        it('applies initState on first execution', async () => {
+            const engine = new AnthaEngine({
+                mods: [
+                    defineAnthaMod<{count: number; label: string}>({
+                        modName: 'test',
+                        initState: {
+                            count: 10,
+                            label: 'hello',
+                        },
+                        execute({state}) {
+                            return html`
+                                <p>${String(state.count)} ${state.label}</p>
+                            `;
+                        },
+                    }),
+                ],
+            });
+
+            await engine.runSingleTick();
+
+            assert.strictEquals(engine.state.count, 10);
+            assert.strictEquals(engine.state.label, 'hello');
         });
 
         it('uses cached template when mod does not execute due to frequency', async () => {
@@ -799,12 +799,8 @@ describe(AnthaEngine.name, () => {
             assert.isFalse(engine.shouldModExecute(mod, lastExecution));
         });
 
-        it('handles durationMs frequency by converting to ticks', () => {
-            const engine = new AnthaEngine({
-                options: {
-                    tickDurationMs: 16,
-                },
-            });
+        it('handles durationMs frequency using wall-clock time', () => {
+            const engine = new AnthaEngine();
             engine.currentTick = 10;
 
             const mod: AnthaMod = {
@@ -816,18 +812,14 @@ describe(AnthaEngine.name, () => {
             };
             const lastExecution: LastExecution = {
                 tick: 0,
-                timeMs: 0,
+                timeMs: performance.now() - 200,
             };
 
             assert.isTrue(engine.shouldModExecute(mod, lastExecution));
         });
 
         it('returns false when durationMs frequency is not reached', () => {
-            const engine = new AnthaEngine({
-                options: {
-                    tickDurationMs: 16,
-                },
-            });
+            const engine = new AnthaEngine();
             engine.currentTick = 5;
 
             const mod: AnthaMod = {
@@ -839,7 +831,7 @@ describe(AnthaEngine.name, () => {
             };
             const lastExecution: LastExecution = {
                 tick: 0,
-                timeMs: 0,
+                timeMs: performance.now(),
             };
 
             assert.isFalse(engine.shouldModExecute(mod, lastExecution));
@@ -863,11 +855,7 @@ describe(AnthaEngine.name, () => {
         });
 
         it('returns true when durationMs is 0 (zero frequency duration)', () => {
-            const engine = new AnthaEngine({
-                options: {
-                    tickDurationMs: 16,
-                },
-            });
+            const engine = new AnthaEngine();
             const mod: AnthaMod = {
                 frequency: {
                     durationMs: 0,
@@ -901,6 +889,19 @@ describe(AnthaEngine.name, () => {
 
             assert.isFalse(engine.shouldModExecute(mod, lastExecution));
         });
+
+        it('handles durationMs frequency with no lastExecution', () => {
+            const engine = new AnthaEngine();
+            const mod: AnthaMod = {
+                frequency: {
+                    durationMs: 160,
+                },
+                modName: 'test',
+                execute() {},
+            };
+
+            assert.isTrue(engine.shouldModExecute(mod, undefined));
+        });
     });
 
     it('stops running when isLoopRunning is set to false', async () => {
@@ -911,9 +912,6 @@ describe(AnthaEngine.name, () => {
                     execute() {},
                 },
             ],
-            options: {
-                tickDurationMs: 10,
-            },
         });
 
         engine.startLoop();
@@ -1155,48 +1153,5 @@ describe(AnthaEngine.name, () => {
 
         await engine.runSingleTick();
         assert.isLengthExactly(engine.currentTemplateArray, 0);
-    });
-
-    it('clamps nextTickTarget when it falls far behind to prevent burst catch-up', async () => {
-        class ExposedEngine extends AnthaEngine {
-            public override nextTickTarget: DOMHighResTimeStamp = 0;
-        }
-
-        const engine = new ExposedEngine({
-            mods: [
-                {
-                    modName: 'test',
-                    execute() {},
-                },
-            ],
-            options: {
-                tickDurationMs: 16,
-            },
-        });
-
-        engine.startLoop();
-        await wait({
-            milliseconds: 50,
-        });
-        engine.stopLoop();
-
-        const ticksBefore = engine.currentTick;
-
-        /**
-         * Simulate a background tab: set the tick target 5 seconds in the past, which would
-         * normally cause hundreds of rapid catch-up ticks.
-         */
-        engine.nextTickTarget = performance.now() - 5000;
-        engine.isLoopRunning = true;
-
-        await wait({
-            milliseconds: 200,
-        });
-        engine.stopLoop();
-
-        const ticksDuringCatchUp = engine.currentTick - ticksBefore;
-        const maxExpectedTicks = Math.ceil(200 / 16) + 5;
-
-        assert.isBelow(ticksDuringCatchUp, maxExpectedTicks);
     });
 });

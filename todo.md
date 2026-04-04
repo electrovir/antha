@@ -1,3 +1,2 @@
--   make the `antha` package the easy-to-drop-in use-all-built-in-mods solution
--   add input handling
--   make (inside input-device-handler) more InputDeviceHandlerOptions properties so that they can be modified at any point during run time and updates read the changes successfully
+-   rename pixi canvas mod to 2d canvas
+-   rename entities to 2d entities (and maybe the mod too)

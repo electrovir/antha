@@ -29,6 +29,7 @@ export type AnthaPixiCanvasModOptions = PartialWithUndefined<{
     canvas: HTMLCanvasElement;
     extraCanvasStyles: CSSResult | string;
     extraCanvasWrapperStyles: CSSResult | string;
+    dynamicCanvasSize: boolean;
 }>;
 
 /**
@@ -74,6 +75,9 @@ export function createAnthaPixiCanvasMod(
                 await pixiApplication.init({
                     ...pixiApplicationOptions,
                     canvas,
+                    ...(modOptions?.dynamicCanvasSize && {
+                        resizeTo: window,
+                    }),
                 });
                 pixiState.pixiApplication = pixiApplication;
             }
@@ -94,21 +98,21 @@ export function createAnthaPixiCanvasMod(
                               align-items: center;
                               overflow: hidden;
                               container-type: size;
-                              ${pixiApplicationOptions.background
-                                  ? css`
-                                        background-color: ${unsafeCSS(
-                                            pixiApplicationOptions.background,
-                                        )};
-                                    `
-                                  : css``}
                               ${unsafeCSS(modOptions?.extraCanvasWrapperStyles)}
                           `}
                       >
                           <canvas
                               style=${css`
                                   box-sizing: border-box;
-                                  width: min(100cqw, calc(100cqh * ${aspectRatio}));
-                                  aspect-ratio: ${aspectRatio};
+                                  ${modOptions?.dynamicCanvasSize
+                                      ? css`
+                                            width: 100%;
+                                            height: 100%;
+                                        `
+                                      : css`
+                                            width: min(100cqw, calc(100cqh * ${aspectRatio}));
+                                            aspect-ratio: ${aspectRatio};
+                                        `}
                                   ${unsafeCSS(modOptions?.extraCanvasStyles)}
                               `}
                               id="pixi-canvas"

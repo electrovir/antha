@@ -8,6 +8,11 @@ import {DeferredPromise} from '@augment-vir/common';
 export async function isPlayingEnabled(
     audioContext: Readonly<BaseAudioContext> = new AudioContext(),
 ): Promise<boolean> {
+    /** Firefox requires an explicit resume after user gesture; other browsers auto-resume. */
+    if (audioContext instanceof AudioContext && audioContext.state === 'suspended') {
+        audioContext.resume().catch(() => {});
+    }
+
     const source = audioContext.createBufferSource();
     source.buffer = audioContext.createBuffer(1, 1, 22_050);
     source.connect(audioContext.destination);

@@ -1,5 +1,5 @@
 import {css, defineElement, html} from '@antha/engine';
-import {type PlayersActiveBindingsMap} from './player-bindings.js';
+import {type PlayersActiveBindings} from './player-bindings.js';
 
 /**
  * An element for debugging player bindings and active player inputs.
@@ -7,7 +7,7 @@ import {type PlayersActiveBindingsMap} from './player-bindings.js';
  * @category Internal
  */
 export const AnthaActiveBindingsDebug = defineElement<{
-    activeBindings: PlayersActiveBindingsMap | undefined;
+    activeBindings: PlayersActiveBindings | undefined;
 }>()({
     tagName: 'antha-active-bindings-debug',
     styles: css`
@@ -15,6 +15,11 @@ export const AnthaActiveBindingsDebug = defineElement<{
             display: flex;
             gap: 16px;
             flex-direction: column;
+            text-shadow:
+                -1px -1px 0 white,
+                1px -1px 0 white,
+                -1px 1px 0 white,
+                1px 1px 0 white;
         }
 
         h2 {

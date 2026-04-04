@@ -1,13 +1,14 @@
-import {css, defineAnthaMod, html, listen} from '@antha/engine';
+import {css, defineAnthaMod, html} from '@antha/engine';
 import {check} from '@augment-vir/assert';
 import {
+    getOrSet,
     mergeDefinedProperties,
     round,
     type PartialWithUndefined,
     type RequiredAndNotNull,
 } from '@augment-vir/common';
 import {colorCss} from '@electrovir/color';
-import {ViraButton, viraThemeDarkOverride} from 'vira';
+import {viraThemeDarkOverride} from 'vira';
 import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
 
 /**
@@ -29,18 +30,10 @@ export type ShowCountersState = {
      * @default false
      */
     hideFps: boolean;
-    /**
-     * Show a TPS (ticks per second) counter.
-     *
-     * @default false
-     */
-    hideTps: boolean;
-    /** If `true`, TPS stutters are shown under the counter. */
-    debugTps: boolean;
-    /** If `true`, a pause/play button shows up for playing / pausing the icon. */
-    enableTickPause: boolean;
-    /** Stores TPS stutters when `debugTps` is turned on. */
-    tpsStutters: number[];
+    /** If `true`, FPS stutters are shown under the counter. */
+    debugFps: boolean;
+    /** Stores FPS stutters when `debugFps` is turned on. */
+    fpsStutters: number[];
 };
 
 /**
@@ -51,8 +44,8 @@ export type ShowCountersState = {
 export type PixiFpsModOptions = PartialWithUndefined<
     {
         /** How frequently the FPS display updates, in milliseconds. */
-        updateIntervalMs: number;
-    } & Omit<ShowCountersState, 'tpsStutters'>
+        fpsUpdateIntervalMs: number;
+    } & Omit<ShowCountersState, 'fpsFrameCount' | 'fpsStutters'>
 >;
 
 /**
@@ -61,11 +54,9 @@ export type PixiFpsModOptions = PartialWithUndefined<
  * @category Internal
  */
 export const defaultPixiFpsModOptions = {
-    updateIntervalMs: 500,
+    fpsUpdateIntervalMs: 500,
     hideFps: false,
-    hideTps: false,
-    debugTps: false,
-    enableTickPause: false,
+    debugFps: false,
 } as const satisfies Required<PixiFpsModOptions>;
 
 /**
@@ -82,75 +73,34 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
 
     return defineAnthaMod<AnthaPixiCanvasModState & ShowCountersState>({
         modName: 'antha-pixi-fps',
+        initState: {
+            hideFps: options.hideFps,
+            debugFps: options.debugFps,
+        },
         frequency: {
-            durationMs: options.updateIntervalMs,
+            durationMs: options.fpsUpdateIntervalMs,
         },
         executeImmediately: true,
-        execute({state, engine, msSinceLastExecute, ticksSinceLastExecute}) {
-            if (state.hideFps == undefined) {
-                state.hideFps = options.hideFps;
-            }
-            if (state.hideTps == undefined) {
-                state.hideTps = options.hideTps;
-            }
-            if (state.debugTps == undefined) {
-                state.debugTps = options.debugTps;
-            }
-            if (state.tpsStutters == undefined) {
-                state.tpsStutters = [];
-            }
+        execute({state, msSinceLastExecute, ticksSinceLastExecute}) {
+            const fpsStutters = getOrSet(state, 'fpsStutters', () => []);
 
             const elapsedSeconds = msSinceLastExecute / 1000;
-            const tps =
+            const fps =
                 elapsedSeconds > 0
                     ? round(ticksSinceLastExecute / elapsedSeconds, {
                           digits: 1,
                       })
                     : 0;
 
-            const expectedTps = Math.floor(1000 / engine.options.tickDurationMs);
-
-            if (state.debugTps && tps > 0 && tps < expectedTps * 0.98) {
-                state.tpsStutters.push(tps);
-                if (state.tpsStutters.length > 10) {
-                    state.tpsStutters.splice(0, state.tpsStutters.length - 10);
+            if (state.debugFps && fps > 0 && fps < 55) {
+                fpsStutters.push(fps);
+                if (fpsStutters.length > 10) {
+                    fpsStutters.splice(0, fpsStutters.length - 10);
                 }
             }
 
             const counters = [
-                state.enableTickPause
-                    ? html`
-                          <${ViraButton.assign({
-                              text: engine.isLoopRunning ? 'X' : '>',
-                          })}
-                              ${listen('click', () => {
-                                  if (engine.isLoopRunning) {
-                                      engine.stopLoop();
-                                  } else {
-                                      engine.startLoop();
-                                  }
-                              })}
-                          ></${ViraButton}>
-                      `
-                    : undefined,
                 !state.hideFps &&
-                    html`
-                        <div
-                            title="Frames Per Second"
-                            style=${css`
-                                ${colorCss(
-                                    viraThemeDarkOverride.asTheme.colors[
-                                        'vira-green-foreground-body'
-                                    ],
-                                )}
-                                padding: 1px 3px;
-                            `}
-                        >
-                            ${Math.round(state.pixi?.pixiApplication?.ticker.FPS || 0).toFixed(0)}
-                            FPS
-                        </div>
-                    `,
-                !state.hideTps &&
                     html`
                         <div
                             title="Ticks Per Second"
@@ -163,14 +113,14 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
                                 padding: 1px 3px;
                             `}
                         >
-                            ${Math.round(tps).toFixed(0)} TPS
+                            ${Math.round(fps).toFixed(0)} FPS
                         </div>
                     `,
-                state.debugTps &&
-                    state.tpsStutters.length > 0 &&
+                state.debugFps &&
+                    fpsStutters.length > 0 &&
                     html`
                         <div
-                            title="TPS Stutters"
+                            title="FPS Stutters"
                             style=${css`
                                 ${colorCss(
                                     viraThemeDarkOverride.asTheme.colors[
@@ -182,7 +132,7 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
                                 flex-direction: column;
                             `}
                         >
-                            ${state.tpsStutters.map(
+                            ${fpsStutters.map(
                                 (stutter) => html`
                                     <span>${Math.round(stutter)}</span>
                                 `,

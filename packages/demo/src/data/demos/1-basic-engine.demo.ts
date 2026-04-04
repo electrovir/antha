@@ -29,8 +29,8 @@ const tickCounterMod: AnthaMod = {
     },
 };
 
-const tpsTrackerMod: AnthaMod<{
-    tps: number;
+const fpsTrackerMod: AnthaMod<{
+    fps: number;
 }> = {
     modName: 'demo-tsp-tracker',
     frequency: {
@@ -40,7 +40,7 @@ const tpsTrackerMod: AnthaMod<{
     execute({state, msSinceLastExecute, ticksSinceLastExecute}) {
         const elapsedSeconds = msSinceLastExecute / 1000;
 
-        state.tps =
+        state.fps =
             elapsedSeconds > 0
                 ? round(ticksSinceLastExecute / elapsedSeconds, {
                       digits: 1,
@@ -59,7 +59,7 @@ const tpsTrackerMod: AnthaMod<{
                     ${colorCss(viraThemeDarkOverride.asTheme.colors['vira-green-foreground-body'])}
                 `}
             >
-                ${state.tps}
+                ${state.fps}
             </div>
         `;
     },
@@ -116,7 +116,7 @@ export const basicEngineDemo: AnthaDemo = {
         return new AnthaEngine({
             mods: [
                 tickCounterMod,
-                tpsTrackerMod,
+                fpsTrackerMod,
                 colorCyclerMod,
             ],
         });

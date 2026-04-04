@@ -93,11 +93,10 @@ export type AnthaReadRawInputModState = {
 export function createAnthaReadRawInputMod(options: Readonly<AnthaReadRawInputModOptions> = {}) {
     return defineAnthaMod<AnthaReadRawInputModState>({
         modName: 'antha-read-raw-input',
+        initState: {
+            debugRawInputs: !!options.debugRawInputs,
+        },
         execute({state, msSinceLastExecute}) {
-            if (options.debugRawInputs != undefined && state.debugRawInputs == undefined) {
-                state.debugRawInputs = options.debugRawInputs;
-            }
-
             if (!state.deviceHandler) {
                 state.deviceHandler =
                     options.deviceHandler ||

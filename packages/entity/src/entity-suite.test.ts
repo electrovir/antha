@@ -262,8 +262,12 @@ describe(defineEntitySuite.name, () => {
 
         const instance = await entityStore.addEntity(MyEntity);
 
-        await entityStore.updateAllEntities();
-        await entityStore.updateAllEntities();
+        await entityStore.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
+        await entityStore.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
         assert.strictEquals(updateCount, 2);
 
         instance.destroy();

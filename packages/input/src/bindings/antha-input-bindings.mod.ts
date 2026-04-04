@@ -5,7 +5,6 @@ import {
     getEnumValues,
     getObjectTypedEntries,
     mapObjectValuesSync,
-    type PartialWithUndefined,
     type SelectFrom,
 } from '@augment-vir/common';
 import {GamepadInputDeviceKey} from 'input-device-handler';
@@ -19,12 +18,12 @@ import {AnthaBindingAssignmentsDebug} from './antha-binding-assignments-debug.el
 import {
     AnyGamepad,
     type ActiveBinding,
-    type ActiveBindingsMap,
+    type ActiveBindings,
     type AnthaDeviceKey,
     type BindingAssignment,
     type BindingAssignments,
     type GamepadKeyMap,
-    type PlayersActiveBindingsMap,
+    type PlayersActiveBindings,
     type PlayersBindingAssignments,
 } from './player-bindings.js';
 
@@ -33,12 +32,14 @@ import {
  *
  * @category Internal
  */
-export type AnthaInputBindingsModOptions = PartialWithUndefined<
+export type AnthaInputBindingsModOptions<BindingNames extends string = string> = Partial<
     SelectFrom<
-        AnthaInputBindingsState,
+        AnthaInputBindingsState<BindingNames>,
         {
             debugBindingAssignments: true;
             debugActiveBindings: true;
+            bindingAssignments: true;
+            gamepadKeyMap: true;
         }
     >
 >;
@@ -52,12 +53,12 @@ export type AnthaInputBindingsState<BindingNames extends string = string> = Pick
     AnthaReadRawInputModState,
     'rawInputs'
 > & {
-    /** Maps gamepads to different gamepad slots. See {@link GamepadKeyMap} for more information. */
+    /** Maps gamepads to different gamepad slots. See `GamepadKeyMap` for more information. */
     gamepadKeyMap: GamepadKeyMap;
     /** Bindings for all players. */
     bindingAssignments: PlayersBindingAssignments<BindingNames>;
     /** All active bindings for all players. */
-    activeBindings: PlayersActiveBindingsMap<BindingNames>;
+    activeBindings: PlayersActiveBindings<BindingNames>;
     debugBindingAssignments: boolean;
     debugActiveBindings: boolean;
 };
@@ -76,20 +77,8 @@ export function createAnthaInputBindingsMod<const BindingNames extends string = 
 ) {
     return defineAnthaMod<AnthaInputBindingsState<BindingNames>>({
         modName: 'antha-input-bindings',
+        initState: options,
         execute({state, msSinceLastExecute}) {
-            if (
-                options.debugActiveBindings != undefined &&
-                state.debugActiveBindings == undefined
-            ) {
-                state.debugActiveBindings = options.debugActiveBindings;
-            }
-            if (
-                options.debugBindingAssignments != undefined &&
-                state.debugBindingAssignments == undefined
-            ) {
-                state.debugBindingAssignments = options.debugBindingAssignments;
-            }
-
             if (!state.bindingAssignments || !state.rawInputs) {
                 /** Nothing to do if there are no bindings or inputs. */
                 state.activeBindings = {};
@@ -110,7 +99,7 @@ export function createAnthaInputBindingsMod<const BindingNames extends string = 
                 state.activeBindings = newPlayersActiveBindingsMap;
             }
 
-            const assignmentDebugElement = state.debugActiveBindings
+            const assignmentDebugElement = state.debugBindingAssignments
                 ? html`
                       <${AnthaBindingAssignmentsDebug.assign({
                           bindingAssignments: state.bindingAssignments,
@@ -165,11 +154,11 @@ function readPlayerBindings<BindingNames extends string>({
     gamepadKeyMap,
 }: {
     bindingsMap: Readonly<BindingAssignments<BindingNames>>;
-    activeBindingsMap: Readonly<ActiveBindingsMap<BindingNames>> | undefined;
+    activeBindingsMap: Readonly<ActiveBindings<BindingNames>> | undefined;
     rawInputs: Readonly<RawInputs> | undefined;
     msSinceLastExecute: DOMHighResTimeStamp;
     gamepadKeyMap: GamepadKeyMap | undefined;
-}): ActiveBindingsMap<BindingNames> {
+}): ActiveBindings<BindingNames> {
     return getObjectTypedEntries(
         bindingsMap satisfies BindingAssignments as BindingAssignments,
     ).reduce(
@@ -221,8 +210,8 @@ function readPlayerBindings<BindingNames extends string>({
                 }, 0);
 
                 const previousActiveBinding = (
-                    activeBindingsMap satisfies ActiveBindingsMap | undefined as
-                        | ActiveBindingsMap
+                    activeBindingsMap satisfies ActiveBindings | undefined as
+                        | ActiveBindings
                         | undefined
                 )?.[bindingName];
 
@@ -247,6 +236,6 @@ function readPlayerBindings<BindingNames extends string>({
 
             return accum;
         },
-        {} satisfies ActiveBindingsMap as ActiveBindingsMap,
+        {} satisfies ActiveBindings as ActiveBindings,
     );
 }

@@ -1,5 +1,5 @@
 import {anthaAssetModName, AssetLoader, type AnthaAssetModState} from '@antha/asset';
-import {defineAnthaMod, html, SkipExecution} from '@antha/engine';
+import {defineAnthaMod, html, SkipExecution, type AnthaMod} from '@antha/engine';
 import {type AnthaPixiCanvasModState} from '@antha/pixi-canvas';
 import {
     mergeDefinedProperties,
@@ -14,7 +14,7 @@ import {type EntityStore, type EntityStoreConstructorParams} from './entity.js';
  *
  * @category Internal
  */
-export type AnthaEntityModState<State extends AnyObject> = {
+export type AnthaEntityModState<State extends AnyObject = any> = {
     entityStore: EntityStore<Partial<AnthaEntityModState<State>>>;
     debugHitboxes: boolean;
 } & State &
@@ -22,31 +22,35 @@ export type AnthaEntityModState<State extends AnyObject> = {
     AnthaAssetModState;
 
 /**
+ * Options for {@link createAnthaEntityMod}.
+ *
+ * @category Internal
+ */
+export type AnthaEntityModOptions = PartialWithUndefined<
+    EntityStoreConstructorParams & {
+        debug: boolean;
+    }
+>;
+
+/**
  * A mod for rendering entities and handling collisions between them.
  *
  * @category Pre-built Mods
  */
-export function createAnthaEntityMod<State extends AnyObject>(
-    options: Readonly<
-        PartialWithUndefined<
-            EntityStoreConstructorParams & {
-                debug: boolean;
-            }
-        >
-    >,
+export function createAnthaEntityMod<ExtraState extends AnyObject>(
+    options: Readonly<AnthaEntityModOptions> = {},
 ) {
-    const {EntityStore, ...entitySuite} = defineEntitySuite<AnthaEntityModState<State>>();
+    const {EntityStore, ...entitySuite} = defineEntitySuite<AnthaEntityModState<ExtraState>>();
 
-    const mod = defineAnthaMod<AnthaEntityModState<State>>({
+    const mod = defineAnthaMod<AnthaEntityModState>({
         modName: 'antha-entity',
+        initState: {
+            debugHitboxes: !!options.debug,
+        },
         cleanup({state}) {
             state.entityStore?.destroy();
         },
-        async execute({state, engine}) {
-            if (state.debugHitboxes == undefined) {
-                state.debugHitboxes = !!options.debug;
-            }
-
+        async execute({state, engine, msSinceLastExecute}) {
             /**
              * If we don't have a mod that is expected to create the asset loader, then we create
              * one ourself.
@@ -65,7 +69,9 @@ export function createAnthaEntityMod<State extends AnyObject>(
             }
 
             if (state.entityStore) {
-                await state.entityStore.updateAllEntities();
+                await state.entityStore.updateAllEntities({
+                    msSinceLastUpdate: msSinceLastExecute,
+                });
             } else if (state.assetLoader) {
                 state.entityStore = new EntityStore(
                     mergeDefinedProperties(
@@ -90,7 +96,7 @@ export function createAnthaEntityMod<State extends AnyObject>(
     });
 
     return {
-        mod,
+        mod: mod as AnthaMod<AnthaEntityModState<ExtraState>>,
         ...entitySuite,
     };
 }

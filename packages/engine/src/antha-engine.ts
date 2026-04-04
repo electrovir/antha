@@ -9,11 +9,13 @@ import {
     type Branded,
     type MaybePromise,
     type PartialWithUndefined,
+    type RequiredAndNotNull,
 } from '@augment-vir/common';
 import {createId} from '@paralleldrive/cuid2';
 import {css, html, type HtmlInterpolation} from 'element-vir';
 import {Observable} from 'observavir';
 import {type RequireExactlyOne} from 'type-fest';
+import {AnthaUi} from './antha-ui.element.js';
 import {type AnthaLogger} from './logger/antha-logger.js';
 import {browserAnthaLogger} from './logger/browser-antha-logger.js';
 
@@ -129,7 +131,7 @@ export type ModOptions = {
  * };
  * ```
  */
-export type AnthaMod<State extends AnyObject = AnyObject> = {
+export type AnthaMod<State extends AnyObject = any> = {
     /**
      * Not used by the Antha engine, just a nice string to help debugging so you can which mod is
      * which.
@@ -143,6 +145,7 @@ export type AnthaMod<State extends AnyObject = AnyObject> = {
     execute: (this: void, params: Readonly<ModExecuteParams<NoInfer<State>>>) => ModExecuteResult;
 } & PartialWithUndefined<
     {
+        initState: Partial<NoInfer<State>>;
         /**
          * Use this to cleanup resources that the mod has created. This is called when the engine is
          * reset.
@@ -153,6 +156,14 @@ export type AnthaMod<State extends AnyObject = AnyObject> = {
         ) => MaybePromise<void>;
     } & ModOptions
 >;
+
+/**
+ * Extracts state type from a mod.
+ *
+ * @category Internal
+ */
+export type AnthaModeState<Mod extends AnthaMod> =
+    Mod extends AnthaMod<infer State> ? State : never;
 
 /**
  * A helper for defining {@link AnthaMod} inline. This is _not_ required in order to define an
@@ -186,33 +197,20 @@ export function defineAnthaMod<State extends AnyObject = never>(
  *
  * @category Engine
  */
-export type AnthaEngineOptions = {
-    /** The minimum milliseconds between each tick. */
-    tickDurationMs: number;
-    /**
-     * Maximum number of ticks to execute per scheduling frame. When the engine falls behind (e.g.
-     * the browser throttled the tab), it will run up to this many ticks to catch up before yielding
-     * back to the scheduler. This prevents entities from freezing when ticks are delayed while also
-     * capping runaway catch-up after long pauses.
-     *
-     * @default 4
-     */
-    maxTicksPerFrame: number;
+export type AnthaEngineOptions = PartialWithUndefined<{
     /**
      * A custom logger to handle mod and engine logs. By default, this merely logs to the browser
      * console.
      */
     logger: AnthaLogger;
-};
+}>;
 
 /**
  * Default values for {@link AnthaEngineOptions}.
  *
  * @category Internal
  */
-export const defaultAnthaEngineOptions: AnthaEngineOptions = {
-    tickDurationMs: 16,
-    maxTicksPerFrame: 4,
+export const defaultAnthaEngineOptions: RequiredAndNotNull<AnthaEngineOptions> = {
     logger: browserAnthaLogger,
 };
 
@@ -241,7 +239,7 @@ export type AnthaEngineInit<State extends AnyObject = AnyObject> = PartialWithUn
      *
      * @default defaultAnthaEngineOptions
      */
-    options: PartialWithUndefined<AnthaEngineOptions>;
+    engineOptions: Readonly<AnthaEngineOptions>;
     /**
      * The host element to start the Antha engine with.
      *
@@ -278,9 +276,9 @@ export type AnthaEngineInit<State extends AnyObject = AnyObject> = PartialWithUn
 export class AnthaEngine<State extends AnyObject = AnyObject> {
     constructor(init?: AnthaEngineInit<State> | undefined) {
         this.state = init?.initState || {};
-        this.options = mergeDefinedProperties(defaultAnthaEngineOptions, init?.options);
+        this.options = mergeDefinedProperties(defaultAnthaEngineOptions, init?.engineOptions);
         this.currentMods = init?.mods || [];
-        this.hostElement = init?.hostElement || globalThis.document.documentElement;
+        this.hostElement = init?.hostElement;
         this.log = this.options.logger;
     }
 
@@ -290,8 +288,28 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
      */
     public log: AnthaLogger;
 
+    /** Get this.hostElement but if one doesn't exist yet, create one. */
+    protected getEnsuredHostElement(): HTMLElement {
+        if (!this.hostElement) {
+            const instance = globalThis.document.createElement(
+                AnthaUi.tagName,
+            ) as typeof AnthaUi.InstanceType;
+            this.hostElement = instance;
+            instance.assignInputs({
+                engine: this,
+                options: {
+                    disableConnectStart: true,
+                    disableDisconnectReset: true,
+                },
+            });
+            globalThis.document.body.append(instance);
+        }
+
+        return this.hostElement;
+    }
+
     /** The element that this engine considers itself to be "hosted" in. */
-    public hostElement: HTMLElement;
+    public hostElement: HTMLElement | undefined;
     /**
      * Hook into this observable for updating event-based code, like UI elements. This is used
      * directly in AnthaUi to update the UI.
@@ -301,7 +319,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
         equalityCheck: undefined,
     });
     /** The current engine options. This can be modified at any time. */
-    public readonly options: AnthaEngineOptions;
+    public readonly options: RequiredAndNotNull<AnthaEngineOptions>;
     /** The current mods to execute. This can be modified at any time. */
     public readonly currentMods: AnthaMod[];
     /**
@@ -359,7 +377,6 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
         await waitUntil.isFalse(() => this.isTickRunning);
 
         this.currentTick = 0;
-        this.nextTickTarget = 0;
 
         /** Clear all per-mod tracking for current mods. */
         await awaitedForEach(this.currentMods, async (mod) => {
@@ -367,7 +384,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
             this.currentTemplateMap.delete(mod);
             await mod.cleanup?.({
                 engine: this,
-                hostElement: this.hostElement,
+                hostElement: this.getEnsuredHostElement(),
                 modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
                     applyBrand<ModInstanceId>(createId()),
                 ),
@@ -398,49 +415,21 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
         }
 
         this.engineStartTime = performance.now();
-        this.nextTickTarget = this.engineStartTime;
         this.isLoopRunning = true;
 
         void this.runTickInLoop();
         return true;
     }
 
-    /** When the next tick should execute. */
-    protected nextTickTarget: DOMHighResTimeStamp = 0;
-
-    /**
-     * Execute ticks in a loop using a fixed-timestep accumulator. When the engine falls behind
-     * (e.g. setTimeout fires late, GC pause, background tab), multiple ticks run to catch up
-     * instead of being silently skipped. A per-frame cap prevents runaway catch-up after long
-     * pauses.
-     */
+    /** Execute a single tick on each render frame. */
     protected async runTickInLoop() {
         if (!this.isLoopRunning) {
             return;
         }
 
-        const now = performance.now();
-        let ticksThisFrame = 0;
+        await this.runSingleTick();
 
-        while (this.nextTickTarget <= now && ticksThisFrame < this.options.maxTicksPerFrame) {
-            await this.runSingleTick();
-            this.nextTickTarget += this.options.tickDurationMs;
-            ticksThisFrame++;
-        }
-
-        const afterTickTime = performance.now();
-
-        if (this.nextTickTarget < afterTickTime) {
-            /**
-             * Still behind after the per-frame cap. Skip ahead to prevent permanent lag spiral
-             * (e.g. returning from a long background-tab throttle).
-             */
-            this.nextTickTarget = afterTickTime + this.options.tickDurationMs;
-        }
-
-        const nextDelay = Math.max(0, this.nextTickTarget - afterTickTime);
-
-        setTimeout(() => this.runTickInLoop(), nextDelay);
+        requestAnimationFrame(() => this.runTickInLoop());
     }
 
     /**
@@ -468,6 +457,10 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
             let executeResult: HtmlInterpolation | void | SkipExecution | undefined;
 
             if (shouldExecute) {
+                if (!lastExecution && mod.initState) {
+                    Object.assign(this.state, mod.initState);
+                }
+
                 const rawResult = mod.execute({
                     engine: this,
                     modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
@@ -479,7 +472,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
                     executeImmediately: mod.executeImmediately || false,
                     frequency: mod.frequency || undefined,
                     lastExecution,
-                    hostElement: this.hostElement,
+                    hostElement: this.getEnsuredHostElement(),
                     msSinceLastExecute:
                         executionStart - (lastExecution?.timeMs ?? this.engineStartTime),
                 });
@@ -533,17 +526,16 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
     ): boolean {
         if (!mod.frequency || (!lastExecution && mod.executeImmediately)) {
             return true;
+        } else if (mod.frequency.ticks) {
+            const ticksSinceLastExecution = this.currentTick - (lastExecution?.tick || 0);
+
+            return ticksSinceLastExecution >= mod.frequency.ticks;
+        } else if (mod.frequency.durationMs) {
+            const msSinceLastExecution = performance.now() - (lastExecution?.timeMs || 0);
+
+            return msSinceLastExecution >= mod.frequency.durationMs;
         }
 
-        const ticksBetweenExecutions =
-            mod.frequency.ticks ?? mod.frequency.durationMs / this.options.tickDurationMs;
-
-        if (!ticksBetweenExecutions) {
-            return true;
-        }
-
-        const ticksSinceLastExecution = this.currentTick - (lastExecution?.tick || 0);
-
-        return ticksSinceLastExecution >= ticksBetweenExecutions;
+        return true;
     }
 }

@@ -77,7 +77,7 @@ export type PlayersBindingAssignments<BindingNames extends string = string> = Re
 >;
 
 /**
- * An individual active binding. Used in `createAnthaReadBindingsMod` and {@link ActiveBindingsMap}.
+ * An individual active binding. Used in `createAnthaReadBindingsMod` and {@link ActiveBindings}.
  *
  * @category Internal
  */
@@ -112,11 +112,11 @@ export type ActiveBinding = {
 
 /**
  * A collection of all active bindings for an individual player. Used in
- * `createAnthaReadBindingsMod` and {@link PlayersActiveBindingsMap}.
+ * `createAnthaReadBindingsMod` and {@link PlayersActiveBindings}.
  *
  * @category Internal
  */
-export type ActiveBindingsMap<BindingNames extends string = string> = Partial<
+export type ActiveBindings<BindingNames extends string = string> = Partial<
     Record<BindingNames, ActiveBinding>
 >;
 
@@ -126,7 +126,7 @@ export type ActiveBindingsMap<BindingNames extends string = string> = Partial<
  *
  * @category Internal
  */
-export type PlayersActiveBindingsMap<BindingNames extends string = string> = Record<
+export type PlayersActiveBindings<BindingNames extends string = string> = Record<
     PlayerPosition,
-    ActiveBindingsMap<BindingNames>
+    ActiveBindings<BindingNames>
 >;

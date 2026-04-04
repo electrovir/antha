@@ -1,5 +1,5 @@
 import {type PartialWithUndefined} from '@augment-vir/common';
-import {css, defineElement} from 'element-vir';
+import {css, defineElement, nothing} from 'element-vir';
 import {type AnthaEngine} from './antha-engine.js';
 
 /**
@@ -36,10 +36,12 @@ export type AnthaUiOptions = {
  * const engine = new AnthaEngine();
  * ```
  */
-export const AnthaUi = defineElement<{
-    engine: AnthaEngine;
-    options?: Readonly<PartialWithUndefined<AnthaUiOptions>>;
-}>()({
+export const AnthaUi = defineElement<
+    PartialWithUndefined<{
+        engine: AnthaEngine;
+        options: Readonly<PartialWithUndefined<AnthaUiOptions>>;
+    }>
+>()({
     tagName: 'antha-ui',
     styles: css`
         :host {
@@ -62,7 +64,7 @@ export const AnthaUi = defineElement<{
     },
     cleanup({inputs, updateState}) {
         if (!inputs.options?.disableDisconnectReset) {
-            void inputs.engine.reset();
+            void inputs.engine?.reset();
         }
         updateState({
             /** Remove the observable on cleanup to stop render updates. */
@@ -70,12 +72,17 @@ export const AnthaUi = defineElement<{
         });
     },
     render({state, updateState, inputs, host}) {
+        if (!inputs.engine) {
+            return nothing;
+        }
+
         if (
             inputs.engine.hostElement !== host &&
-            inputs.engine.hostElement === globalThis.document.documentElement
+            (!inputs.engine.hostElement ||
+                inputs.engine.hostElement === globalThis.document.documentElement)
         ) {
             /**
-             * Automatically attach this element's host to the engine's host element is one has not
+             * Automatically attach this element's host to the engine's host element if one has not
              * been specifically set already.
              */
             inputs.engine.hostElement = host;

@@ -1,11 +1,14 @@
 /** @typedef {keyof typeof testPorts} TestPackageName */
 
+let basePort = 8500;
+
 /** Port assignments for each package's web-test-runner. */
 export const testPorts = {
-    asset: 8001,
-    audio: 8002,
-    engine: 8003,
-    entity: 8004,
-    input: 8005,
-    'pixi-canvas': 8006,
+    antha: ++basePort,
+    asset: ++basePort,
+    audio: ++basePort,
+    engine: ++basePort,
+    entity: ++basePort,
+    input: ++basePort,
+    pixiCanvas: ++basePort,
 };

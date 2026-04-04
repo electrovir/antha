@@ -133,4 +133,26 @@ describe(createAnthaPixiCanvasMod.name, () => {
 
         testWeb.cleanupRender();
     });
+
+    it('uses dynamic canvas sizing when dynamicCanvasSize is true', async () => {
+        const mod = createAnthaPixiCanvasMod({
+            dynamicCanvasSize: true,
+        });
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+            mods: [
+                mod,
+            ],
+        });
+
+        engine.state.pixi = {
+            canvas: document.createElement('canvas'),
+        };
+
+        await engine.runSingleTick();
+
+        assert.isDefined(engine.state.pixi.pixiApplication);
+        assert.isDefined(engine.currentTemplateMap.get(mod));
+
+        await engine.reset();
+    });
 });

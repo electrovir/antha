@@ -5,7 +5,6 @@ import {
     defaultPixiOptions,
     type AnthaPixiCanvasModState,
 } from '@antha/pixi-canvas';
-import {assertWrap} from '@augment-vir/assert';
 import {createArray, randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {Graphics} from 'pixi.js';
@@ -50,31 +49,27 @@ const ballColors = [
 ];
 
 const maxBallSpeed = 200;
+const physicsStepDurationMs = 1000;
 
 const bouncingBallsMod: AnthaMod<
     AnthaPixiCanvasModState & {
         balls: Ball[];
         lastPhysicsTime: number;
+        physicsStepMs: number;
         tweenTeardown: (() => void) | undefined;
     }
 > = {
     modName: 'demo-bouncing-balls',
     frequency: {
-        ticks: 50,
+        durationMs: physicsStepDurationMs,
     },
     executeImmediately: true,
-    execute({state, engine, frequency}): typeof SkipExecution | void {
-        /** Engine tick duration (ms) × mod frequency (ticks) = ms between physics steps. */
-        const physicsIntervalMs =
-            engine.options.tickDurationMs *
-            assertWrap.isDefined(assertWrap.isDefined(frequency).ticks);
+    execute({state, msSinceLastExecute}): typeof SkipExecution | void {
         const pixiApp = state.pixi?.pixiApplication;
 
         if (!pixiApp) {
             return SkipExecution;
-        }
-
-        if (!state.balls) {
+        } else if (!state.balls) {
             state.balls = createArray(20, (index) => {
                 const radius = randomInteger({
                     min: 8,
@@ -129,7 +124,7 @@ const bouncingBallsMod: AnthaMod<
 
                 /** Linear interpolation factor: 0 at physics step start, 1 at the next step. */
                 const interpolation = Math.min(
-                    (performance.now() - lastPhysicsTime) / physicsIntervalMs,
+                    (performance.now() - lastPhysicsTime) / (state.physicsStepMs || 1),
                     1,
                 );
 
@@ -171,7 +166,12 @@ const bouncingBallsMod: AnthaMod<
         const width = pixiApp.screen.width;
         const height = pixiApp.screen.height;
 
-        /** Physics step: snapshot previous positions, then advance. */
+        /**
+         * Physics step: snapshot previous positions, then advance. On the first execution
+         * msSinceLastExecute is near-zero, so fall back to the expected step duration so the tween
+         * interpolates smoothly from the start.
+         */
+        state.physicsStepMs = state.physicsStepMs ? msSinceLastExecute : physicsStepDurationMs;
         state.lastPhysicsTime = performance.now();
 
         for (const ball of state.balls) {

@@ -231,6 +231,72 @@ describe(AnthaUi.tagName, () => {
         assert.strictEquals(engine.currentTick, afterResetTick);
     });
 
+    it('renders nothing when no engine is provided', async () => {
+        const fixture = await testWeb.render(html`
+            <${AnthaUi}></${AnthaUi}>
+        `);
+
+        assert.instanceOf(fixture, AnthaUi);
+        assert.isNullish(queryThroughShadow(fixture, 'div'));
+
+        testWeb.cleanupRender();
+    });
+
+    it('auto-attaches host element to engine', async () => {
+        const engine = new AnthaEngine({
+            mods: [
+                {
+                    modName: 'test',
+                    execute() {
+                        return html`
+                            <p class="host-test">attached</p>
+                        `;
+                    },
+                },
+            ],
+        });
+
+        const fixture = await testWeb.render(html`
+            <${AnthaUi.assign({
+                engine,
+                options: {
+                    disableConnectStart: true,
+                },
+            })}></${AnthaUi}>
+        `);
+
+        assert.instanceOf(fixture, HTMLElement);
+        assert.strictEquals(engine.hostElement, fixture);
+
+        testWeb.cleanupRender();
+    });
+
+    it('auto-attaches host when engine hostElement is document.documentElement', async () => {
+        const engine = new AnthaEngine({
+            mods: [
+                {
+                    modName: 'test',
+                    execute() {},
+                },
+            ],
+        });
+        engine.hostElement = globalThis.document.documentElement;
+
+        const fixture = await testWeb.render(html`
+            <${AnthaUi.assign({
+                engine,
+                options: {
+                    disableConnectStart: true,
+                },
+            })}></${AnthaUi}>
+        `);
+
+        assert.instanceOf(fixture, HTMLElement);
+        assert.strictEquals(engine.hostElement, fixture);
+
+        testWeb.cleanupRender();
+    });
+
     it('renders templates from multiple mods', async () => {
         const engine = new AnthaEngine({
             mods: [

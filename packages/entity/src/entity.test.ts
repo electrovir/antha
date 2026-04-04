@@ -59,9 +59,15 @@ describe('EntityStore', () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
         store.destroy();
-        await assert.throws(() => store.updateAllEntities(), {
-            matchMessage: 'Cannot operate on a destroyed entity store.',
-        });
+        await assert.throws(
+            () =>
+                store.updateAllEntities({
+                    msSinceLastUpdate: 0,
+                }),
+            {
+                matchMessage: 'Cannot operate on a destroyed entity store.',
+            },
+        );
     });
 
     it('cleans up entities destroyed outside update cycle', async () => {
@@ -79,7 +85,9 @@ describe('EntityStore', () => {
         /** Mark as destroyed outside an update cycle. */
         makeWritable(instance).isDestroyed = true;
 
-        await store.updateAllEntities();
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
@@ -97,7 +105,9 @@ describe('EntityStore', () => {
         }
 
         await store.addEntity(SelfDestroyer);
-        await store.updateAllEntities();
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
@@ -133,7 +143,9 @@ describe('EntityStore', () => {
         await store.addEntity(CollidingEntity);
         await store.addEntity(CollidingEntity);
 
-        await store.updateAllEntities();
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
         assert.isTrue(collisionDetected);
     });
 
@@ -162,7 +174,9 @@ describe('EntityStore', () => {
 
         await store.addEntity(NoOverride);
         await store.addEntity(NoOverride);
-        await store.updateAllEntities();
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
     });
 
     it('handles collisions with non-entity hitboxes', async () => {
@@ -200,7 +214,9 @@ describe('EntityStore', () => {
         );
         store.hitboxSystem.insert(rawHitbox);
 
-        await store.updateAllEntities();
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
     });
 
     it('skips collisions involving destroyed entities', async () => {
@@ -256,7 +272,9 @@ describe('EntityStore', () => {
         await store.addEntity(VictimEntity);
 
         /** Completes without error despite entities being destroyed mid-collision. */
-        await store.updateAllEntities();
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
     });
 
     it('returns entities from getEntities', async () => {
@@ -550,7 +568,9 @@ describe('EntityStore', () => {
         await store.addEntity(AsyncCollideEntity);
         await store.addEntity(AsyncCollideEntity);
 
-        await store.updateAllEntities();
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
         assert.isTrue(asyncCollisionResolved);
     });
 });

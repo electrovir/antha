@@ -10,7 +10,7 @@ import {
     type ViewCreation,
 } from '@antha/entity';
 import {createAnthaPixiCanvasMod, createAnthaPixiFpsMod} from '@antha/pixi-canvas';
-import {assertWrap} from '@augment-vir/assert';
+import {assert, assertWrap} from '@augment-vir/assert';
 import {executeCount, randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {Circle, Polygon} from 'detect-collisions';
@@ -519,6 +519,9 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
             state.listenersInitialized = true;
 
             entityStore.listenTarget.listen(AsteroidHitEvent, (event) => {
+                assert.tsType(event.detail.data).equals<{
+                    score: number;
+                }>();
                 state.score = (state.score ?? 0) + event.detail.data.score;
             });
 
@@ -623,7 +626,7 @@ export const entitiesDemo: AnthaDemo = {
                     `,
                 }),
                 createAnthaPixiFpsMod({
-                    debugTps: true,
+                    debugFps: true,
                 }),
                 entityStoreMod,
                 asteroidsGameMod,

@@ -13,6 +13,13 @@ export const AnthaBindingAssignmentsDebug = defineElement<{
 }>()({
     tagName: 'antha-binding-assignments',
     styles: css`
+        :host {
+            text-shadow:
+                -1px -1px 0 white,
+                1px -1px 0 white,
+                -1px 1px 0 white,
+                1px 1px 0 white;
+        }
         h3,
         h4 {
             margin: 4px;
