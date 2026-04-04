@@ -38,7 +38,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideTps: false,
         });
 
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -46,17 +46,15 @@ describe(createAnthaPixiFpsMod.name, () => {
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaPixiCanvasModState & ShowCountersState>;
-
-        assert.isTrue(state.hideFps);
-        assert.isFalse(state.hideTps);
-        assert.isDefined(state.tpsStutters);
+        assert.isTrue(engine.state.hideFps);
+        assert.isFalse(engine.state.hideTps);
+        assert.isDefined(engine.state.tpsStutters);
     });
 
     it('returns undefined when no counters are enabled', async () => {
         const mod = createAnthaPixiFpsMod({
-            hideFps: false,
-            hideTps: false,
+            hideFps: true,
+            hideTps: true,
             debugTps: false,
         });
 
@@ -78,7 +76,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideTps: false,
         });
 
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -101,9 +99,7 @@ describe(createAnthaPixiFpsMod.name, () => {
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaPixiCanvasModState & ShowCountersState>;
-
-        assert.isLengthExactly(state.tpsStutters || [], 1 as number);
+        assert.isLengthExactly(engine.state.tpsStutters || [], 1);
     });
 
     it('caps stutters at 10 entries', async () => {
@@ -113,7 +109,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideTps: false,
         });
 
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -122,10 +118,8 @@ describe(createAnthaPixiFpsMod.name, () => {
         /** First tick initializes state. */
         await engine.runSingleTick();
 
-        const state = engine.state as AnthaPixiCanvasModState & ShowCountersState;
-
         /** Pre-fill 10 stutters so the next stutter triggers the splice. */
-        state.tpsStutters = Array.from(
+        engine.state.tpsStutters = Array.from(
             {
                 length: 10,
             },
@@ -141,7 +135,7 @@ describe(createAnthaPixiFpsMod.name, () => {
 
         await engine.runSingleTick();
 
-        assert.isLengthExactly(state.tpsStutters, 10 as number);
+        assert.isLengthExactly(engine.state.tpsStutters, 10);
     });
 
     it('renders a pause button when enableTickPause is enabled', async () => {
@@ -151,7 +145,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideTps: false,
         });
 
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -160,9 +154,7 @@ describe(createAnthaPixiFpsMod.name, () => {
         /** First tick initializes state but enableTickPause is not auto-set on state. */
         await engine.runSingleTick();
 
-        const state = engine.state as AnthaPixiCanvasModState & ShowCountersState;
-
-        state.enableTickPause = true;
+        engine.state.enableTickPause = true;
 
         engine.isLoopRunning = true;
 
@@ -180,11 +172,11 @@ describe(createAnthaPixiFpsMod.name, () => {
 
     it('renders the FPS display with a non-zero value', async () => {
         const mod = createAnthaPixiFpsMod({
-            hideFps: true,
+            hideFps: false,
             hideTps: false,
         });
 
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
             mods: [
                 mod,
             ],
@@ -194,7 +186,7 @@ describe(createAnthaPixiFpsMod.name, () => {
 
         mockPixi.ticker.elapsedMS = 16;
 
-        (engine.state as AnthaPixiCanvasModState).pixi = {
+        engine.state.pixi = {
             pixiApplication: mockPixi,
         };
 
@@ -227,13 +219,13 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideTps: false,
         });
 
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
             mods: [
                 mod,
             ],
         });
 
-        (engine.state as AnthaPixiCanvasModState & ShowCountersState).enableTickPause = true;
+        engine.state.enableTickPause = true;
 
         await engine.runSingleTick();
 
@@ -267,7 +259,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideTps: false,
         });
 
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -276,10 +268,8 @@ describe(createAnthaPixiFpsMod.name, () => {
         /** First tick initializes state. */
         await engine.runSingleTick();
 
-        const state = engine.state as AnthaPixiCanvasModState & ShowCountersState;
-
         /** Pre-fill stutters so the stutter list template is rendered. */
-        state.tpsStutters = [
+        engine.state.tpsStutters = [
             50,
             45,
         ];
@@ -294,6 +284,6 @@ describe(createAnthaPixiFpsMod.name, () => {
         await engine.runSingleTick();
 
         assert.isDefined(engine.currentTemplateMap.get(mod));
-        assert.isLengthAtLeast(state.tpsStutters, 2 as number);
+        assert.isLengthAtLeast(engine.state.tpsStutters, 2);
     });
 });

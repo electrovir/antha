@@ -59,11 +59,11 @@ export type AudioSetupParams = Readonly<
  * @category Main
  */
 export class AudioPlayer extends ListenTarget<AllAudioFileEvents> {
-    protected readonly audioFiles: {[SourceKey in string]: AudioFile} = {};
-    protected readonly audioContext = new AudioContext();
-    protected readonly audioCache: AudioFileCache = {};
-    protected readonly isDestroyed = false as boolean;
-    protected readonly outputNode: AudioNode;
+    public readonly audioFiles: {[SourceKey in string]: AudioFile} = {};
+    public readonly audioContext = new AudioContext();
+    public readonly audioCache: AudioFileCache = {};
+    public readonly isDestroyed = false as boolean;
+    public readonly outputNode: AudioNode;
     /**
      * If `true`, indicates that an internal {@link AudioFile} instance has detected that the current
      * browser session is allowing audio playback. Most browsers these days block audio on initial

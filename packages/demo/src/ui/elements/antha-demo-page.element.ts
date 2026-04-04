@@ -1,7 +1,7 @@
 import {type AnthaEngine, AnthaUi} from '@antha/engine';
 import {pixiCanvasZIndex} from '@antha/pixi-canvas';
 import {colorCss} from '@electrovir/color';
-import {css, defineElement, html, nothing} from 'element-vir';
+import {css, type DeclarativeElementDefinition, defineElement, html, nothing} from 'element-vir';
 import {themeDefaultKey} from 'theme-vir';
 import {type RequireExactlyOne} from 'type-fest';
 import {ViraLink, viraTheme} from 'vira';
@@ -33,7 +33,7 @@ export const AnthaDemoPage = defineElement<{
                 | ({
                       demoId: string;
                   } & RequireExactlyOne<{
-                      element: HTMLElement;
+                      element: DeclarativeElementDefinition;
                       engine: AnthaEngine;
                   }>),
         };
@@ -48,11 +48,15 @@ export const AnthaDemoPage = defineElement<{
     render({inputs, state, updateState}) {
         if (inputs.demo.demoPathId !== state.currentEngine?.demoId) {
             updateState({
-                currentEngine: {
-                    demoId: inputs.demo.demoPathId,
-                    engine: inputs.demo.engine?.(),
-                    element: inputs.demo.element,
-                } as typeof state.currentEngine,
+                currentEngine: inputs.demo.engine
+                    ? {
+                          demoId: inputs.demo.demoPathId,
+                          engine: inputs.demo.engine(),
+                      }
+                    : {
+                          demoId: inputs.demo.demoPathId,
+                          element: inputs.demo.element,
+                      },
             });
         }
 

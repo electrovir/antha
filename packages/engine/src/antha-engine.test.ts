@@ -403,7 +403,7 @@ describe(AnthaEngine.name, () => {
 
             await engine.runSingleTick();
             const tickAfterSecond: number = engine.currentTick;
-            assert.strictEquals(tickAfterSecond, 2 as number);
+            assert.strictEquals(tickAfterSecond, 2);
         });
 
         it('executes all mods', async () => {
@@ -516,7 +516,7 @@ describe(AnthaEngine.name, () => {
                         execute(params) {
                             capturedEngine = params.engine;
                             capturedTick = params.currentTick;
-                            capturedState = params.state as Record<string, unknown>;
+                            capturedState = params.state;
                             capturedTicksSince = params.ticksSinceLastExecute;
                             capturedLastExecution = params.lastExecution;
                             capturedExecImmediate = params.executeImmediately;
@@ -535,14 +535,14 @@ describe(AnthaEngine.name, () => {
             assert.strictEquals(capturedEngine, engine);
             assert.strictEquals(capturedTick, 0 as number);
             assert.strictEquals(capturedState, engine.state);
-            assert.strictEquals(capturedTicksSince, 0 as number);
+            assert.strictEquals(capturedTicksSince, 0);
             assert.isUndefined(capturedLastExecution);
             assert.isFalse(capturedExecImmediate);
             assert.isUndefined(capturedFrequency);
         });
 
         it('passes lastExecution on subsequent ticks', async () => {
-            let capturedLastExecution: unknown = 'sentinel';
+            let capturedLastExecution = 'sentinel' as LastExecution | string | undefined;
             let capturedTicksSince: number | undefined;
             const engine = new AnthaEngine({
                 mods: [
@@ -557,13 +557,13 @@ describe(AnthaEngine.name, () => {
             });
 
             await engine.runSingleTick();
-            assert.isUndefined(capturedLastExecution);
+            assert.isUndefined(capturedLastExecution as any);
 
             await engine.runSingleTick();
             assert.isDefined(capturedLastExecution);
-            const lastExec = capturedLastExecution as LastExecution;
-            assert.strictEquals(lastExec.tick, 0 as number);
-            assert.strictEquals(capturedTicksSince, 1 as number);
+            assert.isNotString(capturedLastExecution);
+            assert.strictEquals(capturedLastExecution.tick, 0);
+            assert.strictEquals(capturedTicksSince, 1);
         });
 
         it('handles mods returning void', async () => {
@@ -603,7 +603,7 @@ describe(AnthaEngine.name, () => {
             await engine.runSingleTick();
 
             assert.isDefined(engine.currentTemplateArray[0]);
-            assert.strictEquals(engine.currentTick, 1 as number);
+            assert.strictEquals(engine.currentTick, 1);
         });
 
         it('records lastModExecution after executing', async () => {
@@ -617,11 +617,10 @@ describe(AnthaEngine.name, () => {
 
             await engine.runSingleTick();
 
-            const lastExec = engine.lastModExecution.get(mod);
-            assert.isDefined(lastExec);
-            const execution = lastExec as LastExecution;
-            assert.strictEquals(execution.tick, 0 as number);
-            assert.isNumber(execution.timeMs);
+            const lastExecution = engine.lastModExecution.get(mod);
+            assert.isDefined(lastExecution);
+            assert.strictEquals(lastExecution.tick, 0);
+            assert.isNumber(lastExecution.timeMs);
         });
 
         it('uses cached template when mod does not execute due to frequency', async () => {
@@ -942,7 +941,7 @@ describe(AnthaEngine.name, () => {
         await engine.runSingleTick();
         await engine.runSingleTick();
 
-        assert.strictEquals(engine.currentTick, 2 as number);
+        assert.strictEquals(engine.currentTick, 2);
         assert.isLengthExactly(engine.currentTemplateArray, 0);
     });
 
@@ -1086,7 +1085,7 @@ describe(AnthaEngine.name, () => {
 
         /** Tick 3: frequency not reached (100 ticks), should not re-execute. */
         await engine.runSingleTick();
-        assert.strictEquals(executeCount, 3 as number);
+        assert.strictEquals(executeCount, 3);
     });
 
     it('preserves previous template when SkipExecution is returned after a successful run', async () => {

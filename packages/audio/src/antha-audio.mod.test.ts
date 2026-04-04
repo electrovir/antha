@@ -7,30 +7,28 @@ import {AudioPlayer} from './audio-player.js';
 describe(createAnthaAudioMod.name, () => {
     it('initializes an AudioPlayer on state during execute', async () => {
         const mod = createAnthaAudioMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAudioState>({
             mods: [mod],
         });
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaAudioState>;
-
-        assert.instanceOf(state.audioPlayer, AudioPlayer);
+        assert.instanceOf(engine.state.audioPlayer, AudioPlayer);
     });
 
     it('does not replace an existing AudioPlayer on subsequent ticks', async () => {
         const mod = createAnthaAudioMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAudioState>({
             mods: [mod],
         });
 
         await engine.runSingleTick();
 
-        const firstPlayer = (engine.state as Partial<AnthaAudioState>).audioPlayer;
+        const firstPlayer = engine.state.audioPlayer;
 
         await engine.runSingleTick();
 
-        const secondPlayer = (engine.state as Partial<AnthaAudioState>).audioPlayer;
+        const secondPlayer = engine.state.audioPlayer;
 
         assert.strictEquals(firstPlayer, secondPlayer);
     });
@@ -39,32 +37,30 @@ describe(createAnthaAudioMod.name, () => {
         const mod = createAnthaAudioMod({
             volume: 0.5,
         });
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAudioState>({
             mods: [mod],
         });
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaAudioState>;
-
-        assert.instanceOf(state.audioPlayer, AudioPlayer);
+        assert.instanceOf(engine.state.audioPlayer, AudioPlayer);
     });
 
     it('destroys the AudioPlayer on engine reset', async () => {
         const mod = createAnthaAudioMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAudioState>({
             mods: [mod],
         });
 
         await engine.runSingleTick();
 
-        const player = (engine.state as Partial<AnthaAudioState>).audioPlayer;
+        const player = engine.state.audioPlayer;
         assert.isDefined(player);
-        assert.isFalse((player as unknown as {isDestroyed: boolean}).isDestroyed);
+        assert.isFalse(player.isDestroyed);
 
         await engine.reset();
 
-        assert.isTrue((player as unknown as {isDestroyed: boolean}).isDestroyed);
-        assert.isUndefined((engine.state as Partial<AnthaAudioState>).audioPlayer);
+        assert.isTrue(player.isDestroyed);
+        assert.isUndefined(engine.state.audioPlayer);
     });
 });

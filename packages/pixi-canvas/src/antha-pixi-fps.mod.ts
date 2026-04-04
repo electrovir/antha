@@ -62,8 +62,8 @@ export type PixiFpsModOptions = PartialWithUndefined<
  */
 export const defaultPixiFpsModOptions = {
     updateIntervalMs: 500,
-    hideFps: true,
-    hideTps: true,
+    hideFps: false,
+    hideTps: false,
     debugTps: false,
     enableTickPause: false,
 } as const satisfies Required<PixiFpsModOptions>;

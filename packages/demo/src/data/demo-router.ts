@@ -37,7 +37,7 @@ export const defaultDemoRoute: DemoRoute = {
 function sanitizeSearch(
     route: Readonly<FullSpaRoute<DemoRoutePaths, any, any>>,
 ): DemoRouteSearchParams {
-    const search = route.search as Record<string, string[] | undefined> | undefined;
+    const search: Record<string, string[] | undefined> | undefined = route.search;
 
     if (!search) {
         return undefined;

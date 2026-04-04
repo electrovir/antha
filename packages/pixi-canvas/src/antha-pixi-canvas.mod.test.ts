@@ -13,7 +13,7 @@ describe(createAnthaPixiCanvasMod.name, () => {
 
     it('initializes pixi state and returns a template', async () => {
         const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
             mods: [
                 mod,
             ],
@@ -21,43 +21,39 @@ describe(createAnthaPixiCanvasMod.name, () => {
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaPixiCanvasModState>;
-
-        assert.isDefined(state.pixi);
+        assert.isDefined(engine.state.pixi);
         assert.isDefined(engine.currentTemplateMap.get(mod));
     });
 
     it('creates a PixiApplication when canvas is already in state', async () => {
         const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
             mods: [
                 mod,
             ],
         });
 
-        (engine.state as AnthaPixiCanvasModState).pixi = {
+        engine.state.pixi = {
             canvas: document.createElement('canvas'),
         };
 
         await engine.runSingleTick();
 
-        const state = engine.state as AnthaPixiCanvasModState;
-
-        assert.isDefined(state.pixi.pixiApplication);
+        assert.isDefined(engine.state.pixi.pixiApplication);
 
         await engine.reset();
     });
 
     it('destroys pixi application on cleanup', async () => {
         const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
             mods: [
                 mod,
             ],
         });
         const mockApp = createMockPixi();
 
-        (engine.state as AnthaPixiCanvasModState).pixi = {
+        engine.state.pixi = {
             pixiApplication: mockApp,
         };
 
@@ -68,7 +64,7 @@ describe(createAnthaPixiCanvasMod.name, () => {
 
     it('cleanup is safe when pixi state is empty', async () => {
         const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
             mods: [
                 mod,
             ],
@@ -82,15 +78,15 @@ describe(createAnthaPixiCanvasMod.name, () => {
         const mod = createAnthaPixiCanvasMod({
             pixiOptions: {
                 canvas: externalCanvas,
-            } as any,
+            },
         });
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
             mods: [
                 mod,
             ],
         });
 
-        (engine.state as AnthaPixiCanvasModState).pixi = {
+        engine.state.pixi = {
             pixiApplication: createMockPixi(),
         };
 
@@ -105,7 +101,7 @@ describe(createAnthaPixiCanvasMod.name, () => {
                 background: '',
             },
         });
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
             mods: [
                 mod,
             ],
@@ -118,7 +114,7 @@ describe(createAnthaPixiCanvasMod.name, () => {
 
     it('sets canvas via onDomCreated when rendered', async () => {
         const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
             mods: [
                 mod,
             ],
@@ -131,11 +127,9 @@ describe(createAnthaPixiCanvasMod.name, () => {
         `);
         await engine.runSingleTick();
 
-        const state = engine.state as AnthaPixiCanvasModState;
+        await waitUntil.isDefined(() => engine.state.pixi?.canvas);
 
-        await waitUntil.isTruthy(() => state.pixi.canvas);
-
-        assert.instanceOf(state.pixi.canvas, HTMLCanvasElement);
+        assert.instanceOf(engine.state.pixi?.canvas, HTMLCanvasElement);
 
         testWeb.cleanupRender();
     });

@@ -10,7 +10,7 @@ describe(createMockPixi.name, () => {
 
         assert.isLengthExactly(mock.stage.children, 0 as number);
         mock.stage.addChild(mockChild);
-        assert.isLengthExactly(mock.stage.children, 1 as number);
+        assert.isLengthExactly(mock.stage.children, 1);
         assert.strictEquals(mock.stage.children[0], mockChild);
     });
     it('inits a size', () => {
@@ -28,7 +28,7 @@ describe(createMockPixi.name, () => {
         assert.isDefined(
             createMockPixi({
                 mocks: {
-                    canvas: {} as any,
+                    canvas: {} as HTMLCanvasElement,
                 },
             }).canvas,
         );

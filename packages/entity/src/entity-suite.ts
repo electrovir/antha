@@ -313,14 +313,14 @@ export function defineEntitySuite<State extends AnyObject>(): EntitySuite<State>
     const entityKeys = new Set<string>();
 
     function createDefiner<ParentClass extends typeof BaseEntity>(entityParent: ParentClass) {
-        return (params: DefineEntityArgs<any, any>): AnyObject => {
+        return (params: DefineEntityArgs<any, BaseEntityAssetDefinitions>): AnyObject => {
             if (params.assets) {
-                Object.entries(params.assets).forEach(
+                getObjectTypedEntries(params.assets).forEach(
                     ([
                         key,
                         rawAsset,
                     ]) => {
-                        (rawAsset as Asset).name = [
+                        (rawAsset as typeof rawAsset & Pick<Asset, 'name'>).name = [
                             params.key,
                             key,
                         ].join(':');

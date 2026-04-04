@@ -9,7 +9,6 @@ import {assert, check} from '@augment-vir/assert';
 import {
     ConstructorInstanceMap,
     getObjectTypedEntries,
-    log,
     makeWritable,
     mapObjectValues,
     type AnyObject,
@@ -30,7 +29,6 @@ import {
     type EmptyObject,
     type IsEqual,
     type IsNever,
-    type UnknownArray,
     type Writable,
     type WritableKeysOf,
 } from 'type-fest';
@@ -236,28 +234,22 @@ export class EntityStore<State extends AnyObject = any> {
          * finish before this `updateAllEntities` method exits.
          */
         this.hitboxSystem.checkAll((response) => {
-            try {
-                const primaryEntity: BaseEntity | undefined =
-                    response.a.userData instanceof BaseEntity ? response.a.userData : undefined;
-                const secondaryEntity: BaseEntity | undefined =
-                    response.b.userData instanceof BaseEntity ? response.b.userData : undefined;
+            const primaryEntity: BaseEntity | undefined =
+                response.a.userData instanceof BaseEntity ? response.a.userData : undefined;
+            const secondaryEntity: BaseEntity | undefined =
+                response.b.userData instanceof BaseEntity ? response.b.userData : undefined;
 
-                /* node:coverage ignore next 3 */
-                if (
-                    !primaryEntity ||
-                    !secondaryEntity ||
-                    primaryEntity.isDestroyed ||
-                    secondaryEntity.isDestroyed
-                ) {
-                    return;
-                }
-                const result = primaryEntity.collide(secondaryEntity, response);
-                if (result instanceof Promise) {
-                    collisionPromises.push(result);
-                }
-                /* node:coverage ignore next 3: catch all edge cases just in case */
-            } catch (error) {
-                log.error(error);
+            if (
+                !primaryEntity ||
+                !secondaryEntity ||
+                primaryEntity.isDestroyed ||
+                secondaryEntity.isDestroyed
+            ) {
+                return;
+            }
+            const result = primaryEntity.collide(secondaryEntity, response);
+            if (result instanceof Promise) {
+                collisionPromises.push(result);
             }
         });
         await Promise.all(collisionPromises);
@@ -301,8 +293,8 @@ export class EntityStore<State extends AnyObject = any> {
         }
 
         return await this.addEntity(
-            entityConstructor as any,
-            entityConstructor.deserialize(serializedParams) as any,
+            entityConstructor,
+            entityConstructor.deserialize(serializedParams),
         );
     }
 
@@ -323,7 +315,7 @@ export class EntityStore<State extends AnyObject = any> {
             entityStore: this,
             pixi: this.pixi,
             state: this.state,
-            params: (params as UnknownArray)[0],
+            params: params[0],
             hitboxSystem: this.hitboxSystem,
         } satisfies EntityConstructorParams<any, any>);
         await child.initInstance();

@@ -1,5 +1,5 @@
 import {AnthaEngine, html} from '@antha/engine';
-import {assert, waitUntil} from '@augment-vir/assert';
+import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {
     AnthaAssetLoadingScreen,
@@ -17,29 +17,25 @@ describe(createAnthaAssetMod.name, () => {
 
     it('initializes an AssetLoader on first execute', async () => {
         const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaAssetModState>;
-        assert.isDefined(state.assetLoader);
+        assert.isDefined(engine.state.assetLoader);
     });
 
     it('sets up a progress listener when hideLoadingScreen is false', async () => {
         const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaAssetModState>;
-        assert.isDefined(state.assetLoader);
-
         /** Simulate loading by loading a mock asset. */
-        await state.assetLoader.bulkLoadAssets([
+        await assertWrap.isDefined(engine.state.assetLoader).bulkLoadAssets([
             {
                 name: 'test-asset',
                 maxProgress: 1,
@@ -53,30 +49,28 @@ describe(createAnthaAssetMod.name, () => {
         ]);
 
         await waitUntil.isFalse(() => {
-            return (engine.state as Partial<AnthaAssetModState>).isShowingLoadingScreen ?? false;
+            return engine.state.isShowingLoadingScreen ?? false;
         });
     });
 
     it('cleanup destroys the AssetLoader', async () => {
         const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
         await engine.runSingleTick();
 
-        const state = engine.state as Partial<AnthaAssetModState>;
-        assert.isDefined(state.assetLoader);
+        assert.isDefined(engine.state.assetLoader);
 
         await engine.reset();
 
-        const stateAfterReset = engine.state as Partial<AnthaAssetModState>;
-        assert.isFalse(stateAfterReset.isShowingLoadingScreen || false);
+        assert.isFalse(engine.state.isShowingLoadingScreen || false);
     });
 
     it('renders loading screen template', async () => {
         const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
@@ -84,7 +78,7 @@ describe(createAnthaAssetMod.name, () => {
          * Manually set the loading screen state to trigger rendering. This path only renders when
          * hideLoadingScreen is true (inverted logic in the source).
          */
-        (engine.state as AnthaAssetModState).loadingScreenState = {
+        engine.state.loadingScreenState = {
             current: 0,
             total: 1,
             completedAt: undefined,
@@ -99,11 +93,11 @@ describe(createAnthaAssetMod.name, () => {
 
     it('renders completed loading screen with fade-out', async () => {
         const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
-        (engine.state as AnthaAssetModState).loadingScreenState = {
+        engine.state.loadingScreenState = {
             current: 1,
             total: 1,
             completedAt: 0,
@@ -118,12 +112,12 @@ describe(createAnthaAssetMod.name, () => {
 
     it('returns undefined when loading screen fade has completed', async () => {
         const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
         /** Set completedAt far in the past so the fade has finished. */
-        (engine.state as AnthaAssetModState).loadingScreenState = {
+        engine.state.loadingScreenState = {
             current: 1,
             total: 1,
             completedAt: -(loadingScreenFadeMs + 1000),
@@ -140,7 +134,7 @@ describe(createAnthaAssetMod.name, () => {
         const mod = createAnthaAssetMod({
             hideLoadingScreen: true,
         });
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
@@ -152,7 +146,7 @@ describe(createAnthaAssetMod.name, () => {
 
     it('does not return a template when hideLoadingScreen is false', async () => {
         const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
@@ -165,11 +159,11 @@ describe(createAnthaAssetMod.name, () => {
 
     it('renders zero progress when total is zero', async () => {
         const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine({
+        const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
-        (engine.state as AnthaAssetModState).loadingScreenState = {
+        engine.state.loadingScreenState = {
             current: 0,
             total: 0,
             completedAt: undefined,

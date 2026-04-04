@@ -4,10 +4,10 @@ import {createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {createUtcFullDate} from 'date-vir';
 import {type AnthaDemo} from '../demo.js';
 
-export const rawInputsDebugDemo: AnthaDemo = {
-    demoName: 'Raw Inputs Debug',
-    demoPathId: 'raw-inputs-debug',
-    demoSortDate: createUtcFullDate('2026-04-03'),
+export const rawInputsDemo: AnthaDemo = {
+    demoName: 'Raw Inputs',
+    demoPathId: 'raw-inputs',
+    demoSortDate: createUtcFullDate('2026-04-03T10:00:00'),
     engine() {
         return new AnthaEngine({
             mods: [

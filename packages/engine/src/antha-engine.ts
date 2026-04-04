@@ -233,7 +233,7 @@ export type LastExecution = {
  *
  * @category Internal
  */
-export type AnthaEngineInit = PartialWithUndefined<{
+export type AnthaEngineInit<State extends AnyObject = AnyObject> = PartialWithUndefined<{
     /** The Antha mods to start the Antha engine with. */
     mods: AnthaMod[];
     /**
@@ -248,6 +248,7 @@ export type AnthaEngineInit = PartialWithUndefined<{
      * @default globalThis.document.documentElement
      */
     hostElement: HTMLElement;
+    initState: Partial<State>;
 }>;
 
 /**
@@ -274,8 +275,9 @@ export type AnthaEngineInit = PartialWithUndefined<{
  * });
  * ```
  */
-export class AnthaEngine {
-    constructor(init?: AnthaEngineInit | undefined) {
+export class AnthaEngine<State extends AnyObject = AnyObject> {
+    constructor(init?: AnthaEngineInit<State> | undefined) {
+        this.state = init?.initState || {};
         this.options = mergeDefinedProperties(defaultAnthaEngineOptions, init?.options);
         this.currentMods = init?.mods || [];
         this.hostElement = init?.hostElement || globalThis.document.documentElement;
@@ -324,14 +326,14 @@ export class AnthaEngine {
      * The engine's current state. This is intended to be mutated by mods, but it can also be
      * modified at any time externally.
      */
-    public readonly state: AnyObject = {};
+    public readonly state: Partial<State>;
     /** Total milliseconds elapsed since the engine started. Updated each tick. */
     public totalMs: DOMHighResTimeStamp = 0;
     /** When the engine started running its loop. */
     public engineStartTime: DOMHighResTimeStamp = performance.now();
     /**
-     * Indicates whether the loop is running or not. This can be freely modified at any time to stop
-     * the next tick.
+     * Indicates whether the loop is running or not. This can be freely modified at any time to
+     * start or stop the next tick.
      */
     public isLoopRunning = false;
     /** Indicates whether a tick is currently running or not. This should not be modified externally. */
@@ -458,11 +460,8 @@ export class AnthaEngine {
          * `Promise`.
          */
         for (let index = 0; index < this.currentMods.length; index++) {
-            const mod = this.currentMods[index];
-            /* node:coverage ignore next 3: this is not reliable to trigger but is needed for type guarding. */
-            if (!mod) {
-                continue;
-            }
+            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+            const mod = this.currentMods[index]!;
             const lastExecution = this.lastModExecution.get(mod);
             const shouldExecute = this.shouldModExecute(mod, lastExecution);
 

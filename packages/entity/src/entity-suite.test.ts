@@ -318,7 +318,8 @@ describe(reverseParamsMap.name, () => {
             it: 'skips falsy mapping values',
             input: {
                 hitbox: {
-                    angle: false as any,
+                    // @ts-expect-error: can't assign false to a params map
+                    angle: false,
                     width: 'w',
                 },
             },

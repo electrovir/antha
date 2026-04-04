@@ -185,6 +185,62 @@ describe('EntityStore', () => {
         await store.updateAllEntities();
     });
 
+    it('skips collisions involving destroyed entities', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class DestroyerEntity extends suite.defineEntity({
+            key: 'Destroyer',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation {
+                return {
+                    view: new Graphics().rect(0, 0, 50, 50).fill('pink'),
+                    hitbox: new Circle(
+                        {
+                            x: 0,
+                            y: 0,
+                        },
+                        100,
+                    ),
+                };
+            }
+
+            public override collide(otherEntity: BaseEntity): void {
+                otherEntity.destroy();
+            }
+        }
+
+        class VictimEntity extends suite.defineEntity({
+            key: 'Victim',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation {
+                return {
+                    view: new Graphics().rect(0, 0, 50, 50).fill('green'),
+                    hitbox: new Circle(
+                        {
+                            x: 0,
+                            y: 0,
+                        },
+                        100,
+                    ),
+                };
+            }
+        }
+
+        await store.addEntity(DestroyerEntity);
+        await store.addEntity(VictimEntity);
+        await store.addEntity(VictimEntity);
+
+        /** Completes without error despite entities being destroyed mid-collision. */
+        await store.updateAllEntities();
+    });
+
     it('returns entities from getEntities', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);

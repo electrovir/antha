@@ -24,7 +24,7 @@ export type AnthaPixiCanvasModState = {
  */
 export type AnthaPixiCanvasModOptions = PartialWithUndefined<{
     /** Options for PixiJS init. */
-    pixiOptions: Partial<Omit<ApplicationOptions, 'canvas'>>;
+    pixiOptions: Partial<ApplicationOptions>;
     /** If this is provided, the mod will not create its own canvas. */
     canvas: HTMLCanvasElement;
     extraCanvasStyles: CSSResult | string;

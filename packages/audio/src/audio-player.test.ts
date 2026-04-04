@@ -1,7 +1,7 @@
 import {assert, waitUntil} from '@augment-vir/assert';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
-import {createAudioSourceKey, type AudioFile, type AudioFileCache} from './audio-file.js';
+import {createAudioSourceKey} from './audio-file.js';
 import {
     AudioPlayer,
     type AudioLoadProgressCallbackParams,
@@ -26,15 +26,6 @@ const shortMp3Params: AudioSetupParams = {
 const longerMp3Params: AudioSetupParams = {
     sources: [longerMp3FileUrl],
 };
-
-/** Access protected members for testing. */
-function getInternals(player: AudioPlayer) {
-    return player as unknown as {
-        audioFiles: {[key: string]: AudioFile};
-        audioCache: AudioFileCache;
-        isDestroyed: boolean;
-    };
-}
 
 describe(AudioPlayer.name, () => {
     it('rejects a missing file extension', async () => {
@@ -62,19 +53,18 @@ describe(AudioPlayer.name, () => {
         const player = new AudioPlayer();
         await player.loadFiles([shortMp3Params]);
 
-        const internals = getInternals(player);
         const sourceKey = createAudioSourceKey(shortMp3Params);
-        const audioFile = internals.audioFiles[sourceKey];
+        const audioFile = player.audioFiles[sourceKey];
         assert.isDefined(audioFile);
 
-        assert.isFalse(internals.isDestroyed);
+        assert.isFalse(player.isDestroyed);
         assert.isFalse(audioFile.isDestroyed);
 
         await player.destroy();
 
-        assert.isTrue(internals.isDestroyed);
+        assert.isTrue(player.isDestroyed);
         assert.isTrue(audioFile.isDestroyed);
-        assert.isEmpty(internals.audioFiles);
+        assert.isEmpty(player.audioFiles);
     });
     it('can be destroyed multiple times without error', async () => {
         const player = new AudioPlayer();
@@ -96,7 +86,6 @@ describe(AudioPlayer.name, () => {
     });
     it('sets all isPlayingEnabled', async () => {
         const player = new AudioPlayer();
-        const internals = getInternals(player);
         const shortSourceKey = createAudioSourceKey(shortMp3Params);
         const shortMp3Params2: AudioSetupParams = {
             sources: [shortMp3FileUrl],
@@ -108,8 +97,8 @@ describe(AudioPlayer.name, () => {
             shortMp3Params,
             shortMp3Params2,
         ]);
-        const audioFile = internals.audioFiles[shortSourceKey];
-        const audioFile2 = internals.audioFiles[shortSourceKey2];
+        const audioFile = player.audioFiles[shortSourceKey];
+        const audioFile2 = player.audioFiles[shortSourceKey2];
         assert.isDefined(audioFile);
         assert.isDefined(audioFile2);
 
@@ -128,17 +117,15 @@ describe(AudioPlayer.name, () => {
     it('loads all files', async () => {
         const player = new AudioPlayer();
 
-        const internals = getInternals(player);
-        assert.isEmpty(internals.audioCache);
+        assert.isEmpty(player.audioCache);
 
         await player.loadFiles([shortMp3Params]);
 
-        assert.hasKey(internals.audioCache, shortMp3FileUrl);
-        assert.isLengthExactly(Object.keys(internals.audioCache), 1);
+        assert.hasKey(player.audioCache, shortMp3FileUrl);
+        assert.isLengthExactly(Object.keys(player.audioCache), 1);
     });
     it('loads and unloads multiple files', async () => {
         const player = new AudioPlayer();
-        const internals = getInternals(player);
         const progressResults: AudioLoadProgressCallbackParams[] = [];
 
         await player.loadFiles(
@@ -161,15 +148,15 @@ describe(AudioPlayer.name, () => {
             },
         ]);
 
-        assert.hasKeys(internals.audioCache, [
+        assert.hasKeys(player.audioCache, [
             shortMp3FileUrl,
         ]);
-        assert.strictEquals((await internals.audioCache[shortMp3FileUrl]).using.size, 1);
+        assert.strictEquals((await player.audioCache[shortMp3FileUrl]).using.size, 1);
 
         await player.loadFiles([longerMp3Params]);
 
         assert.hasKeys(
-            internals.audioCache,
+            player.audioCache,
             [
                 shortMp3FileUrl,
                 longerMp3FileUrl,
@@ -180,7 +167,7 @@ describe(AudioPlayer.name, () => {
         await player.unloadFiles([shortMp3Params]);
 
         assert.lacksKey(
-            internals.audioCache,
+            player.audioCache,
             shortMp3FileUrl,
             'should unload the file when no longer in use',
         );
