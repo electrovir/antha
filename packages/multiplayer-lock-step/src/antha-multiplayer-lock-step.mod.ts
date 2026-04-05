@@ -1,18 +1,18 @@
 import {defineAnthaMod} from '@antha/engine';
 import {
+    ControllerConnectionEvent,
+    ControllerRoomListEvent,
+    type MultiplayerClientRooms,
+    MultiplayerController,
+    type MultiplayerControllerParams,
+    type ServiceAndRoomConnectionState,
+    emptyServiceAndRoomConnectionState,
+} from '@antha/multiplayer-core';
+import {
     type JsonCompatibleValue,
     type PartialWithUndefined,
     type SelectFrom,
 } from '@augment-vir/common';
-import {
-    ControllerConnectionEvent,
-    ControllerRoomListEvent,
-    emptyServiceAndRoomConnectionState,
-    MultiplayerController,
-    type MultiplayerControllerParams,
-    type ServiceAndRoomConnectionState,
-} from './multiplayer-service/multiplayer-controller.js';
-import {type MultiplayerClientRooms} from './multiplayer-service/multiplayer-service.js';
 
 export type AnthaMultiplayerLockStepState<MultiplayerPacket extends JsonCompatibleValue = any> = {
     multiplayerLockStep: {

@@ -2,7 +2,7 @@ import {
     MultiplayerWebSocketMessageType,
     type MultiplayerClientRooms,
     type MultiplayerService,
-} from '@antha/multiplayer-lock-step';
+} from '@antha/multiplayer-core';
 import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {
     awaitedForEach,

@@ -16,9 +16,6 @@
     "references": [
         {
             "path": "../engine"
-        },
-        {
-            "path": "../multiplayer-core"
         }
     ]
 }
