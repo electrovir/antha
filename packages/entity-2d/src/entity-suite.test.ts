@@ -5,28 +5,28 @@ import {SeededRandom, type AnyObject} from '@augment-vir/common';
 import {describe, it, itCases} from '@augment-vir/test';
 import {Graphics} from 'pixi.js';
 import {type Constructor} from 'type-fest';
-import {defineEntitySuite, reverseParamsMap, type DefineViewEntity} from './entity-suite.js';
+import {defineEntitySuite2d, reverseParamsMap, type DefineViewEntity2d} from './entity-suite.js';
 import {
-    BaseEntity,
+    BaseEntity2d,
     EntityDestroyEvent,
     EntityEvent,
     entityPositionParamsShape,
-    ViewEntity,
+    ViewEntity2d,
     type EntityPositionParams,
-    type EntityStore,
-    type ViewCreation,
+    type EntityStore2d,
+    type ViewCreation2d,
 } from './entity.js';
 
-describe(defineEntitySuite.name, () => {
+describe(defineEntitySuite2d.name, () => {
     it('infers defined state type', () => {
         const initState = {
             digits: 4,
             random: SeededRandom.fromSeed('test seed'),
         };
 
-        const {defineEntity, EntityStore} = defineEntitySuite<typeof initState>();
+        const {defineEntity, EntityStore} = defineEntitySuite2d<typeof initState>();
 
-        assert.tsType(defineEntity).equals<DefineViewEntity<typeof initState>>();
+        assert.tsType(defineEntity).equals<DefineViewEntity2d<typeof initState>>();
 
         class MyEntity extends defineEntity({
             key: 'MyEntity',
@@ -59,12 +59,12 @@ describe(defineEntitySuite.name, () => {
             state: initState,
             assetLoader: new AssetLoader(),
         });
-        assert.tsType(entityStore).equals<EntityStore<typeof initState>>();
+        assert.tsType(entityStore).equals<EntityStore2d<typeof initState>>();
     });
     it('defaults to undefined context', () => {
-        const {defineEntity, EntityStore} = defineEntitySuite();
+        const {defineEntity, EntityStore} = defineEntitySuite2d();
 
-        assert.tsType(defineEntity).equals<DefineViewEntity<AnyObject>>();
+        assert.tsType(defineEntity).equals<DefineViewEntity2d<AnyObject>>();
 
         class MyEntity extends defineEntity({
             key: 'MyEntity',
@@ -96,10 +96,10 @@ describe(defineEntitySuite.name, () => {
             state: {},
             assetLoader: new AssetLoader(),
         });
-        assert.tsType(entityStore).equals<EntityStore<AnyObject>>();
+        assert.tsType(entityStore).equals<EntityStore2d<AnyObject>>();
     });
     it('assigns the events type parameter', async () => {
-        const {defineEntity, EntityStore} = defineEntitySuite();
+        const {defineEntity, EntityStore} = defineEntitySuite2d();
 
         class MyEvent extends EntityEvent<{value: number}> {}
         class MyEvent2 extends EntityEvent<{value: number}> {}
@@ -166,8 +166,8 @@ describe(defineEntitySuite.name, () => {
 
         const instance = await entityStore.addEntity(MyEntity);
         assert.instanceOf(instance, MyEntity);
-        assert.instanceOf(instance, BaseEntity);
-        assert.instanceOf(instance, ViewEntity);
+        assert.instanceOf(instance, BaseEntity2d);
+        assert.instanceOf(instance, ViewEntity2d);
 
         entityStore.listenTarget.listen(EntityDestroyEvent, () => {});
         entityStore.listenTarget.listen(MyEvent, (event) => {
@@ -182,13 +182,13 @@ describe(defineEntitySuite.name, () => {
         });
     });
     it('prevents identical keys', () => {
-        const {defineEntity} = defineEntitySuite();
+        const {defineEntity} = defineEntitySuite2d();
 
         class One extends defineEntity({
             key: 'key',
             paramsShape: undefined,
         }) {
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics(),
                 };
@@ -200,7 +200,7 @@ describe(defineEntitySuite.name, () => {
                 key: 'key',
                 paramsShape: undefined,
             }) {
-                public override createView(): ViewCreation {
+                public override createView(): ViewCreation2d {
                     return {
                         view: new Graphics({}),
                     };
@@ -210,7 +210,7 @@ describe(defineEntitySuite.name, () => {
         });
     });
     it('allows logic entity definition', async () => {
-        const {defineLogicEntity, EntityStore} = defineEntitySuite();
+        const {defineLogicEntity, EntityStore} = defineEntitySuite2d();
 
         class MyLogicEntity extends defineLogicEntity({
             key: 'MyLogicEntity',
@@ -233,10 +233,10 @@ describe(defineEntitySuite.name, () => {
         const instance = await entityStore.addEntity(MyLogicEntity);
 
         assert.instanceOf(instance, MyLogicEntity);
-        assert.instanceOf(instance, BaseEntity);
+        assert.instanceOf(instance, BaseEntity2d);
     });
     it('allows a view child to be destroyed', async () => {
-        const {EntityStore, defineEntity} = defineEntitySuite();
+        const {EntityStore, defineEntity} = defineEntitySuite2d();
         let updateCount = 0;
 
         class MyEntity extends defineEntity({

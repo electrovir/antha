@@ -12,7 +12,11 @@ import {
     html,
     listen,
 } from '@antha/engine';
-import {createAnthaEntityMod, type AnthaEntityModState, type EntityStore} from '@antha/entity';
+import {
+    createAnthaEntityMod2d,
+    type AnthaEntity2dModState,
+    type EntityStore2d,
+} from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod, type AnthaGraphics2dModState} from '@antha/graphics-2d';
 import {check} from '@augment-vir/assert';
@@ -44,7 +48,7 @@ type EntityAssetDemoGameState = {
     yellowToggle: boolean;
 };
 
-const {mod: entityMod, defineEntity} = createAnthaEntityMod<EntityAssetDemoGameState>({});
+const {mod: entityMod, defineEntity} = createAnthaEntityMod2d<EntityAssetDemoGameState>({});
 
 class RedCircleEntity extends defineEntity({
     key: 'RedCircleEntity',
@@ -262,7 +266,7 @@ class BlueDotEntity extends defineEntity({
 let renderCount = 0;
 
 const EntityAssetDemoControls = defineElement<{
-    entityStore: EntityStore;
+    entityStore: EntityStore2d;
     state: Partial<EntityAssetDemoGameState & AnthaGraphics2dModState>;
 }>()({
     tagName: 'entity-asset-demo-controls',
@@ -302,7 +306,7 @@ const EntityAssetDemoControls = defineElement<{
 });
 
 const entityAssetDemoMod = defineAnthaMod<
-    AnthaEntityModState<EntityAssetDemoGameState> & AnthaAssetModState
+    AnthaEntity2dModState<EntityAssetDemoGameState> & AnthaAssetModState
 >({
     modName: 'entity-asset-demo',
     executeImmediately: true,

@@ -1,14 +1,14 @@
 /* eslint-disable sonarjs/pseudo-random */
 import {AnthaEngine, SkipExecution, type AnthaMod} from '@antha/engine';
 import {
-    createAnthaEntityMod,
+    createAnthaEntityMod2d,
     EntityEvent,
-    positionParamsMap,
-    type AnthaEntityModState,
-    type BaseEntity,
-    type EntityStore,
-    type ViewCreation,
-} from '@antha/entity';
+    position2dParamsMap,
+    type AnthaEntity2dModState,
+    type BaseEntity2d,
+    type EntityStore2d,
+    type ViewCreation2d,
+} from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {assert, assertWrap} from '@augment-vir/assert';
@@ -35,7 +35,7 @@ type AsteroidsGameState = {
 class PlayerDeathEvent extends EntityEvent<void> {}
 class AsteroidHitEvent extends EntityEvent<{score: number}> {}
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod<AsteroidsGameState>({});
+const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod2d<AsteroidsGameState>({});
 
 class AsteroidEntity extends defineEntity({
     key: 'Asteroid',
@@ -46,14 +46,14 @@ class AsteroidEntity extends defineEntity({
         directionY: 0,
         size: 30,
     }),
-    paramsMap: positionParamsMap,
+    paramsMap: position2dParamsMap,
 }) {
     public static readonly minAsteroidSize = 7;
     public static readonly initialSpawnInterval = 120;
     public static readonly minSpawnInterval = 20;
     public static readonly spawnAccelerationRate = 0.02;
 
-    public override createView(): ViewCreation {
+    public override createView(): ViewCreation2d {
         const graphic = new Graphics();
         graphic.circle(0, 0, this.params.size).fill('#888888');
 
@@ -90,7 +90,7 @@ class AsteroidEntity extends defineEntity({
         }
     }
 
-    public override async collide(otherEntity: BaseEntity): Promise<void> {
+    public override async collide(otherEntity: BaseEntity2d): Promise<void> {
         if (otherEntity instanceof PlayerBulletEntity) {
             const scoreValue = Math.floor(100 / this.params.size);
 
@@ -136,12 +136,12 @@ class PlayerBulletEntity extends defineEntity({
         directionX: 0,
         directionY: 0,
     }),
-    paramsMap: positionParamsMap,
+    paramsMap: position2dParamsMap,
 }) {
     public static readonly bulletRadius = 3;
     public static readonly bulletSpeed = 8;
 
-    public override createView(): ViewCreation {
+    public override createView(): ViewCreation2d {
         const graphic = new Graphics();
         graphic.circle(0, 0, PlayerBulletEntity.bulletRadius).fill('#ffffff');
 
@@ -249,7 +249,7 @@ class PlayerEntity extends defineEntity({
         return candidates.length > 0 ? Math.min(...candidates) : undefined;
     }
 
-    public override createView(): ViewCreation {
+    public override createView(): ViewCreation2d {
         const trianglePoints: [number, number][] = [
             [
                 PlayerEntity.playerSize,
@@ -395,7 +395,7 @@ class PlayerEntity extends defineEntity({
         }
     }
 
-    public override collide(otherEntity: BaseEntity): void {
+    public override collide(otherEntity: BaseEntity2d): void {
         if (otherEntity instanceof AsteroidEntity) {
             this.dispatch(
                 new PlayerDeathEvent({
@@ -407,10 +407,10 @@ class PlayerEntity extends defineEntity({
     }
 }
 
-type AsteroidsState = AnthaEntityModState<AsteroidsGameState>;
+type AsteroidsState = AnthaEntity2dModState<AsteroidsGameState>;
 
 async function spawnAsteroidFromEdge(
-    entityStore: EntityStore<Partial<AsteroidsState>>,
+    entityStore: EntityStore2d<Partial<AsteroidsState>>,
 ): Promise<void> {
     const edgeIndex = randomInteger({
         min: 0,

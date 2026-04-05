@@ -34,7 +34,7 @@ import {
     type WritableKeysOf,
 } from 'type-fest';
 import {defineTypedCustomEvent, GenericListenTarget} from 'typed-event-target';
-import {type StaticEntityParts} from './entity-suite.js';
+import {type StaticEntity2dParts} from './entity-suite.js';
 
 export {System as HitboxSystem, type Response as Collision} from 'detect-collisions';
 
@@ -72,25 +72,26 @@ export type MappedEntityAssets<Definitions extends BaseEntityAssetDefinitions | 
           };
 
 /**
- * Parameters for {@link EntityStore.addEntity}. Flattens itself to an empty array if there are no
+ * Parameters for {@link EntityStore2d.addEntity}. Flattens itself to an empty array if there are no
  * entity constructor params.
  *
  * @category Internal
  */
-export type AddEntityParams<ThisConstructor extends EntityConstructor> = ThisConstructor extends {
-    ConstructorArgsType: infer Args extends EntityConstructorParams<any, any>;
-}
-    ? Args['params'] extends undefined
-        ? []
-        : [Args['params']]
-    : ['ERROR: invalid entity constructor'];
+export type AddEntity2dParams<ThisConstructor extends Entity2dConstructor> =
+    ThisConstructor extends {
+        ConstructorArgsType: infer Args extends Entity2dConstructorParams<any, any>;
+    }
+        ? Args['params'] extends undefined
+            ? []
+            : [Args['params']]
+        : ['ERROR: invalid entity constructor'];
 
 /**
- * Parameters for the constructor of {@link EntityStore}.
+ * Parameters for the constructor of {@link EntityStore2d}.
  *
  * @category Internal
  */
-export type EntityStoreConstructorParams<State extends AnyObject = any> = {
+export type EntityStore2dConstructorParams<State extends AnyObject = any> = {
     /**
      * A PixiJS [`Application`](https://pixijs.download/release/docs/app.Application.html) instance
      * from the [`pixi.js`](https://www.npmjs.com/package/pixi.js) package.
@@ -102,14 +103,14 @@ export type EntityStoreConstructorParams<State extends AnyObject = any> = {
     /**
      * A `System` instance from the
      * [`detect-collisions`](https://www.npmjs.com/package/detect-collisions) package. If this
-     * property is omitted or `undefined`, the {@link EntityStore} instance will create its own.
+     * property is omitted or `undefined`, the {@link EntityStore2d} instance will create its own.
      */
     customHitboxSystem?: HitboxSystem | undefined;
     /**
-     * An array of all entity constructors that will be pre-registered with this {@link EntityStore}
-     * instance.
+     * An array of all entity constructors that will be pre-registered with this
+     * {@link EntityStore2d} instance.
      */
-    preregisteredEntities: ReadonlyArray<EntityConstructor>;
+    preregisteredEntities: ReadonlyArray<Entity2dConstructor>;
 }>;
 
 /**
@@ -118,22 +119,22 @@ export type EntityStoreConstructorParams<State extends AnyObject = any> = {
  *
  * @category Internal
  */
-export type EntityConstructor = Constructor<BaseEntity> & StaticEntityParts;
+export type Entity2dConstructor = Constructor<BaseEntity2d> & StaticEntity2dParts;
 
 /**
- * The top level storage class of all entities. Add entities with {@link EntityStore.addEntity}.
+ * The top level storage class of all entities. Add entities with {@link EntityStore2d.addEntity}.
  *
  * @category Internal
  */
-export class EntityStore<State extends AnyObject = any> {
+export class EntityStore2d<State extends AnyObject = any> {
     /**
      * All current child entities.
      *
-     * Instead of modifying this set, use {@link EntityStore.addEntity} or
-     * {@link EntityStore.removeEntity}. If you must manually modify this set directly, you'll also
-     * need to modify {@link EntityStore.entityInstanceMap}.
+     * Instead of modifying this set, use {@link EntityStore2d.addEntity} or
+     * {@link EntityStore2d.removeEntity}. If you must manually modify this set directly, you'll also
+     * need to modify {@link EntityStore2d.entityInstanceMap}.
      */
-    public readonly currentEntityInstances = new Set<BaseEntity>();
+    public readonly currentEntityInstances = new Set<BaseEntity2d>();
     /** If true, this entity store should no longer be used or operated upon. */
     public readonly isDestroyed: boolean = false;
     /** An internal mapping of all entity constructors to their current instances. */
@@ -143,13 +144,13 @@ export class EntityStore<State extends AnyObject = any> {
     /** Collision detection system. */
     public readonly hitboxSystem: HitboxSystem;
     /** A map of all entity keys to their registered Entity constructors. */
-    public entityKeyConstructorMap: Record<string, EntityConstructor> = {};
+    public entityKeyConstructorMap: Record<string, Entity2dConstructor> = {};
     /** Listen target for events emitted from any child entities. */
     public listenTarget = new GenericListenTarget();
     public readonly state: State;
     public readonly assetLoader: AssetLoader;
 
-    constructor(args: Readonly<EntityStoreConstructorParams>) {
+    constructor(args: Readonly<EntityStore2dConstructorParams>) {
         this.pixi = args.pixi;
         this.assetLoader = args.assetLoader;
         this.hitboxSystem = args.customHitboxSystem || new HitboxSystem();
@@ -167,7 +168,7 @@ export class EntityStore<State extends AnyObject = any> {
      * only.
      */
     public async loadEntityAssets(
-        entities: ReadonlyArray<EntityConstructor>,
+        entities: ReadonlyArray<Entity2dConstructor>,
         options?: Readonly<AssetBulkLoaderLoadOptions> | undefined,
     ) {
         const assets: ReadonlyArray<Readonly<Asset>> = entities.flatMap((entity) => {
@@ -187,7 +188,7 @@ export class EntityStore<State extends AnyObject = any> {
         entities,
     }: Readonly<
         {
-            entities: ReadonlyArray<EntityConstructor>;
+            entities: ReadonlyArray<Entity2dConstructor>;
         } & PartialWithUndefined<{
             /** If set to true, all previous registrations will be removed. */
             clearPreviousRegistrations: boolean;
@@ -235,10 +236,10 @@ export class EntityStore<State extends AnyObject = any> {
          * finish before this `updateAllEntities` method exits.
          */
         this.hitboxSystem.checkAll((response) => {
-            const primaryEntity: BaseEntity | undefined =
-                response.a.userData instanceof BaseEntity ? response.a.userData : undefined;
-            const secondaryEntity: BaseEntity | undefined =
-                response.b.userData instanceof BaseEntity ? response.b.userData : undefined;
+            const primaryEntity: BaseEntity2d | undefined =
+                response.a.userData instanceof BaseEntity2d ? response.a.userData : undefined;
+            const secondaryEntity: BaseEntity2d | undefined =
+                response.b.userData instanceof BaseEntity2d ? response.b.userData : undefined;
 
             if (
                 !primaryEntity ||
@@ -262,13 +263,13 @@ export class EntityStore<State extends AnyObject = any> {
     }
 
     /** Remove an entity from the store. */
-    public removeEntity(entity: BaseEntity) {
+    public removeEntity(entity: BaseEntity2d) {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
         }
         this.currentEntityInstances.delete(entity);
         this.entityInstanceMap.remove(entity);
-        if (entity instanceof ViewEntity && !entity.isDestroyed) {
+        if (entity instanceof ViewEntity2d && !entity.isDestroyed) {
             // eslint-disable-next-line unicorn/prefer-dom-node-remove
             this.pixi.stage.removeChild(entity.view);
             if (entity.hitbox) {
@@ -284,7 +285,7 @@ export class EntityStore<State extends AnyObject = any> {
     public async deserializeEntity(
         entityKey: string,
         serializedParams: string | undefined,
-    ): Promise<BaseEntity> {
+    ): Promise<BaseEntity2d> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
         }
@@ -300,9 +301,9 @@ export class EntityStore<State extends AnyObject = any> {
     }
 
     /** Create a new instance of the given entity class and add it to this entity store. */
-    public async addEntity<const NewEntityConstructor extends EntityConstructor>(
+    public async addEntity<const NewEntityConstructor extends Entity2dConstructor>(
         entityClass: NewEntityConstructor,
-        ...params: AddEntityParams<NoInfer<NewEntityConstructor>>
+        ...params: AddEntity2dParams<NoInfer<NewEntityConstructor>>
     ): Promise<InstanceType<NewEntityConstructor>> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
@@ -318,7 +319,7 @@ export class EntityStore<State extends AnyObject = any> {
             state: this.state,
             params: params[0],
             hitboxSystem: this.hitboxSystem,
-        } satisfies EntityConstructorParams<any, any>);
+        } satisfies Entity2dConstructorParams<any, any>);
         await child.initInstance();
         this.currentEntityInstances.add(child);
         this.entityInstanceMap.add(child);
@@ -335,9 +336,9 @@ export class EntityStore<State extends AnyObject = any> {
         this.listenTarget.destroy();
         this.currentEntityInstances.clear();
         this.entityInstanceMap.destroy();
-        delete (this as Writable<Partial<EntityStore>>).pixi;
-        delete (this as Writable<Partial<EntityStore>>).hitboxSystem;
-        delete (this as Writable<Partial<EntityStore>>).listenTarget;
+        delete (this as Writable<Partial<EntityStore2d>>).pixi;
+        delete (this as Writable<Partial<EntityStore2d>>).hitboxSystem;
+        delete (this as Writable<Partial<EntityStore2d>>).listenTarget;
     }
 }
 
@@ -363,7 +364,7 @@ export type EntityPositionParams = typeof entityPositionParamsShape.runtimeType;
  *
  * @category Internal
  */
-export type EntityConstructorParams<
+export type Entity2dConstructorParams<
     State extends AnyObject = any,
     Params extends Record<string, any> | undefined = undefined,
 > = (IsNever<Extract<Params, undefined | null>> extends true
@@ -375,7 +376,7 @@ export type EntityConstructorParams<
       }) & {
     state: State;
     paramsMap?: ParamsMap<NoInfer<Params>> | undefined;
-    entityStore: EntityStore<State>;
+    entityStore: EntityStore2d<State>;
     pixi: PixiApplication;
     hitboxSystem: HitboxSystem;
 };
@@ -441,16 +442,16 @@ export type ParamsMap<Params extends Record<string, any> | undefined = AnyObject
  */
 export class EntityEvent<const Data = any> extends defineTypedCustomEvent<{
     data?: any;
-    entityInstance: BaseEntity;
+    entityInstance: BaseEntity2d;
 }>()('antha-entity-event') {
     public declare readonly detail: Readonly<
         undefined | void extends Data
             ? {
-                  entityInstance: BaseEntity;
+                  entityInstance: BaseEntity2d;
                   data?: never;
               }
             : {
-                  entityInstance: BaseEntity;
+                  entityInstance: BaseEntity2d;
                   data: Data;
               }
     >;
@@ -459,11 +460,11 @@ export class EntityEvent<const Data = any> extends defineTypedCustomEvent<{
         detail: Readonly<
             undefined | void extends Data
                 ? {
-                      entityInstance: BaseEntity;
+                      entityInstance: BaseEntity2d;
                       data?: never;
                   }
                 : {
-                      entityInstance: BaseEntity;
+                      entityInstance: BaseEntity2d;
                       data: Data;
                   }
         >,
@@ -484,11 +485,11 @@ export class EntityDestroyEvent extends EntityEvent<void> {}
 /**
  * Default params shape for x, y position coordinates.
  *
- * Use with {@link positionParamsMap}, or something similar.
+ * Use with {@link position2dParamsMap}, or something similar.
  *
  * @category Internal
  */
-export const positionParamsShape = defineShape({
+export const position2dParamsShape = defineShape({
     x: -1,
     y: -1,
 } satisfies Coords);
@@ -497,11 +498,11 @@ export const positionParamsShape = defineShape({
  * Default value for the optional {@link ParamsMap}. This maps the top level params of `x` and `y` to
  * both `x` and `y` in the hitbox and view.
  *
- * Use with {@link positionParamsShape}, or something similar.
+ * Use with {@link position2dParamsShape}, or something similar.
  *
  * @category Internal
  */
-export const positionParamsMap = {
+export const position2dParamsMap = {
     hitbox: {
         x: true,
         y: true,
@@ -513,7 +514,7 @@ export const positionParamsMap = {
 } as const satisfies ParamsMap;
 
 /**
- * Type for {@link BaseEntity.reverseParamsMap}.
+ * Type for {@link BaseEntity2d.reverseParamsMap}.
  *
  * @category Internal
  */
@@ -533,7 +534,7 @@ export type EntityUpdateParams = {
  *
  * @category Internal
  */
-export abstract class BaseEntity<
+export abstract class BaseEntity2d<
     State extends AnyObject = any,
     Params extends Record<string, any> | undefined = any,
     EntityAssets extends BaseEntityAssetDefinitions | undefined = any,
@@ -551,7 +552,7 @@ export abstract class BaseEntity<
         | undefined;
 
     /**
-     * Defines which properties from {@link BaseEntity.params} will be mapped to hitbox and/or view
+     * Defines which properties from {@link BaseEntity2d.params} will be mapped to hitbox and/or view
      * properties.
      */
     public static readonly paramsMap: ParamsMap | undefined;
@@ -560,7 +561,7 @@ export abstract class BaseEntity<
      * values.
      */
     public static readonly reverseParamsMap: ReverseParamsMap | undefined;
-    /** Parses the serialized params generated by {@link BaseEntity.serialize}. */
+    /** Parses the serialized params generated by {@link BaseEntity2d.serialize}. */
     public static deserialize(serialized: string | undefined): AnyObject | undefined {
         const deserialized = serialized ? JSON.parse(serialized) : undefined;
         if (this.paramsShape) {
@@ -586,7 +587,7 @@ export abstract class BaseEntity<
     public hitbox: Hitbox<this> | undefined;
 
     /** The entity store to add all entities to. */
-    public readonly entityStore: EntityStore<State>;
+    public readonly entityStore: EntityStore2d<State>;
 
     /** Writable entity params. These should be serializable. */
     public readonly params: Params;
@@ -596,14 +597,14 @@ export abstract class BaseEntity<
     public readonly hitboxSystem: HitboxSystem;
     public getAsset: EntityAssetAccessor<MappedEntityAssets<EntityAssets>>;
 
-    constructor(args: Readonly<EntityConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
+    constructor(args: Readonly<Entity2dConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
         this.entityStore = args.entityStore;
         this.params = args.params as Params;
         this.pixi = args.pixi;
         this.hitboxSystem = args.hitboxSystem;
         this.state = args.state;
 
-        const assets = (this.constructor as typeof ViewEntity).assets;
+        const assets = (this.constructor as typeof ViewEntity2d).assets;
 
         this.getAsset = createEntityAssetAccessor<MappedEntityAssets<EntityAssets>>({
             assetLoader: args.entityStore.assetLoader,
@@ -626,9 +627,9 @@ export abstract class BaseEntity<
     public state: State;
 
     /** Add a new entity to the entity store. */
-    public async addEntity<const NewEntityConstructor extends EntityConstructor>(
+    public async addEntity<const NewEntityConstructor extends Entity2dConstructor>(
         entityClass: NewEntityConstructor,
-        ...params: AddEntityParams<NoInfer<NewEntityConstructor>>
+        ...params: AddEntity2dParams<NoInfer<NewEntityConstructor>>
     ): Promise<InstanceType<NewEntityConstructor>> {
         if (this.isDestroyed) {
             throw new Error('Cannot add entity through destroyed entity.');
@@ -644,7 +645,7 @@ export abstract class BaseEntity<
     /**
      * Immediately destroy the current entity, stop its updates.
      *
-     * This is probably not what you want to use! See {@link BaseEntity.destroy} instead.
+     * This is probably not what you want to use! See {@link BaseEntity2d.destroy} instead.
      */
     public immediatelyDestroy() {
         makeWritable(this).isDestroyed = true;
@@ -654,9 +655,9 @@ export abstract class BaseEntity<
                 entityInstance: this,
             }),
         );
-        delete (this as Writable<Partial<BaseEntity>>).entityStore;
-        delete (this as Writable<Partial<BaseEntity>>).hitboxSystem;
-        delete (this as Writable<Partial<BaseEntity>>).params;
+        delete (this as Writable<Partial<BaseEntity2d>>).entityStore;
+        delete (this as Writable<Partial<BaseEntity2d>>).hitboxSystem;
+        delete (this as Writable<Partial<BaseEntity2d>>).params;
     }
 
     /**
@@ -665,7 +666,7 @@ export abstract class BaseEntity<
      * it.
      */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    public collide(otherEntity: BaseEntity, collision: Readonly<Collision>): MaybePromise<void> {}
+    public collide(otherEntity: BaseEntity2d, collision: Readonly<Collision>): MaybePromise<void> {}
 
     /**
      * Serialize the entity params for sharing across the network (for multiplayer play). By default
@@ -678,11 +679,11 @@ export abstract class BaseEntity<
 }
 
 /**
- * Output of {@link ViewEntity.createView}.
+ * Output of {@link ViewEntity2d.createView}.
  *
  * @category Internal
  */
-export type ViewCreation = {
+export type ViewCreation2d = {
     /**
      * A view for rendering. Create with, for example, [`new
      * AnimatedSprite`](https://pixijs.download/release/docs/scene.AnimatedSprite.html) or [`new
@@ -744,11 +745,11 @@ function createEntityAssetAccessor<EntityAssets extends BaseEntityAssets | undef
  *
  * @category Internal
  */
-export abstract class ViewEntity<
+export abstract class ViewEntity2d<
     State extends AnyObject = any,
     Params extends Record<string, any> | undefined = any,
     EntityAssets extends BaseEntityAssetDefinitions | undefined = any,
-> extends BaseEntity<State, Params, EntityAssets> {
+> extends BaseEntity2d<State, Params, EntityAssets> {
     /** The entity's PixiJS view. */
     public view!: Container;
 
@@ -772,13 +773,13 @@ export abstract class ViewEntity<
         this.wrapParamsInProxy();
     }
 
-    constructor(args: Readonly<EntityConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
+    constructor(args: Readonly<Entity2dConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
         super(args);
     }
 
     private wrapParamsInProxy(): void {
-        const paramsMap = (this.constructor as typeof ViewEntity).paramsMap;
-        const reverseParamsMap = (this.constructor as typeof ViewEntity).reverseParamsMap;
+        const paramsMap = (this.constructor as typeof ViewEntity2d).paramsMap;
+        const reverseParamsMap = (this.constructor as typeof ViewEntity2d).reverseParamsMap;
         const params = this.params;
 
         if (!params || !paramsMap || !reverseParamsMap) {
@@ -821,7 +822,7 @@ export abstract class ViewEntity<
      * Creates the entity's PixiJS view. This will be called on entity construction and added to the
      * PixiJS application stage.
      */
-    public abstract createView(): MaybePromise<ViewCreation>;
+    public abstract createView(): MaybePromise<ViewCreation2d>;
 
     /** Detects if the current entity is still within the bounds of the render canvas. */
     public isInBounds(
@@ -847,7 +848,7 @@ export abstract class ViewEntity<
     /**
      * Immediately destroy the current entity, stop its updates, and remove it from the view.
      *
-     * This is probably not what you want to use! See {@link BaseEntity.destroy} instead.
+     * This is probably not what you want to use! See {@link BaseEntity2d.destroy} instead.
      */
     public override immediatelyDestroy() {
         (this.view as typeof this.view | undefined)?.destroy({
@@ -857,6 +858,6 @@ export abstract class ViewEntity<
             this.hitboxSystem.remove(this.hitbox);
         }
         super.immediatelyDestroy();
-        delete (this as Writable<Partial<ViewEntity>>).view;
+        delete (this as Writable<Partial<ViewEntity2d>>).view;
     }
 }

@@ -1,5 +1,9 @@
 import {defineAnthaMod, SkipExecution} from '@antha/engine';
-import {type EntityUpdateParams, positionParamsMap, positionParamsShape} from '@antha/entity';
+import {
+    type EntityUpdateParams,
+    position2dParamsMap,
+    position2dParamsShape,
+} from '@antha/entity-2d';
 import {Graphics} from '@antha/graphics-2d';
 import {AnyGamepad, InputDirection, type PlayersActiveBindings} from '@antha/input';
 import {clamp, type Coords} from '@augment-vir/common';
@@ -117,8 +121,8 @@ const triangleSize = 20;
 
 class PlayerEntity extends defineEntity({
     key: 'player',
-    paramsShape: positionParamsShape,
-    paramsMap: positionParamsMap,
+    paramsShape: position2dParamsShape,
+    paramsMap: position2dParamsMap,
     assets: {
         sprite: {
             maxProgress: 1,

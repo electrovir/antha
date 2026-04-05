@@ -1,2 +1,2 @@
--   rename pixi canvas mod to 2d canvas
--   rename entities to 2d entities (and maybe the mod too)
+-   add multiplayer connection mod
+-   add 3d graphics mod?

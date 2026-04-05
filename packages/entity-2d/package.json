@@ -1,12 +1,13 @@
 {
-    "name": "@antha/entity",
+    "name": "@antha/entity-2d",
     "version": "0.0.1",
-    "description": "An Antha mod for handling entities.",
+    "description": "An Antha mod for handling 2D entities.",
     "keywords": [
         "vir",
         "antha",
         "render",
-        "entity"
+        "entity",
+        "2d"
     ],
     "homepage": "https://github.com/electrovir/antha",
     "bugs": {

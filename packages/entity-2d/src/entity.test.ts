@@ -5,20 +5,20 @@ import {makeWritable} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {Circle} from 'detect-collisions';
 import {Graphics, ParticleContainer} from 'pixi.js';
-import {defineEntitySuite} from './entity-suite.js';
+import {defineEntitySuite2d} from './entity-suite.js';
 import {
     EntityDestroyEvent,
     EntityEvent,
     entityPositionParamsShape,
-    positionParamsMap,
-    type BaseEntity,
+    position2dParamsMap,
+    type BaseEntity2d,
     type Collision,
-    type EntityStore,
-    type ViewCreation,
+    type EntityStore2d,
+    type ViewCreation2d,
 } from './entity.js';
 
 function createTestSuite() {
-    const {defineEntity, defineLogicEntity, EntityStore} = defineEntitySuite();
+    const {defineEntity, defineLogicEntity, EntityStore} = defineEntitySuite2d();
     return {
         defineEntity,
         defineLogicEntity,
@@ -27,7 +27,7 @@ function createTestSuite() {
 }
 
 function createTestStore(
-    suite: {EntityStore: new (...args: any[]) => EntityStore},
+    suite: {EntityStore: new (...args: any[]) => EntityStore2d},
     options?: {assetLoader?: AssetLoader},
 ) {
     return new suite.EntityStore({
@@ -122,7 +122,7 @@ describe('EntityStore', () => {
         }) {
             public override update(): void {}
 
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 50, 50).fill('blue'),
                     hitbox: new Circle(
@@ -158,7 +158,7 @@ describe('EntityStore', () => {
             paramsShape: undefined,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 50, 50).fill('red'),
                     hitbox: new Circle(
@@ -188,7 +188,7 @@ describe('EntityStore', () => {
             paramsShape: undefined,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 50, 50).fill('purple'),
                     hitbox: new Circle(
@@ -229,7 +229,7 @@ describe('EntityStore', () => {
         }) {
             public override update(): void {}
 
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 50, 50).fill('pink'),
                     hitbox: new Circle(
@@ -242,7 +242,7 @@ describe('EntityStore', () => {
                 };
             }
 
-            public override collide(otherEntity: BaseEntity): void {
+            public override collide(otherEntity: BaseEntity2d): void {
                 otherEntity.destroy();
             }
         }
@@ -253,7 +253,7 @@ describe('EntityStore', () => {
         }) {
             public override update(): void {}
 
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 50, 50).fill('green'),
                     hitbox: new Circle(
@@ -312,7 +312,7 @@ describe('EntityStore', () => {
             paramsShape: undefined,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('green'),
                     hitbox: new Circle(
@@ -521,7 +521,7 @@ describe('EntityStore', () => {
             },
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('red'),
                 };
@@ -543,7 +543,7 @@ describe('EntityStore', () => {
         }) {
             public override update(): void {}
 
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 50, 50).fill('orange'),
                     hitbox: new Circle(
@@ -557,7 +557,7 @@ describe('EntityStore', () => {
             }
 
             public override async collide(
-                _otherEntity: BaseEntity,
+                _otherEntity: BaseEntity2d,
                 _collision: Readonly<Collision>,
             ): Promise<void> {
                 asyncCollisionResolved = true;
@@ -734,7 +734,7 @@ describe('ViewEntity', () => {
             paramsShape: undefined,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {};
             }
         }
@@ -753,7 +753,7 @@ describe('ViewEntity', () => {
             paramsShape: undefined,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 20, 20).fill('red'),
                     hitbox: new Circle(
@@ -779,10 +779,10 @@ describe('ViewEntity', () => {
         class MappedEntity extends suite.defineEntity({
             key: 'MappedEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: positionParamsMap,
+            paramsMap: position2dParamsMap,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('blue'),
                     hitbox: new Circle(
@@ -818,7 +818,7 @@ describe('ViewEntity', () => {
         class AssetEntity extends suite.defineEntity({
             key: 'AssetEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: positionParamsMap,
+            paramsMap: position2dParamsMap,
             assets: {
                 graphic: {
                     maxProgress: 1,
@@ -861,7 +861,7 @@ describe('ViewEntity', () => {
         class AssetAccessEntity extends suite.defineEntity({
             key: 'AssetAccessEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: positionParamsMap,
+            paramsMap: position2dParamsMap,
             assets: {
                 sprite: {
                     maxProgress: 1,
@@ -875,7 +875,7 @@ describe('ViewEntity', () => {
             },
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('blue'),
                 };
@@ -897,10 +897,10 @@ describe('ViewEntity', () => {
         class InBoundsEntity extends suite.defineEntity({
             key: 'InBoundsEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: positionParamsMap,
+            paramsMap: position2dParamsMap,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('green'),
                 };
@@ -927,10 +927,10 @@ describe('ViewEntity', () => {
         class OutBoundsEntity extends suite.defineEntity({
             key: 'OutBoundsEntity',
             paramsShape: entityPositionParamsShape,
-            paramsMap: positionParamsMap,
+            paramsMap: position2dParamsMap,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('lime'),
                 };
@@ -954,7 +954,7 @@ describe('ViewEntity', () => {
             paramsShape: undefined,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('pink'),
                 };
@@ -977,7 +977,7 @@ describe('ViewEntity', () => {
             paramsShape: undefined,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('red'),
                     hitbox: new Circle(
@@ -1007,7 +1007,7 @@ describe('ViewEntity', () => {
             paramsShape: undefined,
         }) {
             public override update(): void {}
-            public override createView(): ViewCreation {
+            public override createView(): ViewCreation2d {
                 return {
                     view: new Graphics().rect(0, 0, 10, 10).fill('indigo'),
                 };

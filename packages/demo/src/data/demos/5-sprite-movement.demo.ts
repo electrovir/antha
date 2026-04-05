@@ -1,10 +1,10 @@
 import {AnthaEngine, SkipExecution, css, defineAnthaMod} from '@antha/engine';
 import {
-    createAnthaEntityMod,
-    type AnthaEntityModState,
+    createAnthaEntityMod2d,
+    type AnthaEntity2dModState,
     type EntityUpdateParams,
-    type ViewCreation,
-} from '@antha/entity';
+    type ViewCreation2d,
+} from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {createUtcFullDate} from 'date-vir';
@@ -26,7 +26,7 @@ type SpritesGameState = {
     playerEntity: PlayerEntity;
 };
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod<SpritesGameState>({});
+const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod2d<SpritesGameState>({});
 
 class PlayerEntity extends defineEntity({
     key: 'PlayerSprite',
@@ -173,7 +173,7 @@ class PlayerEntity extends defineEntity({
         playerDisplaySize: 400,
     };
 
-    public override async createView(): Promise<ViewCreation> {
+    public override async createView(): Promise<ViewCreation2d> {
         const playerSprite = await this.getAsset.sprite();
 
         playerSprite.animationSpeed = 0.1;
@@ -198,7 +198,7 @@ class PlayerEntity extends defineEntity({
     }
 }
 
-const dynamicSpriteMod = defineAnthaMod<AnthaEntityModState<SpritesGameState>>({
+const dynamicSpriteMod = defineAnthaMod<AnthaEntity2dModState<SpritesGameState>>({
     modName: 'demo-dynamic-sprite',
     executeImmediately: true,
     async execute({state}) {

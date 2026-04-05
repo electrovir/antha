@@ -1,7 +1,6 @@
 import {defineConfig} from '@virmator/test/configs/web-test-runner.config.base.mjs';
 import {dirname} from 'path';
 import {fileURLToPath, pathToFileURL} from 'url';
-import {testPorts} from '../../../configs/test-ports.mjs';
 
 const baseConfig = defineConfig({
     coveragePercent: 100,
@@ -12,7 +11,6 @@ const baseConfig = defineConfig({
 /** @type {import('@web/test-runner').TestRunnerConfig} */
 const webTestRunnerConfig = {
     ...baseConfig,
-    port: testPorts.fps,
 };
 
 export default webTestRunnerConfig;

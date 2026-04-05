@@ -15,7 +15,7 @@
         "@antha/asset": "*",
         "@antha/audio": "*",
         "@antha/engine": "*",
-        "@antha/entity": "*",
+        "@antha/entity-2d": "*",
         "@antha/fps": "*",
         "@antha/graphics-2d": "*",
         "@antha/input": "*",

@@ -6,28 +6,28 @@ import {
     type AnyObject,
     type PartialWithUndefined,
 } from '@augment-vir/common';
-import {defineEntitySuite} from './entity-suite.js';
-import {type EntityStore, type EntityStoreConstructorParams} from './entity.js';
+import {defineEntitySuite2d} from './entity-suite.js';
+import {type EntityStore2d, type EntityStore2dConstructorParams} from './entity.js';
 
 /**
- * State for {@link createAnthaEntityMod}.
+ * State for {@link createAnthaEntityMod2d}.
  *
  * @category Internal
  */
-export type AnthaEntityModState<State extends AnyObject = any> = {
-    entityStore: EntityStore<Partial<AnthaEntityModState<State>>>;
+export type AnthaEntity2dModState<State extends AnyObject = any> = {
+    entityStore: EntityStore2d<Partial<AnthaEntity2dModState<State>>>;
     debugHitboxes: boolean;
 } & State &
     AnthaGraphics2dModState &
     AnthaAssetModState;
 
 /**
- * Options for {@link createAnthaEntityMod}.
+ * Options for {@link createAnthaEntityMod2d}.
  *
  * @category Internal
  */
-export type AnthaEntityModOptions = PartialWithUndefined<
-    EntityStoreConstructorParams & {
+export type AnthaEntity2dModOptions = PartialWithUndefined<
+    EntityStore2dConstructorParams & {
         debug: boolean;
     }
 >;
@@ -37,13 +37,13 @@ export type AnthaEntityModOptions = PartialWithUndefined<
  *
  * @category Pre-built Mods
  */
-export function createAnthaEntityMod<ExtraState extends AnyObject>(
-    options: Readonly<AnthaEntityModOptions> = {},
+export function createAnthaEntityMod2d<ExtraState extends AnyObject>(
+    options: Readonly<AnthaEntity2dModOptions> = {},
 ) {
-    const {EntityStore, ...entitySuite} = defineEntitySuite<AnthaEntityModState<ExtraState>>();
+    const {EntityStore, ...entitySuite} = defineEntitySuite2d<AnthaEntity2dModState<ExtraState>>();
 
-    const mod = defineAnthaMod<AnthaEntityModState>({
-        modName: 'antha-entity',
+    const mod = defineAnthaMod<AnthaEntity2dModState>({
+        modName: 'antha-entity-2d',
         initState: {
             debugHitboxes: !!options.debug,
         },

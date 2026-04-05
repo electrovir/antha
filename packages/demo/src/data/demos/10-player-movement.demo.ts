@@ -1,12 +1,12 @@
 import {createAnthaAssetMod} from '@antha/asset';
 import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
 import {
-    createAnthaEntityMod,
-    positionParamsMap,
-    positionParamsShape,
-    type AnthaEntityModState,
+    createAnthaEntityMod2d,
+    position2dParamsMap,
+    position2dParamsShape,
+    type AnthaEntity2dModState,
     type EntityUpdateParams,
-} from '@antha/entity';
+} from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {
@@ -33,14 +33,14 @@ type PlayerMovementGameState = {
     player: PlayerEntity;
 } & AnthaInputBindingsState<PlayerAction>;
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod<PlayerMovementGameState>({});
+const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod2d<PlayerMovementGameState>({});
 
 const triangleSize = 20;
 
 class PlayerEntity extends defineEntity({
     key: 'player',
-    paramsShape: positionParamsShape,
-    paramsMap: positionParamsMap,
+    paramsShape: position2dParamsShape,
+    paramsMap: position2dParamsMap,
     assets: {
         sprite: {
             maxProgress: 1,
@@ -250,7 +250,7 @@ const bindingAssignments: Readonly<AnthaInputBindingsState<PlayerAction>['bindin
     },
 };
 
-type PlayerMovementState = AnthaEntityModState<PlayerMovementGameState> &
+type PlayerMovementState = AnthaEntity2dModState<PlayerMovementGameState> &
     AnthaInputBindingsState<PlayerAction>;
 
 const playerMovementMod = defineAnthaMod<PlayerMovementState>({
