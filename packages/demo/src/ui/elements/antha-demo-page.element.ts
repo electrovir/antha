@@ -1,5 +1,5 @@
 import {type AnthaEngine, AnthaUi} from '@antha/engine';
-import {pixiCanvasZIndex} from '@antha/pixi-canvas';
+import {pixiCanvasZIndex} from '@antha/graphics-2d';
 import {colorCss} from '@electrovir/color';
 import {css, type DeclarativeElementDefinition, defineElement, html, nothing} from 'element-vir';
 import {themeDefaultKey} from 'theme-vir';

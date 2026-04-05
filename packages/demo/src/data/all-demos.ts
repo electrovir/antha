@@ -3,7 +3,7 @@ import {type AnthaDemo} from './demo.js';
 import {basicEngineDemo} from './demos/1-basic-engine.demo.js';
 import {playerMovementDemo} from './demos/10-player-movement.demo.js';
 import {stutterDetectionDemo} from './demos/11-stutter-detection.demo.js';
-import {pixiCanvasDemo} from './demos/2-pixi-canvas.demo.js';
+import {graphics2dDemo} from './demos/2-graphics-2d.demo.js';
 import {audioEngineDemo} from './demos/3-audio-engine.demo.js';
 import {entitiesDemo} from './demos/4-entities.demo.js';
 import {spriteMovementDemo} from './demos/5-sprite-movement.demo.js';
@@ -14,7 +14,7 @@ import {inputBindingsDemo} from './demos/9-input-bindings.demo.js';
 
 export const allDemos: AnthaDemo[] = [
     basicEngineDemo,
-    pixiCanvasDemo,
+    graphics2dDemo,
     audioEngineDemo,
     entitiesDemo,
     spriteMovementDemo,

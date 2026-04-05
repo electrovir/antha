@@ -9,7 +9,7 @@ import {
     type EntityStore,
     type ViewCreation,
 } from '@antha/entity';
-import {createAnthaPixiCanvasMod, createAnthaPixiFpsMod} from '@antha/pixi-canvas';
+import {createAnthaGraphics2dMod, createAnthaPixiFpsMod} from '@antha/graphics-2d';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {executeCount, randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
@@ -620,7 +620,7 @@ export const entitiesDemo: AnthaDemo = {
     engine() {
         return new AnthaEngine({
             mods: [
-                createAnthaPixiCanvasMod({
+                createAnthaGraphics2dMod({
                     extraCanvasStyles: css`
                         border: 2px solid red;
                     `,

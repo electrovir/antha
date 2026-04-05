@@ -1,7 +1,7 @@
 import {defineAnthaMod, SkipExecution} from '@antha/engine';
 import {type EntityUpdateParams, positionParamsMap, positionParamsShape} from '@antha/entity';
+import {Graphics} from '@antha/graphics-2d';
 import {AnyGamepad, InputDirection, type PlayersActiveBindings} from '@antha/input';
-import {Graphics} from '@antha/pixi-canvas';
 import {clamp, type Coords} from '@augment-vir/common';
 import {createDefaultAnthaEngine} from './default-engine.js';
 

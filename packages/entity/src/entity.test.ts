@@ -1,5 +1,5 @@
 import {AssetLoader} from '@antha/asset';
-import {createMockPixi} from '@antha/pixi-canvas';
+import {createMockPixi} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
 import {makeWritable} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';

@@ -7,6 +7,7 @@ import {
     type AnthaEntityModState,
     type EntityUpdateParams,
 } from '@antha/entity';
+import {createAnthaGraphics2dMod, createAnthaPixiFpsMod} from '@antha/graphics-2d';
 import {
     AnyGamepad,
     InputDirection,
@@ -15,7 +16,6 @@ import {
     type AnthaInputBindingsState,
     type PlayersActiveBindings,
 } from '@antha/input';
-import {createAnthaPixiCanvasMod, createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {clamp, type Coords} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {Graphics} from 'pixi.js';
@@ -279,7 +279,7 @@ export const playerMovementDemo: AnthaDemo = {
                 bindingAssignments,
             } satisfies Partial<AnthaInputBindingsState<PlayerAction>>,
             mods: [
-                createAnthaPixiCanvasMod({
+                createAnthaGraphics2dMod({
                     dynamicCanvasSize: true,
                 }),
                 createAnthaPixiFpsMod(),

@@ -1,13 +1,13 @@
 import {AnthaEngine} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
+import {type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
 import {AnthaMockPixiMod} from './antha-mock-pixi.mod.js';
-import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
 import {createMockPixi, MockPixiApp} from './mock-pixi.js';
 
 describe('AnthaMockPixiMod', () => {
     it('sets up state.pixi with a MockPixiApp', async () => {
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 AnthaMockPixiMod,
             ],
@@ -22,7 +22,7 @@ describe('AnthaMockPixiMod', () => {
     it('does not overwrite existing state.pixi', async () => {
         const existingMock = createMockPixi();
 
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 AnthaMockPixiMod,
             ],
@@ -38,7 +38,7 @@ describe('AnthaMockPixiMod', () => {
     });
 
     it('cleanup destroys pixi application and removes canvas', async () => {
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 AnthaMockPixiMod,
             ],

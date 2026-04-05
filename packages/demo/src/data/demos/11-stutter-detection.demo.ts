@@ -1,5 +1,5 @@
 import {AnthaEngine, defineAnthaMod} from '@antha/engine';
-import {createAnthaPixiFpsMod} from '@antha/pixi-canvas';
+import {createAnthaPixiFpsMod} from '@antha/graphics-2d';
 import {randomInteger, wait} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, defineElement, html, listen} from 'element-vir';

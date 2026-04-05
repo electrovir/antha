@@ -54,7 +54,7 @@
     "peerDependencies": {
         "@antha/asset": "*",
         "@antha/engine": "*",
-        "@antha/pixi-canvas": "*",
+        "@antha/graphics-2d": "*",
         "detect-collisions": ">=10",
         "object-shape-tester": ">=6",
         "pixi.js": ">=8",

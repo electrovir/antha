@@ -1,10 +1,10 @@
 import {AnthaEngine, SkipExecution, css, type AnthaMod} from '@antha/engine';
 import {
-    createAnthaPixiCanvasMod,
+    createAnthaGraphics2dMod,
     createAnthaPixiFpsMod,
     defaultPixiOptions,
-    type AnthaPixiCanvasModState,
-} from '@antha/pixi-canvas';
+    type AnthaGraphics2dModState,
+} from '@antha/graphics-2d';
 import {createArray, randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {Graphics} from 'pixi.js';
@@ -52,7 +52,7 @@ const maxBallSpeed = 200;
 const physicsStepDurationMs = 1000;
 
 const bouncingBallsMod: AnthaMod<
-    AnthaPixiCanvasModState & {
+    AnthaGraphics2dModState & {
         balls: Ball[];
         lastPhysicsTime: number;
         physicsStepMs: number;
@@ -239,14 +239,14 @@ const bouncingBallsMod: AnthaMod<
     },
 };
 
-export const pixiCanvasDemo: AnthaDemo = {
-    demoName: 'Pixi Canvas',
-    demoPathId: 'pixi-canvas',
+export const graphics2dDemo: AnthaDemo = {
+    demoName: '2D Graphics',
+    demoPathId: 'graphics-2d',
     demoSortDate: createUtcFullDate('2026-02-28T20:00:00.000Z'),
     engine() {
         return new AnthaEngine({
             mods: [
-                createAnthaPixiCanvasMod({
+                createAnthaGraphics2dMod({
                     extraCanvasStyles: css`
                         border: 2px solid red;
                     `,

@@ -1,4 +1,5 @@
 import {AnthaEngine} from '@antha/engine';
+import {createAnthaPixiFpsMod} from '@antha/graphics-2d';
 import {
     type AnthaInputBindingsState,
     AnyGamepad,
@@ -8,7 +9,6 @@ import {
     type PlayersBindingAssignments,
     PredefinedGamepadBrand,
 } from '@antha/input';
-import {createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {createUtcFullDate} from 'date-vir';
 import {type AnthaDemo} from '../demo.js';
 

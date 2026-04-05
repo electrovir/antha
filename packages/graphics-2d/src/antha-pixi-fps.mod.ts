@@ -9,10 +9,10 @@ import {
 } from '@augment-vir/common';
 import {colorCss} from '@electrovir/color';
 import {viraThemeDarkOverride} from 'vira';
-import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
+import {type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
 
 /**
- * The z-index CSS property applied to the pixi-canvas mod's `<canvas>` element.
+ * The z-index CSS property applied to the graphics-2d mod's `<canvas>` element.
  *
  * @category Internal
  */
@@ -61,7 +61,7 @@ export const defaultPixiFpsModOptions = {
 
 /**
  * A pre-built mod that renders the Pixi application's FPS in the top left of the screen. Requires
- * that a pixi canvas mod (see {@link AnthaPixiCanvasModState}) is also in use so that
+ * that a pixi canvas mod (see {@link AnthaGraphics2dModState}) is also in use so that
  * `state.pixi.pixiApplication` is available.
  *
  * @category Pre-Built Mods
@@ -71,7 +71,7 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
         RequiredAndNotNull<PixiFpsModOptions>
     >(defaultPixiFpsModOptions, modOptions);
 
-    return defineAnthaMod<AnthaPixiCanvasModState & ShowCountersState>({
+    return defineAnthaMod<AnthaGraphics2dModState & ShowCountersState>({
         modName: 'antha-pixi-fps',
         initState: {
             hideFps: options.hideFps,

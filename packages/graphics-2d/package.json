@@ -1,12 +1,14 @@
 {
-    "name": "@antha/pixi-canvas",
+    "name": "@antha/graphics-2d",
     "version": "0.0.1",
-    "description": "An Antha mod for rendering to a canvas using PixiJS.",
+    "description": "An Antha mod for rendering 2D graphics to a canvas.",
     "keywords": [
         "vir",
         "antha",
         "render",
-        "canvas"
+        "canvas",
+        "graphics",
+        "2d"
     ],
     "homepage": "https://github.com/electrovir/antha",
     "bugs": {

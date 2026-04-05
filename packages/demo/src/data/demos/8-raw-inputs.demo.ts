@@ -1,6 +1,6 @@
 import {AnthaEngine} from '@antha/engine';
+import {createAnthaPixiFpsMod} from '@antha/graphics-2d';
 import {createAnthaReadRawInputMod} from '@antha/input';
-import {createAnthaPixiFpsMod} from '@antha/pixi-canvas';
 import {createUtcFullDate} from 'date-vir';
 import {type AnthaDemo} from '../demo.js';
 

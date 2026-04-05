@@ -6,11 +6,11 @@ import {Application as PixiApplication, type ApplicationOptions} from 'pixi.js';
 export {Application as PixiApplication} from 'pixi.js';
 
 /**
- * Engine State for {@link createAnthaPixiCanvasMod}.
+ * Engine State for {@link createAnthaGraphics2dMod}.
  *
  * @category Internal
  */
-export type AnthaPixiCanvasModState = {
+export type AnthaGraphics2dModState = {
     pixi: Partial<{
         pixiApplication: PixiApplication;
         canvas: HTMLCanvasElement;
@@ -18,11 +18,11 @@ export type AnthaPixiCanvasModState = {
 };
 
 /**
- * Options for {@link createAnthaPixiCanvasMod}.
+ * Options for {@link createAnthaGraphics2dMod}.
  *
  * @category Internal
  */
-export type AnthaPixiCanvasModOptions = PartialWithUndefined<{
+export type AnthaGraphics2dModOptions = PartialWithUndefined<{
     /** Options for PixiJS init. */
     pixiOptions: Partial<ApplicationOptions>;
     /** If this is provided, the mod will not create its own canvas. */
@@ -33,7 +33,7 @@ export type AnthaPixiCanvasModOptions = PartialWithUndefined<{
 }>;
 
 /**
- * Default values for {@link AnthaPixiCanvasModOptions}.
+ * Default values for {@link AnthaGraphics2dModOptions}.
  *
  * @category Internal
  */
@@ -49,8 +49,8 @@ export const defaultPixiOptions = {
  *
  * @category Pre-Built Mods
  */
-export function createAnthaPixiCanvasMod(
-    modOptions?: Readonly<AnthaPixiCanvasModOptions> | undefined,
+export function createAnthaGraphics2dMod(
+    modOptions?: Readonly<AnthaGraphics2dModOptions> | undefined,
 ) {
     const pixiApplicationOptions = {
         ...defaultPixiOptions,
@@ -58,8 +58,8 @@ export function createAnthaPixiCanvasMod(
         ...modOptions?.pixiOptions,
     };
 
-    return defineAnthaMod<AnthaPixiCanvasModState>({
-        modName: 'antha-pixi-canvas',
+    return defineAnthaMod<AnthaGraphics2dModState>({
+        modName: 'antha-graphics-2d',
         cleanup({state}) {
             state.pixi?.pixiApplication?.destroy(true);
         },
@@ -115,7 +115,7 @@ export function createAnthaPixiCanvasMod(
                                         `}
                                   ${unsafeCSS(modOptions?.extraCanvasStyles)}
                               `}
-                              id="pixi-canvas"
+                              id="antha-graphics-2d"
                               ${onDomCreated((element) => {
                                   assert.instanceOf(element, HTMLCanvasElement);
                                   if (!pixiState.canvas) {

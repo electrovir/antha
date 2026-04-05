@@ -27,7 +27,7 @@
             "path": "../entity"
         },
         {
-            "path": "../pixi-canvas"
+            "path": "../graphics-2d"
         },
         {
             "path": "../input"

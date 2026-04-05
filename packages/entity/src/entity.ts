@@ -4,7 +4,7 @@ import {
     type AssetLoader,
     type AssetValue,
 } from '@antha/asset';
-import {type PixiApplication} from '@antha/pixi-canvas';
+import {type PixiApplication} from '@antha/graphics-2d';
 import {assert, check} from '@augment-vir/assert';
 import {
     ConstructorInstanceMap,

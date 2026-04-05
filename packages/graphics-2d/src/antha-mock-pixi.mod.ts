@@ -1,5 +1,5 @@
 import {defineAnthaMod} from '@antha/engine';
-import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
+import {type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
 import {createMockPixi, MockPixiApp} from './mock-pixi.js';
 
 /**
@@ -8,7 +8,7 @@ import {createMockPixi, MockPixiApp} from './mock-pixi.js';
  *
  * @category Testing
  */
-export const AnthaMockPixiMod = defineAnthaMod<AnthaPixiCanvasModState>({
+export const AnthaMockPixiMod = defineAnthaMod<AnthaGraphics2dModState>({
     modName: 'mock-pixi-setup',
     execute({state}) {
         if (!state.pixi) {

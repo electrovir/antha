@@ -5,7 +5,7 @@ import {
     type EntityUpdateParams,
     type ViewCreation,
 } from '@antha/entity';
-import {createAnthaPixiCanvasMod, createAnthaPixiFpsMod} from '@antha/pixi-canvas';
+import {createAnthaGraphics2dMod, createAnthaPixiFpsMod} from '@antha/graphics-2d';
 import {createUtcFullDate} from 'date-vir';
 import {defineShape} from 'object-shape-tester';
 import {AnimatedSprite, Assets, Spritesheet, type SpritesheetData} from 'pixi.js';
@@ -224,7 +224,7 @@ export const spriteMovementDemo: AnthaDemo = {
     engine() {
         return new AnthaEngine({
             mods: [
-                createAnthaPixiCanvasMod({
+                createAnthaGraphics2dMod({
                     extraCanvasStyles: css`
                         border: 2px solid red;
                     `,

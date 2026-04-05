@@ -1,7 +1,7 @@
 import {AnthaEngine} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
+import {type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
 import {createAnthaPixiFpsMod, type ShowCountersState} from './antha-pixi-fps.mod.js';
 import {createMockPixi} from './mock-pixi.js';
 
@@ -35,7 +35,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideFps: true,
         });
 
-        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState & ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -70,7 +70,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideFps: false,
         });
 
-        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState & ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -102,7 +102,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideFps: false,
         });
 
-        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState & ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -136,7 +136,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideFps: false,
         });
 
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],
@@ -161,7 +161,7 @@ describe(createAnthaPixiFpsMod.name, () => {
             hideFps: false,
         });
 
-        const engine = new AnthaEngine<AnthaPixiCanvasModState & ShowCountersState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState & ShowCountersState>({
             mods: [
                 mod,
             ],

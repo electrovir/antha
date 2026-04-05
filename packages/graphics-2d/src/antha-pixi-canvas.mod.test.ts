@@ -1,19 +1,19 @@
 import {AnthaEngine, AnthaUi, html} from '@antha/engine';
 import {assert, waitUntil} from '@augment-vir/assert';
 import {describe, it, testWeb} from '@augment-vir/test';
-import {createAnthaPixiCanvasMod, type AnthaPixiCanvasModState} from './antha-pixi-canvas.mod.js';
+import {createAnthaGraphics2dMod, type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
 import {createMockPixi} from './mock-pixi.js';
 
-describe(createAnthaPixiCanvasMod.name, () => {
+describe(createAnthaGraphics2dMod.name, () => {
     it('creates a mod with the correct name', () => {
-        const mod = createAnthaPixiCanvasMod();
+        const mod = createAnthaGraphics2dMod();
 
-        assert.strictEquals(mod.modName, 'antha-pixi-canvas');
+        assert.strictEquals(mod.modName, 'antha-graphics-2d');
     });
 
     it('initializes pixi state and returns a template', async () => {
-        const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const mod = createAnthaGraphics2dMod();
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],
@@ -26,8 +26,8 @@ describe(createAnthaPixiCanvasMod.name, () => {
     });
 
     it('creates a PixiApplication when canvas is already in state', async () => {
-        const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const mod = createAnthaGraphics2dMod();
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],
@@ -45,8 +45,8 @@ describe(createAnthaPixiCanvasMod.name, () => {
     });
 
     it('destroys pixi application on cleanup', async () => {
-        const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const mod = createAnthaGraphics2dMod();
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],
@@ -63,8 +63,8 @@ describe(createAnthaPixiCanvasMod.name, () => {
     });
 
     it('cleanup is safe when pixi state is empty', async () => {
-        const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const mod = createAnthaGraphics2dMod();
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],
@@ -75,12 +75,12 @@ describe(createAnthaPixiCanvasMod.name, () => {
 
     it('returns undefined when an external canvas is provided via pixiOptions', async () => {
         const externalCanvas = document.createElement('canvas');
-        const mod = createAnthaPixiCanvasMod({
+        const mod = createAnthaGraphics2dMod({
             pixiOptions: {
                 canvas: externalCanvas,
             },
         });
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],
@@ -96,12 +96,12 @@ describe(createAnthaPixiCanvasMod.name, () => {
     });
 
     it('handles missing background option', async () => {
-        const mod = createAnthaPixiCanvasMod({
+        const mod = createAnthaGraphics2dMod({
             pixiOptions: {
                 background: '',
             },
         });
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],
@@ -113,8 +113,8 @@ describe(createAnthaPixiCanvasMod.name, () => {
     });
 
     it('sets canvas via onDomCreated when rendered', async () => {
-        const mod = createAnthaPixiCanvasMod();
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const mod = createAnthaGraphics2dMod();
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],
@@ -135,10 +135,10 @@ describe(createAnthaPixiCanvasMod.name, () => {
     });
 
     it('uses dynamic canvas sizing when dynamicCanvasSize is true', async () => {
-        const mod = createAnthaPixiCanvasMod({
+        const mod = createAnthaGraphics2dMod({
             dynamicCanvasSize: true,
         });
-        const engine = new AnthaEngine<AnthaPixiCanvasModState>({
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
             mods: [
                 mod,
             ],

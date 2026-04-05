@@ -54,8 +54,8 @@
         "@antha/audio": "*",
         "@antha/engine": "*",
         "@antha/entity": "*",
-        "@antha/input": "*",
-        "@antha/pixi-canvas": "*"
+        "@antha/graphics-2d": "*",
+        "@antha/input": "*"
     },
     "engines": {
         "node": ">=22"

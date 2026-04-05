@@ -7,6 +7,13 @@ import {
     type AnthaEntityModState,
 } from '@antha/entity';
 import {
+    createAnthaGraphics2dMod,
+    createAnthaPixiFpsMod,
+    type AnthaGraphics2dModOptions,
+    type AnthaGraphics2dModState,
+    type PixiFpsModOptions,
+} from '@antha/graphics-2d';
+import {
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
     type AnthaInputBindingsModOptions,
@@ -14,13 +21,6 @@ import {
     type AnthaReadRawInputModOptions,
     type AnthaReadRawInputModState,
 } from '@antha/input';
-import {
-    createAnthaPixiCanvasMod,
-    createAnthaPixiFpsMod,
-    type AnthaPixiCanvasModOptions,
-    type AnthaPixiCanvasModState,
-    type PixiFpsModOptions,
-} from '@antha/pixi-canvas';
 import {type AnyObject} from '@augment-vir/common';
 import {type EmptyObject} from 'type-fest';
 
@@ -32,7 +32,7 @@ import {type EmptyObject} from 'type-fest';
 export type DefaultAnthaEngineOptions<
     ExtraState extends AnyObject = EmptyObject,
     UserCommandName extends string = string,
-> = AnthaPixiCanvasModOptions &
+> = AnthaGraphics2dModOptions &
     PixiFpsModOptions &
     AnthaAssetModOptions &
     AudioPlayerOptions &
@@ -49,7 +49,7 @@ export type DefaultAnthaEngineOptions<
 export type DefaultAnthaEngineState<
     ExtraState extends AnyObject = EmptyObject,
     UserCommandName extends string = string,
-> = AnthaPixiCanvasModState &
+> = AnthaGraphics2dModState &
     AnthaAudioState &
     AnthaEntityModState<ExtraState> &
     AnthaReadRawInputModState &
@@ -71,7 +71,7 @@ export function createDefaultAnthaEngine<
         defineLogicEntity,
         entityKeys,
     } = createAnthaEntityMod<
-        AnthaPixiCanvasModState &
+        AnthaGraphics2dModState &
             AnthaAudioState &
             AnthaReadRawInputModState &
             AnthaInputBindingsState<UserCommandName> &
@@ -81,7 +81,7 @@ export function createDefaultAnthaEngine<
     const engine = new AnthaEngine<DefaultAnthaEngineState<ExtraState, UserCommandName>>({
         ...options,
         mods: [
-            createAnthaPixiCanvasMod(options),
+            createAnthaGraphics2dMod(options),
             createAnthaPixiFpsMod(options),
             createAnthaAssetMod(options),
             createAnthaAudioMod(options),

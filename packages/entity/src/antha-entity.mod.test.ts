@@ -1,5 +1,5 @@
 import {AnthaEngine} from '@antha/engine';
-import {AnthaMockPixiMod} from '@antha/pixi-canvas';
+import {AnthaMockPixiMod} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {Graphics} from 'pixi.js';

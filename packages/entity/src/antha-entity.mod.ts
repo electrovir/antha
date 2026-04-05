@@ -1,6 +1,6 @@
 import {anthaAssetModName, AssetLoader, type AnthaAssetModState} from '@antha/asset';
-import {defineAnthaMod, html, SkipExecution, type AnthaMod} from '@antha/engine';
-import {type AnthaPixiCanvasModState} from '@antha/pixi-canvas';
+import {defineAnthaMod, html, SkipExecution} from '@antha/engine';
+import {type AnthaGraphics2dModState} from '@antha/graphics-2d';
 import {
     mergeDefinedProperties,
     type AnyObject,
@@ -18,7 +18,7 @@ export type AnthaEntityModState<State extends AnyObject = any> = {
     entityStore: EntityStore<Partial<AnthaEntityModState<State>>>;
     debugHitboxes: boolean;
 } & State &
-    AnthaPixiCanvasModState &
+    AnthaGraphics2dModState &
     AnthaAssetModState;
 
 /**
@@ -96,7 +96,7 @@ export function createAnthaEntityMod<ExtraState extends AnyObject>(
     });
 
     return {
-        mod: mod as AnthaMod<AnthaEntityModState<ExtraState>>,
+        mod,
         ...entitySuite,
     };
 }

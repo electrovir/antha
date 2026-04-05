@@ -14,10 +14,10 @@ import {
 } from '@antha/engine';
 import {createAnthaEntityMod, type AnthaEntityModState, type EntityStore} from '@antha/entity';
 import {
-    createAnthaPixiCanvasMod,
+    createAnthaGraphics2dMod,
     createAnthaPixiFpsMod,
-    type AnthaPixiCanvasModState,
-} from '@antha/pixi-canvas';
+    type AnthaGraphics2dModState,
+} from '@antha/graphics-2d';
 import {check} from '@augment-vir/assert';
 import {randomInteger, wait, type MinMax} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
@@ -266,7 +266,7 @@ let renderCount = 0;
 
 const EntityAssetDemoControls = defineElement<{
     entityStore: EntityStore;
-    state: Partial<EntityAssetDemoGameState & AnthaPixiCanvasModState>;
+    state: Partial<EntityAssetDemoGameState & AnthaGraphics2dModState>;
 }>()({
     tagName: 'entity-asset-demo-controls',
     styles: css`
@@ -362,7 +362,7 @@ export const entityAssetLoadingDemo: AnthaDemo = {
     engine() {
         return new AnthaEngine({
             mods: [
-                createAnthaPixiCanvasMod(),
+                createAnthaGraphics2dMod(),
                 createAnthaPixiFpsMod(),
                 createAnthaAssetMod(),
                 entityMod,

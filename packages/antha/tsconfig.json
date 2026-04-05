@@ -30,7 +30,7 @@
             "path": "../input"
         },
         {
-            "path": "../pixi-canvas"
+            "path": "../graphics-2d"
         }
     ]
 }
