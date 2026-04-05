@@ -1,5 +1,4 @@
 import {type AnthaEngine, AnthaUi} from '@antha/engine';
-import {pixiCanvasZIndex} from '@antha/graphics-2d';
 import {colorCss} from '@electrovir/color';
 import {css, type DeclarativeElementDefinition, defineElement, html, nothing} from 'element-vir';
 import {themeDefaultKey} from 'theme-vir';
@@ -20,7 +19,6 @@ export const AnthaDemoPage = defineElement<{
             left: 0;
             ${colorCss(viraTheme.colors[themeDefaultKey])}
             border: 2px solid ${viraTheme.colors[themeDefaultKey].foreground.value};
-            z-index: ${pixiCanvasZIndex + 1};
             padding: 4px 8px;
             border-top-right-radius: 4px;
             font-family: sans-serif;

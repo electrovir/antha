@@ -1,15 +1,13 @@
 import {AnthaEngine} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
-import {createAnthaPixiFpsMod, type ShowCountersState} from './antha-pixi-fps.mod.js';
-import {createMockPixi} from './mock-pixi.js';
+import {createAnthaFpsMod, type ShowCountersState} from './antha-fps.mod.js';
 
-describe(createAnthaPixiFpsMod.name, () => {
+describe(createAnthaFpsMod.name, () => {
     it('creates a mod with default options', () => {
-        const mod = createAnthaPixiFpsMod();
+        const mod = createAnthaFpsMod();
 
-        assert.strictEquals(mod.modName, 'antha-pixi-fps');
+        assert.strictEquals(mod.modName, 'antha-fps');
         assert.isDefined(mod.frequency);
         assert.deepEquals(mod.frequency, {
             durationMs: 500,
@@ -18,24 +16,24 @@ describe(createAnthaPixiFpsMod.name, () => {
     });
 
     it('creates a mod with custom options', () => {
-        const mod = createAnthaPixiFpsMod({
+        const mod = createAnthaFpsMod({
             fpsUpdateIntervalMs: 1000,
             hideFps: false,
             debugFps: true,
         });
 
-        assert.strictEquals(mod.modName, 'antha-pixi-fps');
+        assert.strictEquals(mod.modName, 'antha-fps');
         assert.deepEquals(mod.frequency, {
             durationMs: 1000,
         });
     });
 
     it('initializes state defaults via execute', async () => {
-        const mod = createAnthaPixiFpsMod({
+        const mod = createAnthaFpsMod({
             hideFps: true,
         });
 
-        const engine = new AnthaEngine<AnthaGraphics2dModState & ShowCountersState>({
+        const engine = new AnthaEngine<ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -48,7 +46,7 @@ describe(createAnthaPixiFpsMod.name, () => {
     });
 
     it('returns undefined when no counters are enabled', async () => {
-        const mod = createAnthaPixiFpsMod({
+        const mod = createAnthaFpsMod({
             hideFps: true,
             debugFps: false,
         });
@@ -65,12 +63,12 @@ describe(createAnthaPixiFpsMod.name, () => {
     });
 
     it('records stutters when debugFps is enabled', async () => {
-        const mod = createAnthaPixiFpsMod({
+        const mod = createAnthaFpsMod({
             debugFps: true,
             hideFps: false,
         });
 
-        const engine = new AnthaEngine<AnthaGraphics2dModState & ShowCountersState>({
+        const engine = new AnthaEngine<ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -97,12 +95,12 @@ describe(createAnthaPixiFpsMod.name, () => {
     });
 
     it('caps stutters at 10 entries', async () => {
-        const mod = createAnthaPixiFpsMod({
+        const mod = createAnthaFpsMod({
             debugFps: true,
             hideFps: false,
         });
 
-        const engine = new AnthaEngine<AnthaGraphics2dModState & ShowCountersState>({
+        const engine = new AnthaEngine<ShowCountersState>({
             mods: [
                 mod,
             ],
@@ -131,37 +129,13 @@ describe(createAnthaPixiFpsMod.name, () => {
         assert.isLengthExactly(engine.state.fpsStutters, 10);
     });
 
-    it('renders the FPS display with a non-zero value', async () => {
-        const mod = createAnthaPixiFpsMod({
-            hideFps: false,
-        });
-
-        const engine = new AnthaEngine<AnthaGraphics2dModState>({
-            mods: [
-                mod,
-            ],
-        });
-
-        const mockPixi = createMockPixi();
-
-        mockPixi.ticker.elapsedMS = 16;
-
-        engine.state.pixi = {
-            pixiApplication: mockPixi,
-        };
-
-        await engine.runSingleTick();
-
-        assert.isDefined(engine.currentTemplateMap.get(mod));
-    });
-
     it('renders stutter list when debugFps has recorded stutters', async () => {
-        const mod = createAnthaPixiFpsMod({
+        const mod = createAnthaFpsMod({
             debugFps: true,
             hideFps: false,
         });
 
-        const engine = new AnthaEngine<AnthaGraphics2dModState & ShowCountersState>({
+        const engine = new AnthaEngine<ShowCountersState>({
             mods: [
                 mod,
             ],

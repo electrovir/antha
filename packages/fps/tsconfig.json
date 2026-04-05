@@ -15,25 +15,7 @@
     "extends": "../../configs/tsconfig.base.json",
     "references": [
         {
-            "path": "../asset"
-        },
-        {
-            "path": "../audio"
-        },
-        {
             "path": "../engine"
-        },
-        {
-            "path": "../entity"
-        },
-        {
-            "path": "../fps"
-        },
-        {
-            "path": "../input"
-        },
-        {
-            "path": "../graphics-2d"
         }
     ]
 }

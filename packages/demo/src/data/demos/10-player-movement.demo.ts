@@ -7,7 +7,8 @@ import {
     type AnthaEntityModState,
     type EntityUpdateParams,
 } from '@antha/entity';
-import {createAnthaGraphics2dMod, createAnthaPixiFpsMod} from '@antha/graphics-2d';
+import {createAnthaFpsMod} from '@antha/fps';
+import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {
     AnyGamepad,
     InputDirection,
@@ -282,7 +283,7 @@ export const playerMovementDemo: AnthaDemo = {
                 createAnthaGraphics2dMod({
                     dynamicCanvasSize: true,
                 }),
-                createAnthaPixiFpsMod(),
+                createAnthaFpsMod(),
                 createAnthaAssetMod(),
                 entityStoreMod,
                 createAnthaReadRawInputMod(),

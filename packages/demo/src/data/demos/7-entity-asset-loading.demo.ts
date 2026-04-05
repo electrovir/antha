@@ -13,11 +13,8 @@ import {
     listen,
 } from '@antha/engine';
 import {createAnthaEntityMod, type AnthaEntityModState, type EntityStore} from '@antha/entity';
-import {
-    createAnthaGraphics2dMod,
-    createAnthaPixiFpsMod,
-    type AnthaGraphics2dModState,
-} from '@antha/graphics-2d';
+import {createAnthaFpsMod} from '@antha/fps';
+import {createAnthaGraphics2dMod, type AnthaGraphics2dModState} from '@antha/graphics-2d';
 import {check} from '@augment-vir/assert';
 import {randomInteger, wait, type MinMax} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
@@ -363,7 +360,7 @@ export const entityAssetLoadingDemo: AnthaDemo = {
         return new AnthaEngine({
             mods: [
                 createAnthaGraphics2dMod(),
-                createAnthaPixiFpsMod(),
+                createAnthaFpsMod(),
                 createAnthaAssetMod(),
                 entityMod,
                 entityAssetDemoMod,

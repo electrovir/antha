@@ -1,5 +1,5 @@
 import {AnthaEngine, defineAnthaMod} from '@antha/engine';
-import {createAnthaPixiFpsMod} from '@antha/graphics-2d';
+import {createAnthaFpsMod} from '@antha/fps';
 import {randomInteger, wait} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, defineElement, html, listen} from 'element-vir';
@@ -62,7 +62,7 @@ export const stutterDetectionDemo: AnthaDemo = {
     engine() {
         return new AnthaEngine({
             mods: [
-                createAnthaPixiFpsMod({
+                createAnthaFpsMod({
                     debugFps: true,
                 }),
                 randomStutterMod,

@@ -9,7 +9,8 @@ import {
     type EntityStore,
     type ViewCreation,
 } from '@antha/entity';
-import {createAnthaGraphics2dMod, createAnthaPixiFpsMod} from '@antha/graphics-2d';
+import {createAnthaFpsMod} from '@antha/fps';
+import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {executeCount, randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
@@ -625,7 +626,7 @@ export const entitiesDemo: AnthaDemo = {
                         border: 2px solid red;
                     `,
                 }),
-                createAnthaPixiFpsMod({
+                createAnthaFpsMod({
                     debugFps: true,
                 }),
                 entityStoreMod,

@@ -27,6 +27,9 @@
             "path": "../entity"
         },
         {
+            "path": "../fps"
+        },
+        {
             "path": "../graphics-2d"
         },
         {

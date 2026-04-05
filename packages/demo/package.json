@@ -16,6 +16,7 @@
         "@antha/audio": "*",
         "@antha/engine": "*",
         "@antha/entity": "*",
+        "@antha/fps": "*",
         "@antha/graphics-2d": "*",
         "@antha/input": "*",
         "@augment-vir/assert": "^31.68.3",

@@ -1,7 +1,6 @@
 import {defineConfig} from '@virmator/test/configs/web-test-runner.config.base.mjs';
 import {dirname} from 'path';
 import {fileURLToPath, pathToFileURL} from 'url';
-import {pixiPlugin} from 'web-test-runner-plugin-pixi';
 import {testPorts} from '../../../configs/test-ports.mjs';
 
 const baseConfig = defineConfig({
@@ -13,11 +12,7 @@ const baseConfig = defineConfig({
 /** @type {import('@web/test-runner').TestRunnerConfig} */
 const webTestRunnerConfig = {
     ...baseConfig,
-    plugins: [
-        pixiPlugin(),
-        ...baseConfig.plugins,
-    ],
-    port: testPorts.graphics2d,
+    port: testPorts.fps,
 };
 
 export default webTestRunnerConfig;

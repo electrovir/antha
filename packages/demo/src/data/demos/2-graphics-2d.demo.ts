@@ -1,7 +1,7 @@
 import {AnthaEngine, SkipExecution, css, type AnthaMod} from '@antha/engine';
+import {createAnthaFpsMod} from '@antha/fps';
 import {
     createAnthaGraphics2dMod,
-    createAnthaPixiFpsMod,
     defaultPixiOptions,
     type AnthaGraphics2dModState,
 } from '@antha/graphics-2d';
@@ -251,7 +251,7 @@ export const graphics2dDemo: AnthaDemo = {
                         border: 2px solid red;
                     `,
                 }),
-                createAnthaPixiFpsMod(),
+                createAnthaFpsMod(),
                 bouncingBallsMod,
             ],
         });

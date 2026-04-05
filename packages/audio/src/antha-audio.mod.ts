@@ -12,13 +12,18 @@ export type AnthaAudioState = {
 };
 
 /**
+ * Options for {@link createAnthaAudioMod}.
+ *
+ * @category Internal
+ */
+export type AnthaAudioModOptions = PartialWithUndefined<AudioPlayerOptions>;
+
+/**
  * A pre-built mod for playing audio files.
  *
  * @category Pre-Built Mods
  */
-export function createAnthaAudioMod(
-    audioPlayerOptions?: Readonly<PartialWithUndefined<AudioPlayerOptions>> | undefined,
-) {
+export function createAnthaAudioMod(audioPlayerOptions: Readonly<AnthaAudioModOptions> = {}) {
     return defineAnthaMod<AnthaAudioState>({
         modName: 'antha-audio',
         async cleanup({state}) {
@@ -31,3 +36,10 @@ export function createAnthaAudioMod(
         },
     });
 }
+
+/**
+ * The mod created by {@link createAnthaAudioMod}.
+ *
+ * @category Internal
+ */
+export type AnthaAudioMod = ReturnType<typeof createAnthaAudioMod>;

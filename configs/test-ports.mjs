@@ -9,6 +9,7 @@ export const testPorts = {
     audio: ++basePort,
     engine: ++basePort,
     entity: ++basePort,
+    fps: ++basePort,
+    graphics2d: ++basePort,
     input: ++basePort,
-    pixiCanvas: ++basePort,
 };

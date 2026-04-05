@@ -1,22 +1,8 @@
 import {css, defineAnthaMod, html} from '@antha/engine';
 import {check} from '@augment-vir/assert';
-import {
-    getOrSet,
-    mergeDefinedProperties,
-    round,
-    type PartialWithUndefined,
-    type RequiredAndNotNull,
-} from '@augment-vir/common';
+import {getOrSet, round, type PartialWithUndefined} from '@augment-vir/common';
 import {colorCss} from '@electrovir/color';
 import {viraThemeDarkOverride} from 'vira';
-import {type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
-
-/**
- * The z-index CSS property applied to the graphics-2d mod's `<canvas>` element.
- *
- * @category Internal
- */
-export const pixiCanvasZIndex = 1_000_000;
 
 /**
  * State for showing counters.
@@ -37,48 +23,31 @@ export type ShowCountersState = {
 };
 
 /**
- * Options for {@link createAnthaPixiFpsMod}.
+ * Options for {@link createAnthaFpsMod}.
  *
  * @category Internal
  */
-export type PixiFpsModOptions = PartialWithUndefined<
+export type AnthaFpsModOptions = PartialWithUndefined<
     {
         /** How frequently the FPS display updates, in milliseconds. */
         fpsUpdateIntervalMs: number;
-    } & Omit<ShowCountersState, 'fpsFrameCount' | 'fpsStutters'>
+    } & Omit<ShowCountersState, 'fpsStutters'>
 >;
 
 /**
- * Default options for {@link createAnthaPixiFpsMod}.
- *
- * @category Internal
- */
-export const defaultPixiFpsModOptions = {
-    fpsUpdateIntervalMs: 500,
-    hideFps: false,
-    debugFps: false,
-} as const satisfies Required<PixiFpsModOptions>;
-
-/**
- * A pre-built mod that renders the Pixi application's FPS in the top left of the screen. Requires
- * that a pixi canvas mod (see {@link AnthaGraphics2dModState}) is also in use so that
- * `state.pixi.pixiApplication` is available.
+ * A pre-built mod that renders the render loop's FPS in the top left of the screen.
  *
  * @category Pre-Built Mods
  */
-export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> | undefined) {
-    const options: Readonly<RequiredAndNotNull<PixiFpsModOptions>> = mergeDefinedProperties<
-        RequiredAndNotNull<PixiFpsModOptions>
-    >(defaultPixiFpsModOptions, modOptions);
-
-    return defineAnthaMod<AnthaGraphics2dModState & ShowCountersState>({
-        modName: 'antha-pixi-fps',
-        initState: {
-            hideFps: options.hideFps,
-            debugFps: options.debugFps,
-        },
+export function createAnthaFpsMod(options?: Readonly<AnthaFpsModOptions> | undefined) {
+    return defineAnthaMod<ShowCountersState>({
+        modName: 'antha-fps',
         frequency: {
-            durationMs: options.fpsUpdateIntervalMs,
+            durationMs: options?.fpsUpdateIntervalMs || 500,
+        },
+        initState: {
+            debugFps: !!options?.debugFps,
+            hideFps: !!options?.hideFps,
         },
         executeImmediately: true,
         execute({state, msSinceLastExecute, ticksSinceLastExecute}) {
@@ -151,7 +120,7 @@ export function createAnthaPixiFpsMod(modOptions?: Readonly<PixiFpsModOptions> |
                             font-family: monospace;
                             font-size: 14px;
                             pointer-events: none;
-                            z-index: ${pixiCanvasZIndex};
+                            z-index: ${999_999_999_999};
                         `}
                     >
                         ${counters}

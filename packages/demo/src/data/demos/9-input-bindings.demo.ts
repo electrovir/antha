@@ -1,5 +1,5 @@
 import {AnthaEngine} from '@antha/engine';
-import {createAnthaPixiFpsMod} from '@antha/graphics-2d';
+import {createAnthaFpsMod} from '@antha/fps';
 import {
     type AnthaInputBindingsState,
     AnyGamepad,
@@ -22,7 +22,7 @@ export const inputBindingsDemo: AnthaDemo = {
                 bindingAssignments: defaultBindings,
             } satisfies Partial<AnthaInputBindingsState>,
             mods: [
-                createAnthaPixiFpsMod({
+                createAnthaFpsMod({
                     hideFps: true,
                 }),
                 createAnthaReadRawInputMod(),

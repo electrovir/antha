@@ -1,5 +1,5 @@
 import {AnthaEngine} from '@antha/engine';
-import {createAnthaPixiFpsMod} from '@antha/graphics-2d';
+import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaReadRawInputMod} from '@antha/input';
 import {createUtcFullDate} from 'date-vir';
 import {type AnthaDemo} from '../demo.js';
@@ -11,7 +11,7 @@ export const rawInputsDemo: AnthaDemo = {
     engine() {
         return new AnthaEngine({
             mods: [
-                createAnthaPixiFpsMod({
+                createAnthaFpsMod({
                     hideFps: true,
                 }),
                 createAnthaReadRawInputMod({

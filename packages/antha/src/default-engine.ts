@@ -1,17 +1,16 @@
 import {createAnthaAssetMod, type AnthaAssetModOptions} from '@antha/asset';
-import {createAnthaAudioMod, type AnthaAudioState, type AudioPlayerOptions} from '@antha/audio';
+import {createAnthaAudioMod, type AnthaAudioModOptions, type AnthaAudioState} from '@antha/audio';
 import {AnthaEngine, type AnthaEngineInit} from '@antha/engine';
 import {
     createAnthaEntityMod,
     type AnthaEntityModOptions,
     type AnthaEntityModState,
 } from '@antha/entity';
+import {createAnthaFpsMod, type AnthaFpsModOptions} from '@antha/fps';
 import {
     createAnthaGraphics2dMod,
-    createAnthaPixiFpsMod,
     type AnthaGraphics2dModOptions,
     type AnthaGraphics2dModState,
-    type PixiFpsModOptions,
 } from '@antha/graphics-2d';
 import {
     createAnthaInputBindingsMod,
@@ -33,9 +32,9 @@ export type DefaultAnthaEngineOptions<
     ExtraState extends AnyObject = EmptyObject,
     UserCommandName extends string = string,
 > = AnthaGraphics2dModOptions &
-    PixiFpsModOptions &
+    AnthaFpsModOptions &
     AnthaAssetModOptions &
-    AudioPlayerOptions &
+    AnthaAudioModOptions &
     AnthaEntityModOptions &
     AnthaReadRawInputModOptions &
     AnthaInputBindingsModOptions<NoInfer<UserCommandName>> &
@@ -82,7 +81,7 @@ export function createDefaultAnthaEngine<
         ...options,
         mods: [
             createAnthaGraphics2dMod(options),
-            createAnthaPixiFpsMod(options),
+            createAnthaFpsMod(options),
             createAnthaAssetMod(options),
             createAnthaAudioMod(options),
             entityMod,
