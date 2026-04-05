@@ -1,2 +1,3 @@
 -   add multiplayer connection mod
 -   add 3d graphics mod?
+-   add extensive readme docs

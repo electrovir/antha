@@ -24,7 +24,7 @@
             "path": "../engine"
         },
         {
-            "path": "../entity"
+            "path": "../entity-2d"
         },
         {
             "path": "../fps"

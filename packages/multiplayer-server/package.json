@@ -1,0 +1,59 @@
+{
+    "name": "@antha/multiplayer-server",
+    "version": "0.0.1",
+    "description": "An multiplayer server that can be used with the Antha multiplayer mod.",
+    "keywords": [
+        "vir",
+        "antha",
+        "WebRTC",
+        "signal server",
+        "multiplayer"
+    ],
+    "homepage": "https://github.com/electrovir/antha",
+    "bugs": {
+        "url": "https://github.com/electrovir/antha/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/electrovir/antha.git"
+    },
+    "license": "(MIT or CC0 1.0)",
+    "author": {
+        "name": "electrovir",
+        "url": "https://github.com/electrovir"
+    },
+    "sideEffects": false,
+    "type": "module",
+    "main": "src/index.ts",
+    "module": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "compile": "virmator compile",
+        "docs": "virmator docs",
+        "test": "virmator test web",
+        "test:coverage": "npm test coverage",
+        "test:docs": "virmator docs check"
+    },
+    "dependencies": {
+        "@antha/multiplayer-lock-step": "^15.1.1",
+        "@augment-vir/assert": "^31.68.3",
+        "@augment-vir/common": "^31.68.3",
+        "@rest-vir/define-service": "^0.19.2",
+        "@rest-vir/implement-service": "^1.7.0",
+        "@rest-vir/run-service": "^1.7.0",
+        "date-vir": "^8.2.1",
+        "type-fest": "^5.5.0"
+    },
+    "devDependencies": {
+        "@augment-vir/test": "^31.68.3"
+    },
+    "peerDependencies": {
+        "@antha/engine": "*"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}

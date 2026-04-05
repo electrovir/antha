@@ -1,0 +1,62 @@
+{
+    "name": "@antha/multiplayer-lock-step",
+    "version": "15.1.1",
+    "description": "Multiplayer mod for the Antha engine.",
+    "keywords": [
+        "vir",
+        "antha",
+        "WebRTC",
+        "signal server",
+        "multiplayer",
+        "gaming"
+    ],
+    "homepage": "https://github.com/electrovir/antha",
+    "bugs": {
+        "url": "https://github.com/electrovir/antha/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/electrovir/antha.git"
+    },
+    "license": "(MIT or CC0 1.0)",
+    "author": {
+        "name": "electrovir",
+        "url": "https://github.com/electrovir"
+    },
+    "sideEffects": false,
+    "type": "module",
+    "main": "src/index.ts",
+    "module": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "compile": "virmator compile",
+        "docs": "virmator docs",
+        "test": "virmator test web",
+        "test:coverage": "npm test coverage",
+        "test:docs": "virmator docs check"
+    },
+    "dependencies": {
+        "@antha/engine": "^0.0.1",
+        "@augment-vir/assert": "^31.68.3",
+        "@augment-vir/common": "^31.68.3",
+        "@rest-vir/define-service": "^1.6.0",
+        "date-vir": "^8.2.1",
+        "object-shape-tester": "^6.11.0",
+        "type-fest": "^5.5.0",
+        "typed-event-target": "^4.3.0",
+        "url-vir": "^2.1.8"
+    },
+    "devDependencies": {
+        "@augment-vir/test": "^31.68.3",
+        "@web/dev-server-esbuild": "^1.0.5",
+        "@web/test-runner": "^0.20.2",
+        "@web/test-runner-playwright": "^0.11.1",
+        "istanbul-smart-text-reporter": "^1.1.5"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}
