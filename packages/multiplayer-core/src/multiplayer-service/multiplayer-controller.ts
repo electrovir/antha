@@ -4,11 +4,11 @@ import {
     makeWritable,
     type MaybePromise,
     type PartialWithUndefined,
-    type Uuid,
 } from '@augment-vir/common';
 import {type mapServiceDevPort} from '@rest-vir/define-service';
 import {type AnyDuration, convertDuration} from 'date-vir';
 import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
+import {type ClientId, type RoomId} from '../multiplayer-id.js';
 import {
     type MultiplayerConnectionUpdate,
     type RoomInput,
@@ -76,7 +76,7 @@ export type MultiplayerControllerParams<Action extends JsonCompatibleValue> = {
      */
     acceptConnection?:
         | ((
-              connectingClientId: Uuid,
+              connectingClientId: ClientId,
               controller: MultiplayerController<Action>,
           ) => MaybePromise<boolean>)
         | undefined;
@@ -96,6 +96,13 @@ export type MultiplayerControllerParams<Action extends JsonCompatibleValue> = {
  */
 export type MultiplayerParams = {
     /**
+     * The origin of the server running the multiplayer connection service.
+     *
+     * @example 'http://localhost:3000'
+     */
+    backendOrigin: string;
+} & PartialWithUndefined<{
+    /**
      * Set to `undefined` or `false` to disable port scanning. Set to `true` to enable port
      * scanning. Set to an options object to configure port scanning.
      *
@@ -105,25 +112,21 @@ export type MultiplayerParams = {
      *
      * @default undefined
      */
-    portScanOptions?: undefined | Parameters<typeof mapServiceDevPort>[1] | boolean;
-    /**
-     * The origin of the server running the multiplayer connection service.
-     *
-     * @example 'http://localhost:3000'
-     */
-    backendOrigin: string;
+    portScanOptions: Parameters<typeof mapServiceDevPort>[1] | boolean;
     /**
      * How long to wait before fetching the list of rooms again.
      *
      * @default {seconds: 10}
      */
-    roomUpdateInterval?: AnyDuration | undefined;
+    roomUpdateInterval: AnyDuration;
     /**
      * Optional stun server URLs to help with routing WebRTC connections. This is entirely optional,
      * but might help with clients attempting to establish connections to each other.
      */
-    stunServerUrls?: ReadonlyArray<string> | undefined;
-};
+    stunServerUrls: ReadonlyArray<string>;
+    /** If set, this will override the internal multiplayer API. */
+    multiplayerApi: Readonly<MultiplayerApi>;
+}>;
 
 /**
  * This is fired whenever a new frame is received from the host client.
@@ -208,7 +211,7 @@ export class MultiplayerController<
     public enableRoomUpdates = true;
 
     /** Currently joined room id. If a room has not been joined yet, this will be empty. */
-    public readonly roomId: Uuid | undefined;
+    public readonly roomId: RoomId | undefined;
     /** The current connection state of the controller's connection to a backend service. */
     public readonly serviceConnectionState: ServiceAndRoomConnectionState['service'] =
         MultiplayerConnectionState.Disconnected;
@@ -226,9 +229,9 @@ export class MultiplayerController<
      * Rooms that have rejected the current player, so the player doesn't keep trying to connect to
      * them.
      */
-    protected rejectedRoomIds = new Set<Uuid>();
+    protected rejectedRoomIds = new Set<RoomId>();
     /** The current MultiplayerApi. This will be `undefined` if playing in single player. */
-    public multiplayerApi: Promise<MultiplayerApi> | undefined;
+    public multiplayerApi: MultiplayerApi | undefined;
     /**
      * Used to keep track of the room update interval. This will be set when the controller is
      * constructed in multiplayer mode or when a room is left. This will be cleared when a room is
@@ -242,7 +245,7 @@ export class MultiplayerController<
      * Get the current client's WebRTC client id. This will return `undefined` if there is no
      * current connection.
      */
-    public getClientId(): Uuid | undefined {
+    public getClientId(): ClientId | undefined {
         return this.currentConnection?.clientId;
     }
 
@@ -256,7 +259,7 @@ export class MultiplayerController<
      * For host clients, this does ont include the host client id whereas
      * {@link MultiplayerController.getAllClientIds} does.
      */
-    public getConnectedClientIds(): Uuid[] {
+    public getConnectedClientIds(): ClientId[] {
         return this.currentConnection?.getConnectedClientIds() || [];
     }
 
@@ -270,7 +273,7 @@ export class MultiplayerController<
      * For host clients, this includes the host client id whereas
      * {@link MultiplayerController.getConnectedClientIds} does not.
      */
-    public getAllClientIds(): Uuid[] {
+    public getAllClientIds(): ClientId[] {
         return this.currentConnection?.getAllClientIds() || [];
     }
 
@@ -282,7 +285,7 @@ export class MultiplayerController<
      * Start multiplayer mode. This initializes {@link MultiplayerController.multiplayerApi} and
      * {@link MultiplayerController.roomUpdateIntervalId}.
      */
-    public startMultiplayer(params: Readonly<MultiplayerParams>) {
+    public async startMultiplayer(params: Readonly<MultiplayerParams>) {
         if (this.currentConnection) {
             throw new Error(
                 `Cannot start multiplayer mode again when a multiplayer connection already present.`,
@@ -293,27 +296,29 @@ export class MultiplayerController<
             service: MultiplayerConnectionState.Connecting,
         });
 
-        this.multiplayerApi = createMultiplayerApi({
-            portScanOptions: params.portScanOptions,
-            backendOrigin: params.backendOrigin,
-        })
-            .then(async (api) => {
-                const output = await api.endpoints['/health'].fetch();
-                if (!output.ok) {
-                    throw new Error(`Failed to find multiplayer service at ${api.serviceOrigin}`);
-                }
+        try {
+            const api =
+                params.multiplayerApi ||
+                (await createMultiplayerApi({
+                    portScanOptions: params.portScanOptions,
+                    backendOrigin: params.backendOrigin,
+                }));
 
-                this.updateConnectionState({
-                    service: MultiplayerConnectionState.Connected,
-                });
-                return api;
-            })
-            .catch((error: unknown) => {
-                this.updateConnectionState({
-                    service: ensureError(error),
-                });
-                throw error;
+            const output = await api.endpoints['/health'].fetch();
+            if (!output.ok) {
+                throw new Error(`Failed to find multiplayer service at ${api.serviceOrigin}.`);
+            }
+
+            this.multiplayerApi = api;
+            this.updateConnectionState({
+                service: MultiplayerConnectionState.Connected,
             });
+        } catch (error: unknown) {
+            this.updateConnectionState({
+                service: ensureError(error),
+            });
+            throw error;
+        }
 
         this.startRoomInterval();
     }
@@ -437,7 +442,7 @@ export class MultiplayerController<
         if (
             await this.currentConnection.multiplayerConnect(
                 this.params.gameId,
-                await this.multiplayerApi,
+                this.multiplayerApi,
                 this.multiplayerParams.stunServerUrls || [],
                 room,
             )
@@ -505,9 +510,7 @@ export class MultiplayerController<
                 if (this.currentConnection || !this.multiplayerApi || !this.enableRoomUpdates) {
                     return;
                 }
-                const output = await (
-                    await this.multiplayerApi
-                ).endpoints['/rooms'].fetch({
+                const output = await this.multiplayerApi.endpoints['/rooms'].fetch({
                     searchParams: {
                         gameId: [this.params.gameId],
                     },

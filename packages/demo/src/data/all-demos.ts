@@ -3,6 +3,8 @@ import {type AnthaDemo} from './demo.js';
 import {basicEngineDemo} from './demos/1-basic-engine.demo.js';
 import {playerMovementDemo} from './demos/10-player-movement.demo.js';
 import {stutterDetectionDemo} from './demos/11-stutter-detection.demo.js';
+import {multiplayerRoomConnectionDemo} from './demos/12-room-connection.demo.js';
+import {multiplayerRoomSelectionDemo} from './demos/13-room-selection.demo.js';
 import {graphics2dDemo} from './demos/2-graphics-2d.demo.js';
 import {audioEngineDemo} from './demos/3-audio-engine.demo.js';
 import {entitiesDemo} from './demos/4-entities.demo.js';
@@ -24,6 +26,8 @@ export const allDemos: AnthaDemo[] = [
     inputBindingsDemo,
     playerMovementDemo,
     stutterDetectionDemo,
+    multiplayerRoomConnectionDemo,
+    multiplayerRoomSelectionDemo,
 ];
 
 export const allDemosByPathKey = arrayToObject(allDemos, (demo) => {

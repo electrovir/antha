@@ -1,3 +1,4 @@
+export * from './multiplayer-id.js';
 export * from './multiplayer-service/errors.js';
 export * from './multiplayer-service/lock-step-controller.js';
 export * from './multiplayer-service/multiplayer-api.js';

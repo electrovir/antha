@@ -4,8 +4,6 @@ import {
     type MaybePromise,
     type PartialWithUndefined,
     PromiseQueue,
-    type Uuid,
-    createUuidV4,
     ensureErrorAndPrependMessage,
     extractErrorMessage,
     filterMap,
@@ -19,6 +17,7 @@ import {
 import {type ClientWebSocket} from '@rest-vir/define-service';
 import {type RequireExactlyOne} from 'type-fest';
 import {ListenTarget, defineTypedCustomEvent} from 'typed-event-target';
+import {type ClientId, createMultiplayerId} from '../multiplayer-id.js';
 import {type MultiplayerApi} from '../multiplayer-service/multiplayer-api.js';
 import {type MultiplayerService} from '../multiplayer-service/multiplayer-service.js';
 import {MultiplayerWebSocketMessageType} from './web-rtc-communication.js';
@@ -35,7 +34,7 @@ export class WebrtcMultiplayerMessageEvent<
     public declare detail: MessageData;
 
     constructor(
-        public readonly sourceClientId: Uuid,
+        public readonly sourceClientId: ClientId,
         detail: MessageData,
     ) {
         super({
@@ -50,10 +49,10 @@ export class WebrtcMultiplayerMessageEvent<
  * @category Internal
  */
 export type MultiplayerConnectionUpdate = RequireExactlyOne<{
-    newHost: Uuid;
-    newMember: Uuid;
-    lostHost: Uuid;
-    lostMember: Uuid;
+    newHost: ClientId;
+    newMember: ClientId;
+    lostHost: ClientId;
+    lostMember: ClientId;
 }>;
 
 /**
@@ -76,7 +75,7 @@ export function createNewRoom(
 ): RoomInput {
     return mergeDefinedProperties<RoomInput>(
         {
-            roomId: createUuidV4(),
+            roomId: createMultiplayerId.room(),
             roomName: '',
             roomPassword: '',
         },
@@ -104,7 +103,7 @@ export type RoomInput = Pick<
  * @category Internal
  */
 export type ShouldAllowConnectionCheck<Controller> = (data: {
-    connectingClientId: Uuid;
+    connectingClientId: ClientId;
     controller: Controller;
 }) => MaybePromise<boolean>;
 
@@ -122,14 +121,14 @@ export class WebrtcMultiplayerController<
 > extends ListenTarget<
     WebrtcMultiplayerMessageEvent<MessageData> | WebrtcMultiplayerConnectionUpdateEvent
 > {
-    public readonly hostClientId: Uuid | undefined;
+    public readonly hostClientId: ClientId | undefined;
 
     /**
      * Connections between multiple WebRTC peers.
      *
      * A connection with the current client's id is the init connection.
      */
-    private connections: Record<Uuid, WebrtcController<MessageData>> = {};
+    private connections: Record<ClientId, WebrtcController<MessageData>> = {};
     private webSocket: ClientWebSocket<MultiplayerApi['webSockets']['/connect']> | undefined;
     private readonly clientSecret = randomString(32);
     public readonly isDestroyed = false as boolean;
@@ -145,7 +144,7 @@ export class WebrtcMultiplayerController<
         public readonly stunServerUrls: ReadonlyArray<string>,
         public readonly multiplayerRoom: Readonly<RoomInput>,
         /** The randomized client id for this controller and client. */
-        public readonly clientId: Uuid = createUuidV4(),
+        public readonly clientId: ClientId = createMultiplayerId.client(),
         /**
          * This is fired when a WebRTC peer attempts to connect to the host client (this will only
          * be fired if your client is the host). Return `true` to accept the connection. Return
@@ -182,7 +181,7 @@ export class WebrtcMultiplayerController<
      * For host clients, this does ont include the host client id whereas
      * {@link WebrtcMultiplayerController.getAllClientIds} does.
      */
-    public getConnectedClientIds(): Uuid[] {
+    public getConnectedClientIds(): ClientId[] {
         const connectedClientIds = filterMap(
             getObjectTypedValues(this.connections),
             (connection) => connection.clientId,
@@ -204,7 +203,7 @@ export class WebrtcMultiplayerController<
      * For host clients, this includes the host client id whereas
      * {@link WebrtcMultiplayerController.getConnectedClientIds} does not.
      */
-    public getAllClientIds(): Uuid[] {
+    public getAllClientIds(): ClientId[] {
         const connectedClientIds = this.getConnectedClientIds();
 
         const allClients = [
@@ -255,7 +254,7 @@ export class WebrtcMultiplayerController<
     }
 
     /** Send a message to just a single client. This is only allowed on a host client. */
-    public sendToOnlyOneClient(clientId: Uuid, data: Readonly<MessageData>) {
+    public sendToOnlyOneClient(clientId: ClientId, data: Readonly<MessageData>) {
         if (!this.isHost()) {
             log.error(new Error(`Cannot send to an individual client as not a host.`));
             return;
@@ -289,7 +288,7 @@ export class WebrtcMultiplayerController<
         const webSocket = await this.setupWebSocket();
         const reply = await webSocket.sendAndWaitForReply({
             message: {
-                messageId: createUuidV4(),
+                messageId: createMultiplayerId.socketMessage(),
                 type: MultiplayerWebSocketMessageType.Offer,
                 clientId: this.clientId,
                 clientSecret: this.clientSecret,
@@ -317,7 +316,7 @@ export class WebrtcMultiplayerController<
     private sendHostPing() {
         if (this.isHost() && this.webSocket) {
             this.webSocket.send({
-                messageId: createUuidV4(),
+                messageId: createMultiplayerId.socketMessage(),
                 type: MultiplayerWebSocketMessageType.HostPing,
                 clientCount: this.getAllClientIds().length,
                 clientId: this.clientId,
@@ -397,7 +396,7 @@ export class WebrtcMultiplayerController<
                                     `Host multiplayer client received a WebRTC answer.`,
                                 );
                             }
-                            /** A connection with the current uuid is the init connection. */
+                            /** A connection with the current id is the init connection. */
                             const initConnection = this.connections[this.clientId];
 
                             if ('rejected' in message.data) {
@@ -472,30 +471,30 @@ export class WebrtcMultiplayerController<
         return webSocket;
     }
 
-    private createNewConnection(uuid: Uuid): WebrtcController<MessageData> {
-        const newController = new WebrtcController<MessageData>(uuid);
-        this.connections[uuid] = newController;
+    private createNewConnection(clientId: ClientId): WebrtcController<MessageData> {
+        const newController = new WebrtcController<MessageData>(clientId);
+        this.connections[clientId] = newController;
         newController.listen(WebrtcConnectEvent, (event) => {
             const connectionEstablished = event.detail;
 
             if (connectionEstablished) {
-                if (uuid !== this.clientId) {
+                if (clientId !== this.clientId) {
                     this.dispatch(
                         new WebrtcMultiplayerConnectionUpdateEvent({
                             detail: {
-                                newMember: uuid,
+                                newMember: clientId,
                             },
                         }),
                     );
                 }
             } else {
                 newController.destroy();
-                delete this.connections[uuid];
+                delete this.connections[clientId];
                 if (this.isHost()) {
                     this.dispatch(
                         new WebrtcMultiplayerConnectionUpdateEvent({
                             detail: {
-                                lostMember: uuid,
+                                lostMember: clientId,
                             },
                         }),
                     );
@@ -503,7 +502,7 @@ export class WebrtcMultiplayerController<
                     this.dispatch(
                         new WebrtcMultiplayerConnectionUpdateEvent({
                             detail: {
-                                lostHost: uuid,
+                                lostHost: clientId,
                             },
                         }),
                     );
@@ -516,11 +515,11 @@ export class WebrtcMultiplayerController<
             }
         });
         newController.listen(WebrtcMessageEvent, (event) => {
-            const sourceUuid = uuid === this.clientId ? this.hostClientId : uuid;
+            const sourceId = clientId === this.clientId ? this.hostClientId : clientId;
 
-            if (sourceUuid) {
+            if (sourceId) {
                 this.dispatch(
-                    new WebrtcMultiplayerMessageEvent<MessageData>(sourceUuid, event.detail),
+                    new WebrtcMultiplayerMessageEvent<MessageData>(sourceId, event.detail),
                 );
             }
         });

@@ -1,17 +1,18 @@
 import {
+    createMultiplayerId,
     MultiplayerWebSocketMessageType,
+    type ClientId,
     type MultiplayerClientRooms,
     type MultiplayerService,
+    type RoomId,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {
     awaitedForEach,
-    createUuidV4,
     extractErrorMessage,
     randomString,
     type ArrayElement,
     type MaybePromise,
-    type Uuid,
     type Values,
 } from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
@@ -26,7 +27,7 @@ import {
 
 type SetupRoomsOutput<Rooms extends string[][]> = {
     [Key in keyof Rooms]: {
-        roomId: Uuid;
+        roomId: RoomId;
         roomName: string;
         clients: Record<ArrayElement<Rooms[Key]>, TestClient>;
     };
@@ -34,7 +35,7 @@ type SetupRoomsOutput<Rooms extends string[][]> = {
 
 type TestClient = {
     webSocket: ClientWebSocket<MultiplayerService['webSockets']['/connect']>;
-    clientId: Uuid;
+    clientId: ClientId;
     clientName: string;
     clientSecret: string;
 };
@@ -115,7 +116,7 @@ function testMultiplayerService(
 
             const testClient = {
                 webSocket,
-                clientId: createUuidV4(),
+                clientId: createMultiplayerId.client(),
                 clientName,
                 clientSecret: randomString(32),
             };
@@ -128,13 +129,13 @@ function testMultiplayerService(
         async function setupRooms<Rooms extends string[][]>(
             rooms: Rooms,
         ): Promise<SetupRoomsOutput<Rooms>> {
-            const roomIds: Uuid[] = [];
+            const roomIds: RoomId[] = [];
 
             const finishedRooms = await Promise.all(
                 rooms.map(
                     async (roomClients, roomIndex): Promise<Values<SetupRoomsOutput<Rooms>>> => {
                         if (roomClients.length) {
-                            const roomId = createUuidV4();
+                            const roomId = createMultiplayerId.room();
                             roomIds.push(roomId);
                             const roomName = `room-${roomIndex}`;
                             const clients: Record<string, TestClient> = {};
@@ -144,7 +145,7 @@ function testMultiplayerService(
                                 clients[clientName] = client;
 
                                 client.webSocket.send({
-                                    messageId: createUuidV4(),
+                                    messageId: createMultiplayerId.socketMessage(),
                                     clientId: client.clientId,
                                     data: {
                                         sdp: 'test',
@@ -272,7 +273,7 @@ describe('multiplayer service', () => {
             );
 
             rooms[1].clients['b-host'].webSocket.send({
-                messageId: createUuidV4(),
+                messageId: createMultiplayerId.socketMessage(),
                 type: MultiplayerWebSocketMessageType.HostPing,
                 clientCount: 2,
                 clientId: rooms[1].clients['b-host'].clientId,

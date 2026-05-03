@@ -1,6 +1,6 @@
 import {assert} from '@augment-vir/assert';
-import {createUuidV4} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
+import {createMultiplayerId} from '../multiplayer-id.js';
 import {type MultiplayerClientRooms} from '../multiplayer-service/multiplayer-service.js';
 import {MultiplayerWebSocketMessageType} from '../webrtc/web-rtc-communication.js';
 import {createMockRoomHandlerServerApi} from './mock-room-handler-server-api.js';
@@ -38,9 +38,10 @@ describe(createMockRoomHandlerServerApi.name, () => {
     });
 
     it('returns configured rooms', async () => {
+        const roomId = createMultiplayerId.room();
         const rooms: MultiplayerClientRooms = {
-            '23f3eef2-682d-4a78-afda-129006318cdf': {
-                roomId: '23f3eef2-682d-4a78-afda-129006318cdf',
+            [roomId]: {
+                roomId,
                 roomName: 'Test Room',
                 clientCount: 1,
                 hasRoomPassword: false,
@@ -63,7 +64,7 @@ describe(createMockRoomHandlerServerApi.name, () => {
 
     it('creates a room when a client connects via WebSocket', async () => {
         const mockApi = createMockRoomHandlerServerApi();
-        const roomId = createUuidV4();
+        const roomId = createMultiplayerId.room();
 
         const webSocket = await mockApi.webSockets['/connect'].connect({
             searchParams: {
@@ -73,12 +74,12 @@ describe(createMockRoomHandlerServerApi.name, () => {
 
         webSocket.send({
             type: MultiplayerWebSocketMessageType.Offer,
-            clientId: createUuidV4(),
+            clientId: createMultiplayerId.client(),
             clientSecret: 'test-secret',
             roomId,
             roomName: 'New Room',
             roomPassword: '',
-            messageId: createUuidV4(),
+            messageId: createMultiplayerId.socketMessage(),
             data: {
                 type: MultiplayerWebSocketMessageType.Offer,
                 sdp: 'mock-sdp',
@@ -99,6 +100,6 @@ describe(createMockRoomHandlerServerApi.name, () => {
             hasRoomPassword: false,
         });
 
-        webSocket.close();
+        await webSocket.close();
     });
 });

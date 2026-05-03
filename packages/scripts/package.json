@@ -11,12 +11,12 @@
         "test:coverage": "npm test"
     },
     "dependencies": {
-        "@augment-vir/common": "^31.68.3",
-        "@augment-vir/node": "^31.68.3",
+        "@augment-vir/common": "^31.69.0",
+        "@augment-vir/node": "^31.69.0",
         "element-vir": "^26.15.1"
     },
     "devDependencies": {
-        "@types/node": "^25.5.2"
+        "@types/node": "^25.6.0"
     },
     "engines": {
         "node": ">=22"

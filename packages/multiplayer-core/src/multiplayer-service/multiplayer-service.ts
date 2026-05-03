@@ -1,13 +1,7 @@
 import {AnyOrigin, defineService, HttpMethod} from '@rest-vir/define-service';
-import {
-    defineShape,
-    exactShape,
-    recordShape,
-    tupleShape,
-    unionShape,
-    uuidShape,
-} from 'object-shape-tester';
+import {defineShape, exactShape, recordShape, tupleShape, unionShape} from 'object-shape-tester';
 import {buildUrl} from 'url-vir';
+import {multiplayerIdShapes} from '../multiplayer-id.js';
 import {
     answerMessageShape,
     errorMessageShape,
@@ -24,7 +18,7 @@ import {
  */
 export const multiplayerClientRoomShape = defineShape({
     roomName: '',
-    roomId: uuidShape(),
+    roomId: multiplayerIdShapes.room(),
     clientCount: -1,
     hasRoomPassword: false,
 });
@@ -43,7 +37,7 @@ export type MultiplayerClientRoom = typeof multiplayerClientRoomShape.runtimeTyp
  */
 export const multiplayerClientRoomsShape = defineShape(
     recordShape({
-        keys: uuidShape(),
+        keys: multiplayerIdShapes.room(),
         values: multiplayerClientRoomShape,
         partial: true,
     }),

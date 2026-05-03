@@ -1,20 +1,35 @@
-import {assert, check} from '@augment-vir/assert';
+import {assert, assertWrap, check} from '@augment-vir/assert';
 import {
     addPrefix,
     DeferredPromise,
     makeWritable,
     wrapInTry,
     type JsonCompatibleValue,
-    type Uuid,
 } from '@augment-vir/common';
 import {assertValidShape} from 'object-shape-tester';
 import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
+import {type ClientId} from '../multiplayer-id.js';
 import {
     webrtcAnswerShape,
     webrtcOfferShape,
     type WebrtcAnswer,
     type WebrtcOffer,
 } from './web-rtc-communication.js';
+
+/**
+ * Converts an `RTCSessionDescription` into a plain object so that shape validation works correctly.
+ * Browser `RTCSessionDescription` objects expose `type` and `sdp` as prototype getters rather than
+ * own data properties, which causes `Object.getOwnPropertyNames`-based checks (used by TypeBox /
+ * object-shape-tester) to miss them.
+ *
+ * @category Internal
+ */
+export function toPlainSessionDescription(description: Readonly<RTCSessionDescription>) {
+    return {
+        type: description.type,
+        sdp: description.sdp,
+    };
+}
 
 /**
  * An event that is omitted from {@link WebrtcController} when a WebRTC message is received.
@@ -77,7 +92,7 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
     /** Indicates whether the WebRTC connection is live or not. */
     public readonly isConnected: boolean = false;
 
-    constructor(public readonly clientId: Uuid) {
+    constructor(public readonly clientId: ClientId) {
         super();
     }
 
@@ -90,7 +105,9 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
 
         await candidatePromise;
 
-        const offer = this.connection.localDescription;
+        const offer = toPlainSessionDescription(
+            assertWrap.isDefined(this.connection.localDescription),
+        );
         assertValidShape(offer, webrtcOfferShape);
 
         return offer;
@@ -129,7 +146,9 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
             await candidatePromise;
         }
 
-        const answer = this.connection.localDescription;
+        const answer = toPlainSessionDescription(
+            assertWrap.isDefined(this.connection.localDescription),
+        );
 
         assertValidShape(answer, webrtcAnswerShape);
 

@@ -1,7 +1,8 @@
 import {waitUntil} from '@augment-vir/assert';
-import {createUuidV4, type JsonCompatibleValue, makeWritable, type Uuid} from '@augment-vir/common';
+import {type JsonCompatibleValue, makeWritable} from '@augment-vir/common';
 import {type AnyDuration, convertDuration} from 'date-vir';
 import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
+import {type ClientId, createMultiplayerId} from '../multiplayer-id.js';
 import {
     type RoomInput,
     type ShouldAllowConnectionCheck,
@@ -30,7 +31,7 @@ export type LockStepMessage<Action> =
     /** Sent from child clients to the host as actions happen. */
     | {
           type: LockStepMessageType.Actions;
-          sourceClientId: Uuid;
+          sourceClientId: ClientId;
           actions: Action[];
       }
     | {
@@ -60,12 +61,12 @@ export class LockStepGameStateController<
 > extends ListenTarget<LockStepFrameEvent<Action> | WebrtcMultiplayerConnectionUpdateEvent> {
     protected webrtcController: WebrtcMultiplayerController<LockStepMessage<Action>> | undefined;
     /** The current client id. */
-    public clientId;
+    public clientId: ClientId;
     /** The current data flow FPS. */
     public readonly currentFps: number = 0;
 
     /** This is only used if the current controller is the host. */
-    private clientsResponded: Record<Uuid, boolean> = {};
+    private clientsResponded: Record<ClientId, boolean> = {};
     private frameActions: Action[] = [];
     private timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
     private frameTickReady = true;
@@ -83,7 +84,7 @@ export class LockStepGameStateController<
         > = () => true,
     ) {
         super();
-        this.clientId = createUuidV4();
+        this.clientId = createMultiplayerId.client();
         if (frameDuration) {
             this.frameMs = convertDuration(frameDuration, {
                 milliseconds: true,
@@ -101,7 +102,7 @@ export class LockStepGameStateController<
      * For host clients, this does ont include the host client id whereas
      * {@link LockStepGameStateController.getAllClientIds} does.
      */
-    public getConnectedClientIds(): Uuid[] {
+    public getConnectedClientIds(): ClientId[] {
         return this.webrtcController?.getConnectedClientIds() || [];
     }
 
@@ -115,7 +116,7 @@ export class LockStepGameStateController<
      * For host clients, this includes the host client id whereas
      * {@link LockStepGameStateController.getConnectedClientIds} does not.
      */
-    public getAllClientIds(): Uuid[] {
+    public getAllClientIds(): ClientId[] {
         return this.webrtcController?.getAllClientIds() || [];
     }
 

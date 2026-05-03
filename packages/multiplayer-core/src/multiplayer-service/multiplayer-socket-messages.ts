@@ -1,4 +1,5 @@
-import {defineShape, exactShape, intersectShape, unionShape, uuidShape} from 'object-shape-tester';
+import {defineShape, exactShape, intersectShape, unionShape} from 'object-shape-tester';
+import {multiplayerIdShapes} from '../multiplayer-id.js';
 import {
     MultiplayerWebSocketMessageType,
     webrtcAnswerShape,
@@ -11,13 +12,13 @@ import {
  * @category Internal
  */
 export const clientIdShape = defineShape({
-    /** This UUID is used to keep track of each client on the multiplayer server. */
-    clientId: uuidShape(),
+    /** This id is used to keep track of each client on the multiplayer server. */
+    clientId: multiplayerIdShapes.client(),
     /**
      * The id of the room that the user is communicating with. Set this either to to an existing
      * room to join that room, or a new id to create a new room.
      */
-    roomId: uuidShape(),
+    roomId: multiplayerIdShapes.room(),
     /** The name of the room to create or join. */
     roomName: '',
 });
@@ -40,7 +41,7 @@ export const baseMessageShape = defineShape({
      * The id of the original message. If a message is ever a response to another message, the
      * message id will remain the same throughout the chain.
      */
-    messageId: uuidShape(),
+    messageId: multiplayerIdShapes.socketMessage(),
 });
 
 /**
@@ -132,7 +133,7 @@ export const offerMessageShape = defineShape(
 export const offerResultShape = defineShape(
     intersectShape(baseMessageShape, {
         type: exactShape(MultiplayerWebSocketMessageType.OfferResult),
-        hostClientId: uuidShape(),
+        hostClientId: multiplayerIdShapes.client(),
     }),
 );
 

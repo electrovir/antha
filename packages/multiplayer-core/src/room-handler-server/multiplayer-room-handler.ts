@@ -1,14 +1,13 @@
 import {
-    createUuidV4,
     getOrSet,
     mapObjectValues,
     omitObjectKeys,
     stringify,
     type PartialWithUndefined,
-    type Uuid,
 } from '@augment-vir/common';
 import {CommonWebSocketState} from '@rest-vir/define-service';
 import {convertDuration} from 'date-vir';
+import {createMultiplayerId, type ClientId, type RoomId} from '../multiplayer-id.js';
 import {
     type MultiplayerClientRoom,
     type MultiplayerClientRooms,
@@ -36,7 +35,7 @@ export type MultiplayerTransportClient = {
  * @category Internal
  */
 export type RoomHandlerClient = {
-    clientId: Uuid;
+    clientId: ClientId;
     clientSecret: string;
     transport: MultiplayerTransportClient;
 };
@@ -47,7 +46,7 @@ export type RoomHandlerClient = {
  * @category Internal
  */
 export type RoomHandlerRoom = {
-    clientsAwaitingAnswer: Record<Uuid, RoomHandlerClient>;
+    clientsAwaitingAnswer: Record<ClientId, RoomHandlerClient>;
     hostClient: RoomHandlerClient;
     clientCount: number;
     roomPassword: string;
@@ -60,9 +59,7 @@ export type RoomHandlerRoom = {
  * @category Internal
  */
 export type RoomHandlerRooms = {
-    [GameId in string]: {
-        [RoomId in Uuid]: RoomHandlerRoom;
-    };
+    [GameId in string]: Record<RoomId, RoomHandlerRoom>;
 };
 
 /**
@@ -349,6 +346,7 @@ function processQueueItem(
             });
             return;
         }
+        // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (message.type === MultiplayerWebSocketMessageType.HostPing) {
         if (room && room.hostClient.clientSecret === message.clientSecret) {
             room.clientCount = message.clientCount;
@@ -366,7 +364,7 @@ function processQueueItem(
         }
     } else {
         transport.send({
-            messageId: createUuidV4(),
+            messageId: createMultiplayerId.socketMessage(),
             type: MultiplayerWebSocketMessageType.Error,
             errorMessage: `Invalid message: ${stringify(message)}`,
         });
