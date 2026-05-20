@@ -42,6 +42,7 @@ export const defaultPixiOptions = {
     height: 1000,
     width: 1000,
     antialias: true,
+    powerPreference: 'high-performance',
 } satisfies Partial<ApplicationOptions>;
 
 /**
