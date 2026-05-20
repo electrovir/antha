@@ -250,7 +250,10 @@ class PlayerEntity extends defineEntity({
     }
 
     public override createView(): ViewCreation2d {
-        const trianglePoints: [number, number][] = [
+        const trianglePoints: [
+            number,
+            number,
+        ][] = [
             [
                 PlayerEntity.playerSize,
                 0,
@@ -565,7 +568,7 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
                     </div>
                     <${ViraButton.assign({
                         text: 'Restart',
-                        colorVariant: ViraColorVariant.Neutral,
+                        color: ViraColorVariant.Neutral,
                     })}
                         ${listen('click', async () => {
                             await engine.reset();

@@ -722,6 +722,69 @@ describe('BaseEntity', () => {
         const instance = await store.addEntity(NoParamsSerialize);
         assert.isUndefined(instance.serialize());
     });
+
+    it('exposes an unaborted abortSignal before destruction', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class Abortable extends suite.defineLogicEntity({
+            key: 'AbortableUnaborted',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        const instance = await store.addEntity(Abortable);
+        assert.isFalse(instance.abortSignal.aborted);
+    });
+
+    it('aborts the signal when destroy is called', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class Abortable extends suite.defineLogicEntity({
+            key: 'AbortableDestroy',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        const instance = await store.addEntity(Abortable);
+        instance.destroy();
+        assert.isTrue(instance.abortSignal.aborted);
+    });
+
+    it('aborts the signal when immediatelyDestroy is called', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class Abortable extends suite.defineLogicEntity({
+            key: 'AbortableImmediate',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        const instance = await store.addEntity(Abortable);
+        instance.immediatelyDestroy();
+        assert.isTrue(instance.abortSignal.aborted);
+    });
+
+    it('aborts the signal when the entity store is destroyed', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class Abortable extends suite.defineLogicEntity({
+            key: 'AbortableStoreDestroy',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        const instance = await store.addEntity(Abortable);
+        store.destroy();
+        assert.isTrue(instance.abortSignal.aborted);
+    });
 });
 
 describe('ViewEntity', () => {

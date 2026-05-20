@@ -20,8 +20,8 @@ import {
 } from '@antha/multiplayer-lock-step';
 import {combineErrorMessages, log, type PartialWithUndefined} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
-import {type AnthaDemo} from '../demo.js';
 import {ViraError} from 'vira';
+import {type AnthaDemo} from '../demo.js';
 
 const DemoConnectionStatus = defineElement<
     {

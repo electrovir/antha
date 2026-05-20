@@ -584,6 +584,9 @@ export abstract class BaseEntity2d<
 
     /** If true, this entity should no longer be used or operated upon. */
     public readonly isDestroyed: boolean = false;
+    private readonly abortController = new AbortController();
+    /** An `AbortSignal` that triggers when the entity is destroyed. */
+    public readonly abortSignal: AbortSignal = this.abortController.signal;
     public hitbox: Hitbox<this> | undefined;
 
     /** The entity store to add all entities to. */
@@ -639,6 +642,7 @@ export abstract class BaseEntity2d<
 
     /** Marks the entity for destruction in the next entity store update. */
     public destroy() {
+        this.abortController.abort();
         makeWritable(this).isDestroyed = true;
     }
 
@@ -648,6 +652,7 @@ export abstract class BaseEntity2d<
      * This is probably not what you want to use! See {@link BaseEntity2d.destroy} instead.
      */
     public immediatelyDestroy() {
+        this.abortController.abort();
         makeWritable(this).isDestroyed = true;
         (this.entityStore as typeof this.entityStore | undefined)?.removeEntity(this);
         this.dispatch(
