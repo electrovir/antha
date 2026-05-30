@@ -210,6 +210,9 @@ export function implementMultiplayerApi(options: MultiplayerServerOptions) {
                     });
                     void callAsynchronously(() => roomHandler.processQueue());
                 },
+                close({context}) {
+                    roomHandler.updateRoomsForFetching(context.gameId);
+                },
             }),
         ],
     });

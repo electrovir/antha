@@ -212,6 +212,8 @@ function updateRoomsForFetching(
         if (
             /** Delete a room if its host is no longer active. */
             room.hostClient.transport.readyState !== CommonWebSocketState.Open ||
+            /** Delete a room if the host reports no active room clients. */
+            room.clientCount <= 0 ||
             /** Delete a room if it has had no updates from the host for two cycles. */
             room.lastHostPingTimestamp <=
                 Date.now() - updateRoomsForFetchingIntervalDuration.milliseconds * 2

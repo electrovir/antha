@@ -1,5 +1,5 @@
 import {type PartialWithUndefined} from '@augment-vir/common';
-import {CommonWebSocketState, createMockHost, HttpMethod, HttpStatus} from '@rest-vir/api';
+import {createMockHost, HttpMethod, HttpStatus} from '@rest-vir/api';
 import {
     multiplayerApi,
     multiplayerConnectWebSocket,
@@ -105,10 +105,15 @@ export function createMockRoomHandlerServerApiClient(
                             send(hostMessage) {
                                 webSocket.send(hostMessage);
                             },
-                            readyState: webSocket.readyState || CommonWebSocketState.Open,
+                            get readyState() {
+                                return webSocket.readyState;
+                            },
                         },
                     });
                     roomHandler.processQueue();
+                },
+                close() {
+                    roomHandler.updateRoomsForFetching(defaultGameId);
                 },
             },
         },

@@ -7,6 +7,7 @@ import {
     type AnthaEntity2dModState,
     type BaseEntity2d,
     type EntityStore2d,
+    type EntityUpdateParams,
     type ViewCreation2d,
 } from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
@@ -23,6 +24,11 @@ import {type AnthaDemo} from '../demo.js';
 
 /** Multiplier for all game speeds. >1 = faster, <1 = slower. */
 const gameSpeed = 2;
+const baselineFrameMs = 1000 / 60;
+
+function calculateGameTickDelta(msSinceLastUpdate: number): number {
+    return (msSinceLastUpdate / baselineFrameMs) * gameSpeed;
+}
 
 type AsteroidsGameState = {
     score: number;
@@ -69,11 +75,12 @@ class AsteroidEntity extends defineEntity({
         };
     }
 
-    public override update(): void {
+    public override update({msSinceLastUpdate}: Readonly<EntityUpdateParams>): void {
         /** Move the asteroid. */
+        const gameTickDelta = calculateGameTickDelta(msSinceLastUpdate);
 
-        this.params.x += this.params.directionX * gameSpeed;
-        this.params.y += this.params.directionY * gameSpeed;
+        this.params.x += this.params.directionX * gameTickDelta;
+        this.params.y += this.params.directionY * gameTickDelta;
 
         const {width: screenWidth, height: screenHeight} = this.pixi.screen;
 
@@ -157,9 +164,11 @@ class PlayerBulletEntity extends defineEntity({
         };
     }
 
-    public override update(): void {
-        this.params.x += this.params.directionX * gameSpeed;
-        this.params.y += this.params.directionY * gameSpeed;
+    public override update({msSinceLastUpdate}: Readonly<EntityUpdateParams>): void {
+        const gameTickDelta = calculateGameTickDelta(msSinceLastUpdate);
+
+        this.params.x += this.params.directionX * gameTickDelta;
+        this.params.y += this.params.directionY * gameTickDelta;
 
         const {width: screenWidth, height: screenHeight} = this.pixi.screen;
 
@@ -293,8 +302,10 @@ class PlayerEntity extends defineEntity({
         };
     }
 
-    public override async update(): Promise<void> {
-        this.shootCooldown += gameSpeed;
+    public override async update({msSinceLastUpdate}: Readonly<EntityUpdateParams>): Promise<void> {
+        const gameTickDelta = calculateGameTickDelta(msSinceLastUpdate);
+
+        this.shootCooldown += gameTickDelta;
 
         const {width: screenWidth, height: screenHeight} = this.pixi.screen;
 
@@ -366,11 +377,11 @@ class PlayerEntity extends defineEntity({
         );
 
         /** Clamp the turn to the max turn rate. */
-        const maxTurn = PlayerEntity.maxTurnRate * gameSpeed;
+        const maxTurn = PlayerEntity.maxTurnRate * gameTickDelta;
         const turn = Math.max(-maxTurn, Math.min(maxTurn, angleDiff));
         this.params.direction += turn;
 
-        const moveSpeed = PlayerEntity.playerSpeed * gameSpeed;
+        const moveSpeed = PlayerEntity.playerSpeed * gameTickDelta;
 
         /** Move forward normally, or retreat when too close to an asteroid. */
         if (closestAsteroid.distance > PlayerEntity.stopDistance) {
@@ -493,7 +504,7 @@ async function spawnAsteroidFromEdge(
 
 const asteroidsGameMod: AnthaMod<AsteroidsState> = {
     modName: 'asteroids-game',
-    async execute({state, engine}) {
+    async execute({state, engine, msSinceLastExecute}) {
         /** Save off for type guarding purposes. */
         const entityStore = state.entityStore;
         if (!entityStore) {
@@ -579,10 +590,12 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
             `;
         }
 
-        const totalTicks = (state.totalTicks ?? 0) + gameSpeed;
+        const gameTickDelta = calculateGameTickDelta(msSinceLastExecute);
+
+        const totalTicks = (state.totalTicks ?? 0) + gameTickDelta;
         state.totalTicks = totalTicks;
 
-        const tickCounter = (state.spawnTickCounter ?? 0) + gameSpeed;
+        const tickCounter = (state.spawnTickCounter ?? 0) + gameTickDelta;
         state.spawnTickCounter = tickCounter;
 
         /** Spawn interval shrinks over time, creating increasing difficulty. */

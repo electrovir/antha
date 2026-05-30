@@ -1,4 +1,4 @@
-import {waitUntil} from '@augment-vir/assert';
+import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {
     ControllerConnectionEvent,
@@ -17,16 +17,22 @@ describe(MultiplayerController.name, () => {
         controller.listen(ControllerConnectionEvent, (event) => {
             externalState = event.detail;
         });
-        await controller.startMultiplayer({
-            backendOrigin: 'http://localhost:0',
-            portScanOptions: {
-                timeout: {
-                    seconds: 5,
-                },
+        await assert.throws(
+            () =>
+                controller.startMultiplayer({
+                    backendOrigin: 'http://localhost:0',
+                    portScanOptions: {
+                        timeout: {
+                            seconds: 5,
+                        },
+                    },
+                }),
+            {
+                matchMessage: 'Cannot find dev origin',
             },
-        });
+        );
 
-        await waitUntil.instanceOf(Error, () => externalState?.api);
+        assert.instanceOf(externalState?.api, Error);
     });
     it('handles failure to connect to a room', async () => {
         let externalState: undefined | ApiAndRoomConnectionState;
@@ -37,14 +43,12 @@ describe(MultiplayerController.name, () => {
         controller.listen(ControllerConnectionEvent, (event) => {
             externalState = event.detail;
         });
-        await controller.startMultiplayer({
-            backendOrigin: 'http://localhost:0',
-        });
+        await assert.throws(() =>
+            controller.startMultiplayer({
+                backendOrigin: 'http://localhost:0',
+            }),
+        );
 
-        await waitUntil.instanceOf(Error, () => externalState?.api, {
-            timeout: {
-                seconds: 20,
-            },
-        });
+        assert.instanceOf(externalState?.api, Error);
     });
 });

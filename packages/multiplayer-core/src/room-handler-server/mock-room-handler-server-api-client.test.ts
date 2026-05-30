@@ -1,4 +1,4 @@
-import {assert} from '@augment-vir/assert';
+import {assert, waitUntil} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {
     multiplayerConnectWebSocket,
@@ -107,5 +107,15 @@ describe(createMockRoomHandlerServerApiClient.name, () => {
         });
 
         await webSocket.close();
+
+        await waitUntil.isEmpty(async () => {
+            return (
+                await mockApiClient.fetch(multiplayerRoomsEndpoint).GET({
+                    searchParams: {
+                        gameId: ['test-game'],
+                    },
+                })
+            ).Ok?.responseData;
+        });
     });
 });
