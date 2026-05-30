@@ -10,7 +10,7 @@ import {
     WebrtcMultiplayerController,
     WebrtcMultiplayerMessageEvent,
 } from '../webrtc/webrtc-multiplayer-controller.js';
-import {type MultiplayerApi} from './multiplayer-api.js';
+import {type MultiplayerApiClient} from './multiplayer-client.js';
 
 /**
  * Message type for {@link LockStepMessage}.
@@ -180,7 +180,7 @@ export class LockStepGameStateController<
      */
     public async multiplayerConnect(
         gameId: string,
-        multiplayerApi: Readonly<MultiplayerApi>,
+        multiplayerApiClient: Readonly<MultiplayerApiClient>,
         /**
          * - 'stun.l.google.com:19302'
          * - 'stun.stunprotocol.org'
@@ -191,7 +191,7 @@ export class LockStepGameStateController<
     ): Promise<boolean> {
         const webrtcController = new WebrtcMultiplayerController<LockStepMessage<Action>>(
             gameId,
-            multiplayerApi,
+            multiplayerApiClient,
             stunServerUrls,
             multiplayerRoom,
             this.clientId,

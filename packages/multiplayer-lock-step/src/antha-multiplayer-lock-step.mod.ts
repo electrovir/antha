@@ -1,12 +1,12 @@
 import {defineAnthaMod} from '@antha/engine';
 import {
+    type ApiAndRoomConnectionState,
     ControllerConnectionEvent,
     ControllerRoomListEvent,
+    emptyApiAndRoomConnectionState,
     type MultiplayerClientRooms,
     MultiplayerController,
     type MultiplayerControllerParams,
-    type ServiceAndRoomConnectionState,
-    emptyServiceAndRoomConnectionState,
 } from '@antha/multiplayer-core';
 import {
     type JsonCompatibleValue,
@@ -17,7 +17,7 @@ import {
 export type AnthaMultiplayerLockStepState<MultiplayerPacket extends JsonCompatibleValue = any> = {
     multiplayerLockStep: {
         multiplayerController: MultiplayerController<MultiplayerPacket>;
-        connectionState: ServiceAndRoomConnectionState;
+        connectionState: ApiAndRoomConnectionState;
         availableRooms: MultiplayerClientRooms;
     };
 };
@@ -46,7 +46,7 @@ export function createAnthaMultiplayerLockStepMod<
                         acceptConnection: options.acceptConnection,
                         frameDuration: undefined,
                     }),
-                    connectionState: emptyServiceAndRoomConnectionState,
+                    connectionState: emptyApiAndRoomConnectionState,
                     availableRooms: {},
                 };
 

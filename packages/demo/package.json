@@ -22,29 +22,29 @@
         "@antha/input": "*",
         "@antha/multiplayer-core": "*",
         "@antha/multiplayer-lock-step": "*",
-        "@augment-vir/assert": "^31.69.0",
-        "@augment-vir/common": "^31.69.0",
+        "@augment-vir/assert": "^31.71.3",
+        "@augment-vir/common": "^31.71.3",
         "@electrovir/color": "^1.7.9",
         "date-vir": "^8.3.2",
         "detect-collisions": "^10.10.2025",
-        "element-vir": "^26.15.1",
-        "object-shape-tester": "^6.12.1",
+        "element-vir": "^26.17.0",
+        "object-shape-tester": "^6.13.0",
         "pixi.js": "^8.18.1",
-        "spa-router-vir": "^6.4.1",
+        "spa-router-vir": "^6.6.0",
         "theme-vir": "^28.25.0",
         "type-fest": "^5.6.0",
         "url-vir": "^2.1.9",
-        "vira": "^31.18.0"
+        "vira": "^31.21.1"
     },
     "devDependencies": {
-        "@augment-vir/test": "^31.69.0",
+        "@augment-vir/test": "^31.71.3",
         "@vitejs/plugin-basic-ssl": "^2.3.0",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-playwright": "^0.11.1",
         "istanbul-smart-text-reporter": "^1.1.5",
         "typescript": "^5.9.3",
-        "vite": "^8.0.10"
+        "vite": "^8.0.14"
     },
     "engines": {
         "node": ">=22"

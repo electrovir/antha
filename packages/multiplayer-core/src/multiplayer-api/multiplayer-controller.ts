@@ -5,7 +5,7 @@ import {
     type MaybePromise,
     type PartialWithUndefined,
 } from '@augment-vir/common';
-import {type mapServiceDevPort} from '@rest-vir/define-service';
+import {type FindPortOptions} from '@rest-vir/api';
 import {type AnyDuration, convertDuration} from 'date-vir';
 import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
 import {type ClientId, type RoomId} from '../multiplayer-id.js';
@@ -16,8 +16,12 @@ import {
 } from '../webrtc/webrtc-multiplayer-controller.js';
 import {RoomRejectionError} from './errors.js';
 import {LockStepFrameEvent, LockStepGameStateController} from './lock-step-controller.js';
-import {createMultiplayerApi, type MultiplayerApi} from './multiplayer-api.js';
-import {type MultiplayerClientRooms} from './multiplayer-service.js';
+import {
+    type MultiplayerClientRooms,
+    multiplayerHealthEndpoint,
+    multiplayerRoomsEndpoint,
+} from './multiplayer-api.js';
+import {createMultiplayerApiClient, type MultiplayerApiClient} from './multiplayer-client.js';
 
 /**
  * Connection state for {@link MultiplayerController}.
@@ -32,23 +36,23 @@ export enum MultiplayerConnectionState {
 }
 
 /**
- * Service and room connection state for {@link MultiplayerController}.
+ * API and room connection state for {@link MultiplayerController}.
  *
  * @category Internal
  */
-export type ServiceAndRoomConnectionState = {
-    service: MultiplayerConnectionState | Error;
+export type ApiAndRoomConnectionState = {
+    api: MultiplayerConnectionState | Error;
     room: MultiplayerConnectionState | Error;
 };
 
 /**
- * Empty or totally disconnected state for {@link ServiceAndRoomConnectionState}.
+ * Empty or totally disconnected state for {@link ApiAndRoomConnectionState}.
  *
  * @category Internal
  */
-export const emptyServiceAndRoomConnectionState: Readonly<ServiceAndRoomConnectionState> = {
+export const emptyApiAndRoomConnectionState: Readonly<ApiAndRoomConnectionState> = {
     room: MultiplayerConnectionState.Disconnected,
-    service: MultiplayerConnectionState.Disconnected,
+    api: MultiplayerConnectionState.Disconnected,
 };
 
 /**
@@ -96,7 +100,7 @@ export type MultiplayerControllerParams<Action extends JsonCompatibleValue> = {
  */
 export type MultiplayerParams = {
     /**
-     * The origin of the server running the multiplayer connection service.
+     * The origin of the server running the multiplayer API.
      *
      * @example 'http://localhost:3000'
      */
@@ -108,11 +112,11 @@ export type MultiplayerParams = {
      *
      * It is useful to enable this so that clients can find the port that your multiplayer server is
      * running on in case it must change. Note that port scanning will not be active if your
-     * `serviceOrigin` does not contain a port.
+     * `backendOrigin` does not contain a port.
      *
      * @default undefined
      */
-    portScanOptions: Parameters<typeof mapServiceDevPort>[1] | boolean;
+    portScanOptions: Omit<FindPortOptions, 'startOrigin'> | boolean;
     /**
      * How long to wait before fetching the list of rooms again.
      *
@@ -125,7 +129,7 @@ export type MultiplayerParams = {
      */
     stunServerUrls: ReadonlyArray<string>;
     /** If set, this will override the internal multiplayer API. */
-    multiplayerApi: Readonly<MultiplayerApi>;
+    multiplayerApiClient: Readonly<MultiplayerApiClient>;
 }>;
 
 /**
@@ -165,7 +169,7 @@ export class ControllerClientEvent extends defineTypedCustomEvent<
  *
  * @category Events
  */
-export class ControllerConnectionEvent extends defineTypedCustomEvent<ServiceAndRoomConnectionState>()(
+export class ControllerConnectionEvent extends defineTypedCustomEvent<ApiAndRoomConnectionState>()(
     'controller-connection',
 ) {}
 
@@ -182,8 +186,8 @@ export type AllMultiplayerControllerEvents<MultiplayerPacket extends JsonCompati
 
 /**
  * An all-in-one controller for singleplayer or lock-step multiplayer game state. Singleplayer mode
- * requires no servers. Multiplayer mode requires a backend service running the
- * {@link MultiplayerApi}.
+ * requires no servers. Multiplayer mode requires a backend API running the
+ * {@link MultiplayerApiClient}.
  *
  * @category Main
  */
@@ -212,11 +216,11 @@ export class MultiplayerController<
 
     /** Currently joined room id. If a room has not been joined yet, this will be empty. */
     public readonly roomId: RoomId | undefined;
-    /** The current connection state of the controller's connection to a backend service. */
-    public readonly serviceConnectionState: ServiceAndRoomConnectionState['service'] =
+    /** The current connection state of the controller's connection to a backend API. */
+    public readonly apiConnectionState: ApiAndRoomConnectionState['api'] =
         MultiplayerConnectionState.Disconnected;
     /** The current connection state of the controller's connection to a multiplayer room. */
-    public readonly roomConnectionState: ServiceAndRoomConnectionState['room'] =
+    public readonly roomConnectionState: ApiAndRoomConnectionState['room'] =
         MultiplayerConnectionState.Disconnected;
 
     /**
@@ -230,8 +234,8 @@ export class MultiplayerController<
      * them.
      */
     protected rejectedRoomIds = new Set<RoomId>();
-    /** The current MultiplayerApi. This will be `undefined` if playing in single player. */
-    public multiplayerApi: MultiplayerApi | undefined;
+    /** The current multiplayer API client. This will be `undefined` if playing in single player. */
+    public multiplayerApiClient: Readonly<MultiplayerApiClient> | undefined;
     /**
      * Used to keep track of the room update interval. This will be set when the controller is
      * constructed in multiplayer mode or when a room is left. This will be cleared when a room is
@@ -282,40 +286,40 @@ export class MultiplayerController<
     }
 
     /**
-     * Start multiplayer mode. This initializes {@link MultiplayerController.multiplayerApi} and
-     * {@link MultiplayerController.roomUpdateIntervalId}.
+     * Start multiplayer mode. This initializes {@link MultiplayerController.multiplayerApiClient}
+     * and {@link MultiplayerController.roomUpdateIntervalId}.
      */
     public async startMultiplayer(params: Readonly<MultiplayerParams>) {
         if (this.currentConnection) {
             throw new Error(
-                `Cannot start multiplayer mode again when a multiplayer connection already present.`,
+                'Cannot start multiplayer mode again when a multiplayer connection already present.',
             );
         }
         this.multiplayerParams = params;
         this.updateConnectionState({
-            service: MultiplayerConnectionState.Connecting,
+            api: MultiplayerConnectionState.Connecting,
         });
 
         try {
             const api =
-                params.multiplayerApi ||
-                (await createMultiplayerApi({
+                params.multiplayerApiClient ||
+                (await createMultiplayerApiClient({
                     portScanOptions: params.portScanOptions,
                     backendOrigin: params.backendOrigin,
                 }));
 
-            const output = await api.endpoints['/health'].fetch();
-            if (!output.ok) {
-                throw new Error(`Failed to find multiplayer service at ${api.serviceOrigin}.`);
+            const output = await api.fetch(multiplayerHealthEndpoint).GET();
+            if (!output.Ok) {
+                throw new Error(`Failed to find multiplayer API at ${api.baseUrl}.`);
             }
 
-            this.multiplayerApi = api;
+            this.multiplayerApiClient = api;
             this.updateConnectionState({
-                service: MultiplayerConnectionState.Connected,
+                api: MultiplayerConnectionState.Connected,
             });
         } catch (error: unknown) {
             this.updateConnectionState({
-                service: ensureError(error),
+                api: ensureError(error),
             });
             throw error;
         }
@@ -326,12 +330,12 @@ export class MultiplayerController<
     /** Start singleplayer mode. */
     public startSingleplayer() {
         if (this.currentConnection) {
-            throw new Error(`Cannot start singleplayer with a connection already present.`);
+            throw new Error('Cannot start singleplayer with a connection already present.');
         }
         this.multiplayerParams = undefined;
-        this.multiplayerApi = undefined;
+        this.multiplayerApiClient = undefined;
         this.updateConnectionState({
-            service: MultiplayerConnectionState.Connecting,
+            api: MultiplayerConnectionState.Connecting,
         });
 
         this.currentConnection = new LockStepGameStateController(
@@ -349,7 +353,7 @@ export class MultiplayerController<
 
         globalThis.clearInterval(this.roomUpdateIntervalId);
         this.updateConnectionState({
-            service: MultiplayerConnectionState.Connected,
+            api: MultiplayerConnectionState.Connected,
         });
     }
 
@@ -370,7 +374,7 @@ export class MultiplayerController<
     /** Fire an action. This will be sent to all clients in the room so they can process it. */
     public act(actions: MultiplayerPacket | ReadonlyArray<MultiplayerPacket>) {
         if (!this.currentConnection || !this.currentConnection.isConnected()) {
-            throw new Error(`Cannot perform action: not connected to a room.`);
+            throw new Error('Cannot perform action: not connected to a room.');
         }
 
         this.currentConnection.act(Array.isArray(actions) ? actions : [actions]);
@@ -386,7 +390,7 @@ export class MultiplayerController<
         super.destroy();
         this.updateConnectionState({
             room: MultiplayerConnectionState.Disconnected,
-            service: MultiplayerConnectionState.Disconnected,
+            api: MultiplayerConnectionState.Disconnected,
         });
         this.currentConnection?.destroy();
         globalThis.clearInterval(this.roomUpdateIntervalId);
@@ -399,8 +403,8 @@ export class MultiplayerController<
      */
     public async joinOrCreateRoom(room: Readonly<RoomInput>) {
         if (this.currentConnection) {
-            throw new Error(`Cannot join room: connection already established.`);
-        } else if (!this.multiplayerApi || !this.multiplayerParams) {
+            throw new Error('Cannot join room: connection already established.');
+        } else if (!this.multiplayerApiClient || !this.multiplayerParams) {
             throw new Error(
                 'Cannot join room. Please construct this controller in multiplayer mode to join rooms.',
             );
@@ -442,7 +446,7 @@ export class MultiplayerController<
         if (
             await this.currentConnection.multiplayerConnect(
                 this.params.gameId,
-                this.multiplayerApi,
+                this.multiplayerApiClient,
                 this.multiplayerParams.stunServerUrls || [],
                 room,
             )
@@ -480,9 +484,9 @@ export class MultiplayerController<
     }
 
     /** Set the current connection state and fire listeners. */
-    protected updateConnectionState(state: Partial<ServiceAndRoomConnectionState>) {
-        if (state.service) {
-            makeWritable(this).serviceConnectionState = state.service;
+    protected updateConnectionState(state: Partial<ApiAndRoomConnectionState>) {
+        if (state.api) {
+            makeWritable(this).apiConnectionState = state.api;
         }
         if (state.room) {
             makeWritable(this).roomConnectionState = state.room;
@@ -491,7 +495,7 @@ export class MultiplayerController<
             new ControllerConnectionEvent({
                 detail: {
                     room: this.roomConnectionState,
-                    service: this.serviceConnectionState,
+                    api: this.apiConnectionState,
                 },
             }),
         );
@@ -499,7 +503,7 @@ export class MultiplayerController<
 
     /** Starts polling the multiplayer server for room updates and fires listeners. */
     protected startRoomInterval() {
-        if (this.multiplayerApi) {
+        if (this.multiplayerApiClient) {
             const roomUpdateMs: number = this.multiplayerParams?.roomUpdateInterval
                 ? convertDuration(this.multiplayerParams.roomUpdateInterval, {
                       milliseconds: true,
@@ -507,18 +511,22 @@ export class MultiplayerController<
                 : 10_000;
 
             this.roomUpdateIntervalId = globalThis.setInterval(async () => {
-                if (this.currentConnection || !this.multiplayerApi || !this.enableRoomUpdates) {
+                if (
+                    this.currentConnection ||
+                    !this.multiplayerApiClient ||
+                    !this.enableRoomUpdates
+                ) {
                     return;
                 }
-                const output = await this.multiplayerApi.endpoints['/rooms'].fetch({
+                const output = await this.multiplayerApiClient.fetch(multiplayerRoomsEndpoint).GET({
                     searchParams: {
                         gameId: [this.params.gameId],
                     },
                 });
-                if (output.ok) {
+                if (output.Ok) {
                     this.dispatch(
                         new ControllerRoomListEvent({
-                            detail: output.data,
+                            detail: output.Ok.responseData,
                         }),
                     );
                 }

@@ -33,13 +33,13 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^31.69.0",
-        "@augment-vir/common": "^31.69.0",
+        "@augment-vir/assert": "^31.71.3",
+        "@augment-vir/common": "^31.71.3",
         "@electrovir/color": "^1.7.9",
-        "vira": "^31.18.0"
+        "vira": "^31.21.1"
     },
     "devDependencies": {
-        "@augment-vir/test": "^31.69.0",
+        "@augment-vir/test": "^31.71.3",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-playwright": "^0.11.1",

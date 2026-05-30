@@ -5,18 +5,16 @@ import {
     stringify,
     type PartialWithUndefined,
 } from '@augment-vir/common';
-import {CommonWebSocketState} from '@rest-vir/define-service';
+import {CommonWebSocketState} from '@rest-vir/api';
 import {convertDuration} from 'date-vir';
-import {createMultiplayerId, type ClientId, type RoomId} from '../multiplayer-id.js';
 import {
     type MultiplayerClientRoom,
     type MultiplayerClientRooms,
-    type MultiplayerService,
-} from '../multiplayer-service/multiplayer-service.js';
+    type MultiplayerConnectClientMessage,
+    type MultiplayerConnectHostMessage,
+} from '../multiplayer-api/multiplayer-api.js';
+import {createMultiplayerId, type ClientId, type RoomId} from '../multiplayer-id.js';
 import {MultiplayerWebSocketMessageType} from '../webrtc/web-rtc-communication.js';
-
-type MessageFromClient = MultiplayerService['webSockets']['/connect']['MessageFromClientType'];
-type MessageFromHost = MultiplayerService['webSockets']['/connect']['MessageFromHostType'];
 
 /**
  * A transport-agnostic client handle that the room handler uses to send messages and check
@@ -25,7 +23,7 @@ type MessageFromHost = MultiplayerService['webSockets']['/connect']['MessageFrom
  * @category Internal
  */
 export type MultiplayerTransportClient = {
-    send: (message: MessageFromHost) => void;
+    send: (message: MultiplayerConnectHostMessage) => void;
     readyState: CommonWebSocketState;
 };
 
@@ -82,7 +80,7 @@ export type MultiplayerRoomHandlerState = {
     messageQueue: {
         gameId: string;
         transport: MultiplayerTransportClient;
-        message: MessageFromClient;
+        message: MultiplayerConnectClientMessage;
     }[];
     isProcessingQueue: boolean;
     updateRoomsIntervalId: ReturnType<typeof setInterval> | undefined;
@@ -139,7 +137,7 @@ export function createMultiplayerRoomHandler(options?: Readonly<MultiplayerRoomH
         enqueueMessage(params: {
             gameId: string;
             transport: MultiplayerTransportClient;
-            message: MessageFromClient;
+            message: MultiplayerConnectClientMessage;
         }) {
             state.messageQueue.push(params);
         },
@@ -250,7 +248,7 @@ function processQueueItem(
     }: {
         gameId: string;
         transport: MultiplayerTransportClient;
-        message: MessageFromClient;
+        message: MultiplayerConnectClientMessage;
     },
 ) {
     const room =
@@ -359,7 +357,7 @@ function processQueueItem(
             transport.send({
                 messageId: message.messageId,
                 type: MultiplayerWebSocketMessageType.Error,
-                errorMessage: `Invalid room to ping.`,
+                errorMessage: 'Invalid room to ping.',
             });
         }
     } else {

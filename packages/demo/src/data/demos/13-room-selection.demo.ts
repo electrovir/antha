@@ -11,12 +11,12 @@ import {
 import {
     ControllerConnectionEvent,
     ControllerRoomListEvent,
-    createMockRoomHandlerServerApi,
+    createMockRoomHandlerServerApiClient,
     createNewRoom,
-    type MultiplayerApi,
+    type ApiAndRoomConnectionState,
+    type MultiplayerApiClient,
     type MultiplayerClientRooms,
     type RoomInput,
-    type ServiceAndRoomConnectionState,
 } from '@antha/multiplayer-core';
 import {
     createAnthaMultiplayerLockStepMod,
@@ -43,7 +43,7 @@ const DemoRoomLobby = defineElement<{
     state() {
         return {
             connectionError: '',
-            connectionState: undefined as ServiceAndRoomConnectionState | undefined,
+            connectionState: undefined as ApiAndRoomConnectionState | undefined,
             joinedRoom: undefined as Readonly<RoomInput> | undefined,
             cleanup: undefined as (() => void) | undefined,
             availableRooms: {} as Readonly<MultiplayerClientRooms>,
@@ -99,10 +99,10 @@ const DemoRoomLobby = defineElement<{
         }
 
         if (state.joinedRoom) {
-            const serviceLabel =
-                state.connectionState?.service instanceof Error
-                    ? `Error: ${state.connectionState.service.message}`
-                    : state.connectionState?.service;
+            const apiLabel =
+                state.connectionState?.api instanceof Error
+                    ? `Error: ${state.connectionState.api.message}`
+                    : state.connectionState?.api;
 
             const roomLabel =
                 state.connectionState?.room instanceof Error
@@ -111,7 +111,7 @@ const DemoRoomLobby = defineElement<{
 
             const statusLines = [
                 `Client ID: ${inputs.lockStepMultiplayer.multiplayerController.getClientId() || 'pending...'}`,
-                `Service: ${serviceLabel}`,
+                `Api: ${apiLabel}`,
                 `Room: ${roomLabel}`,
                 `Room Name: ${state.joinedRoom.roomName}`,
                 `Connected Clients: ${inputs.lockStepMultiplayer.multiplayerController.getAllClientIds().length}`,
@@ -212,10 +212,10 @@ const DemoRoomLobby = defineElement<{
 });
 
 /**
- * Creates a mod that connects to the mock API, polls for rooms, and lets the user pick or create a
- * room. Once joined, it renders connection status and a leave button.
+ * Creates a mod that connects to the mock API client, polls for rooms, and lets the user pick or
+ * create a room. Once joined, it renders connection status and a leave button.
  */
-function createRoomSelectionMod(mockApiRef: Readonly<MultiplayerApi>) {
+function createRoomSelectionMod(mockApiClientRef: Readonly<MultiplayerApiClient>) {
     return defineAnthaMod<AnthaMultiplayerLockStepState>({
         modName: 'room-selector',
         async execute({state}) {
@@ -225,8 +225,8 @@ function createRoomSelectionMod(mockApiRef: Readonly<MultiplayerApi>) {
 
             if (!state.multiplayerLockStep.multiplayerController.currentConnection) {
                 await state.multiplayerLockStep.multiplayerController.startMultiplayer({
-                    backendOrigin: mockApiRef.serviceOrigin,
-                    multiplayerApi: mockApiRef,
+                    backendOrigin: mockApiClientRef.baseUrl,
+                    multiplayerApiClient: mockApiClientRef,
                     roomUpdateInterval: {
                         seconds: 1,
                     },
@@ -242,11 +242,11 @@ function createRoomSelectionMod(mockApiRef: Readonly<MultiplayerApi>) {
     });
 }
 
-function createRoomSelectionEngine(mockApiRef: Readonly<MultiplayerApi>) {
+function createRoomSelectionEngine(mockApiClientRef: Readonly<MultiplayerApiClient>) {
     const lockStepMod = createAnthaMultiplayerLockStepMod({
         gameId: roomSelectionGameId,
     });
-    const selectorMod = createRoomSelectionMod(mockApiRef);
+    const selectorMod = createRoomSelectionMod(mockApiClientRef);
 
     return new AnthaEngine({
         mods: [
@@ -302,14 +302,14 @@ const DemoRoomSelection = defineElement()({
     `,
     init({state, updateState}) {
         if (!state.engines) {
-            const mockApi = createMockRoomHandlerServerApi();
+            const mockApiClient = createMockRoomHandlerServerApiClient();
 
             updateState({
                 engines: {
-                    clientA: createRoomSelectionEngine(mockApi),
-                    clientB: createRoomSelectionEngine(mockApi),
-                    clientC: createRoomSelectionEngine(mockApi),
-                    clientD: createRoomSelectionEngine(mockApi),
+                    clientA: createRoomSelectionEngine(mockApiClient),
+                    clientB: createRoomSelectionEngine(mockApiClient),
+                    clientC: createRoomSelectionEngine(mockApiClient),
+                    clientD: createRoomSelectionEngine(mockApiClient),
                 },
             });
         }

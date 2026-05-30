@@ -1,13 +1,10 @@
+import {defaultMultiplayerApiOrigin} from '@antha/multiplayer-core';
 import {omitObjectKeys, type SetRequired} from '@augment-vir/common';
+import {startApiServer, type RunApiUserOptions, type StartApiServerOutput} from '@rest-vir/host';
 import {
-    startService,
-    type StartServiceOutput,
-    type StartServiceUserOptions,
-} from '@rest-vir/run-service';
-import {
-    implementMultiplayerService,
+    implementMultiplayerApi,
     type MultiplayerServerOptions,
-} from './implemented-multiplayer-service.js';
+} from './implemented-multiplayer-api.js';
 
 /**
  * Starts the multiplayer server.
@@ -17,21 +14,23 @@ import {
 export async function startMultiplayerServer(
     options: Readonly<
         MultiplayerServerOptions &
-            SetRequired<
-                Pick<StartServiceUserOptions, 'debug' | 'host' | 'lockPort' | 'port'>,
-                'port'
-            >
+            SetRequired<Pick<RunApiUserOptions, 'host' | 'lockPort' | 'port'>, 'port'> & {
+                debug?: boolean | undefined;
+            }
     >,
 ) {
-    const {service, serverState} = implementMultiplayerService(options);
-    const startOutput = (await startService(service, {
+    const {api, serverState} = implementMultiplayerApi(options);
+    const startOutput = (await startApiServer(api, {
         ...omitObjectKeys(options, [
             'backendOrigin',
+            'debug',
             'games',
+            'logger',
         ]),
+        externalOrigin: options.backendOrigin || defaultMultiplayerApiOrigin,
         /** This server cannot currently be distributed. */
         workerCount: 1,
-    })) as Required<Omit<StartServiceOutput, 'cluster' | 'worker'>>;
+    })) as Required<Omit<StartApiServerOutput, 'cluster' | 'worker'>>;
 
     return {
         ...startOutput,

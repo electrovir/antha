@@ -8,11 +8,11 @@ import {
     nothing,
 } from '@antha/engine';
 import {
-    createMockRoomHandlerServerApi,
+    createMockRoomHandlerServerApiClient,
     createNewRoom,
-    type MultiplayerApi,
+    type ApiAndRoomConnectionState,
+    type MultiplayerApiClient,
     type RoomInput,
-    type ServiceAndRoomConnectionState,
 } from '@antha/multiplayer-core';
 import {
     createAnthaMultiplayerLockStepMod,
@@ -25,7 +25,7 @@ import {type AnthaDemo} from '../demo.js';
 
 const DemoConnectionStatus = defineElement<
     {
-        connectionState: Readonly<ServiceAndRoomConnectionState>;
+        connectionState: Readonly<ApiAndRoomConnectionState>;
         roomName: string;
     } & PartialWithUndefined<{
         clientId: string;
@@ -45,10 +45,10 @@ const DemoConnectionStatus = defineElement<
         }
     `,
     render({inputs}) {
-        const serviceLabel =
-            inputs.connectionState.service instanceof Error
-                ? `Error: ${inputs.connectionState.service.message}`
-                : inputs.connectionState.service;
+        const apiLabel =
+            inputs.connectionState.api instanceof Error
+                ? `Error: ${inputs.connectionState.api.message}`
+                : inputs.connectionState.api;
 
         const roomLabel =
             inputs.connectionState.room instanceof Error
@@ -57,7 +57,7 @@ const DemoConnectionStatus = defineElement<
 
         const statusLines = [
             `Client ID: ${inputs.clientId || 'pending...'}`,
-            `Service: ${serviceLabel}`,
+            `Api: ${apiLabel}`,
             `Room: ${roomLabel}`,
             `Room Name: ${inputs.roomName}`,
             `Connected Clients: ${String(inputs.connectedClientCount ?? 0)}`,
@@ -86,9 +86,13 @@ type ConnectorState = AnthaMultiplayerLockStepState & {
 
 /**
  * Creates a mod that connects a `MultiplayerController` (from the lock step mod) to a pre-built
- * mock API. This bypasses the normal `startMultiplayer()` flow which tries to reach a real server.
+ * mock API client. This bypasses the normal `startMultiplayer()` flow which tries to reach a real
+ * server.
  */
-function createConnectorMod(mockApiRef: Readonly<MultiplayerApi>, room: Readonly<RoomInput>) {
+function createConnectorMod(
+    mockApiClientRef: Readonly<MultiplayerApiClient>,
+    room: Readonly<RoomInput>,
+) {
     return defineAnthaMod<ConnectorState>({
         modName: 'room-connector',
         async execute({state}) {
@@ -102,8 +106,8 @@ function createConnectorMod(mockApiRef: Readonly<MultiplayerApi>, room: Readonly
                 state.connectionStarted = true;
 
                 await controller.startMultiplayer({
-                    backendOrigin: mockApiRef.serviceOrigin,
-                    multiplayerApi: mockApiRef,
+                    backendOrigin: mockApiClientRef.baseUrl,
+                    multiplayerApiClient: mockApiClientRef,
                 });
 
                 try {
@@ -130,11 +134,14 @@ function createConnectorMod(mockApiRef: Readonly<MultiplayerApi>, room: Readonly
     });
 }
 
-function createRoomClientEngine(mockApiRef: Readonly<MultiplayerApi>, room: Readonly<RoomInput>) {
+function createRoomClientEngine(
+    mockApiClientRef: Readonly<MultiplayerApiClient>,
+    room: Readonly<RoomInput>,
+) {
     const lockStepMod = createAnthaMultiplayerLockStepMod({
         gameId: 'room-demo',
     });
-    const connectorMod = createConnectorMod(mockApiRef, room);
+    const connectorMod = createConnectorMod(mockApiClientRef, room);
 
     return new AnthaEngine({
         mods: [
@@ -173,15 +180,15 @@ const DemoRoomConnection = defineElement()({
     `,
     init({state, updateState}) {
         if (!state.engines) {
-            const mockApi = createMockRoomHandlerServerApi();
+            const mockApiClient = createMockRoomHandlerServerApiClient();
             const room = createNewRoom({
                 roomName: 'Demo Room',
             });
 
             updateState({
                 engines: {
-                    host: createRoomClientEngine(mockApi, room),
-                    client: createRoomClientEngine(mockApi, room),
+                    host: createRoomClientEngine(mockApiClient, room),
+                    client: createRoomClientEngine(mockApiClient, room),
                 },
             });
         }

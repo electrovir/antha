@@ -4,3 +4,4 @@
 -   make the multiplayer connect mod easier to use
 -   remove the lockstep multiplayer controller from the multiplayer-core package
 -   multiplayer room connection (demo 13) does not handle well the host leaving the room. (the room does not go away and clients cannot connect to it)
+-   investigate using canvas.transferControlToOffscreen to allow fully moving the game loop to a worker

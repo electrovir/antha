@@ -1,40 +1,46 @@
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
+import {
+    multiplayerConnectWebSocket,
+    multiplayerHealthEndpoint,
+    multiplayerRoomsEndpoint,
+    multiplayerRootEndpoint,
+    type MultiplayerClientRooms,
+} from '../multiplayer-api/multiplayer-api.js';
 import {createMultiplayerId} from '../multiplayer-id.js';
-import {type MultiplayerClientRooms} from '../multiplayer-service/multiplayer-service.js';
 import {MultiplayerWebSocketMessageType} from '../webrtc/web-rtc-communication.js';
-import {createMockRoomHandlerServerApi} from './mock-room-handler-server-api.js';
+import {createMockRoomHandlerServerApiClient} from './mock-room-handler-server-api-client.js';
 
-describe(createMockRoomHandlerServerApi.name, () => {
+describe(createMockRoomHandlerServerApiClient.name, () => {
     it('returns ok for health endpoint', async () => {
-        const mockApi = createMockRoomHandlerServerApi();
+        const mockApiClient = createMockRoomHandlerServerApiClient();
 
-        const result = await mockApi.endpoints['/health'].fetch();
+        const result = await mockApiClient.fetch(multiplayerHealthEndpoint).GET();
 
-        assert.isTrue(result.ok);
-        assert.strictEquals(result.data, 'ok');
+        assert.isDefined(result.Ok);
+        assert.strictEquals(result.Ok.responseData, 'ok');
     });
 
     it('returns ok for root endpoint', async () => {
-        const mockApi = createMockRoomHandlerServerApi();
+        const mockApiClient = createMockRoomHandlerServerApiClient();
 
-        const result = await mockApi.endpoints['/'].fetch();
+        const result = await mockApiClient.fetch(multiplayerRootEndpoint).GET();
 
-        assert.isTrue(result.ok);
-        assert.strictEquals(result.data, 'ok');
+        assert.isDefined(result.Ok);
+        assert.strictEquals(result.Ok.responseData, 'ok');
     });
 
     it('returns empty rooms by default', async () => {
-        const mockApi = createMockRoomHandlerServerApi();
+        const mockApiClient = createMockRoomHandlerServerApiClient();
 
-        const result = await mockApi.endpoints['/rooms'].fetch({
+        const result = await mockApiClient.fetch(multiplayerRoomsEndpoint).GET({
             searchParams: {
                 gameId: ['test-game'],
             },
         });
 
-        assert.isTrue(result.ok);
-        assert.deepEquals(result.data, {});
+        assert.isDefined(result.Ok);
+        assert.deepEquals(result.Ok.responseData, {});
     });
 
     it('returns configured rooms', async () => {
@@ -48,25 +54,25 @@ describe(createMockRoomHandlerServerApi.name, () => {
             },
         };
 
-        const mockApi = createMockRoomHandlerServerApi({
+        const mockApiClient = createMockRoomHandlerServerApiClient({
             rooms,
         });
 
-        const result = await mockApi.endpoints['/rooms'].fetch({
+        const result = await mockApiClient.fetch(multiplayerRoomsEndpoint).GET({
             searchParams: {
                 gameId: ['test-game'],
             },
         });
 
-        assert.isTrue(result.ok);
-        assert.deepEquals(result.data, rooms);
+        assert.isDefined(result.Ok);
+        assert.deepEquals(result.Ok.responseData, rooms);
     });
 
     it('creates a room when a client connects via WebSocket', async () => {
-        const mockApi = createMockRoomHandlerServerApi();
+        const mockApiClient = createMockRoomHandlerServerApiClient();
         const roomId = createMultiplayerId.room();
 
-        const webSocket = await mockApi.webSockets['/connect'].connect({
+        const webSocket = await mockApiClient.connectWebSocket(multiplayerConnectWebSocket, {
             searchParams: {
                 gameId: ['test-game'],
             },
@@ -86,14 +92,14 @@ describe(createMockRoomHandlerServerApi.name, () => {
             },
         });
 
-        const roomsResult = await mockApi.endpoints['/rooms'].fetch({
+        const roomsResult = await mockApiClient.fetch(multiplayerRoomsEndpoint).GET({
             searchParams: {
                 gameId: ['test-game'],
             },
         });
 
-        assert.isTrue(roomsResult.ok);
-        assert.deepEquals(roomsResult.data[roomId], {
+        assert.isDefined(roomsResult.Ok);
+        assert.deepEquals(roomsResult.Ok.responseData[roomId], {
             roomId,
             roomName: 'New Room',
             clientCount: 1,

@@ -1,9 +1,12 @@
 import {
     createMultiplayerId,
+    multiplayerConnectWebSocket,
+    multiplayerHealthEndpoint,
+    multiplayerRoomsEndpoint,
     MultiplayerWebSocketMessageType,
     type ClientId,
     type MultiplayerClientRooms,
-    type MultiplayerService,
+    type MultiplayerConnectHostMessage,
     type RoomId,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
@@ -16,14 +19,14 @@ import {
     type Values,
 } from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
-import {AnyOrigin, type ClientWebSocket} from '@rest-vir/define-service';
-import {testService, type FetchTestService} from '@rest-vir/run-service';
+import {AnyOrigin, HttpMethod, type ClientWebSocket} from '@rest-vir/api';
+import {testApi, type FetchTestEndpoint} from '@rest-vir/host';
 import {type DistributedOmit} from 'type-fest';
 import {
-    implementMultiplayerService,
-    type ImplementedMultiplayerService,
+    implementMultiplayerApi,
+    type ImplementedMultiplayerApi,
     type MultiplayerServerState,
-} from './implemented-multiplayer-service.js';
+} from './implemented-multiplayer-api.js';
 
 type SetupRoomsOutput<Rooms extends string[][]> = {
     [Key in keyof Rooms]: {
@@ -34,22 +37,19 @@ type SetupRoomsOutput<Rooms extends string[][]> = {
 };
 
 type TestClient = {
-    webSocket: ClientWebSocket<MultiplayerService['webSockets']['/connect']>;
+    webSocket: ClientWebSocket<typeof multiplayerConnectWebSocket>;
     clientId: ClientId;
     clientName: string;
     clientSecret: string;
 };
 
-type MultiplayerServiceCallbackParams = Readonly<{
+type MultiplayerApiCallbackParams = Readonly<{
     serverState: MultiplayerServerState;
-    fetchEndpoint: FetchTestService<ImplementedMultiplayerService>;
+    fetchEndpoint: FetchTestEndpoint<ImplementedMultiplayerApi>;
     createClient: (name: string) => Promise<TestClient>;
     webSocketMessages: Record<
         string,
-        DistributedOmit<
-            MultiplayerService['webSockets']['/connect']['MessageFromHostType'],
-            'messageId'
-        >[]
+        DistributedOmit<MultiplayerConnectHostMessage, 'messageId'>[]
     >;
     setupRooms: <const Rooms extends string[][]>(rooms: Rooms) => Promise<SetupRoomsOutput<Rooms>>;
     logs: {
@@ -59,9 +59,9 @@ type MultiplayerServiceCallbackParams = Readonly<{
     closeAllWebSockets: () => Promise<void>;
 }>;
 
-function testMultiplayerService(
+function testMultiplayerApi(
     description: string,
-    callback: (params: MultiplayerServiceCallbackParams) => MaybePromise<void>,
+    callback: (params: MultiplayerApiCallbackParams) => MaybePromise<void>,
 ) {
     it(description, async () => {
         const logs = {
@@ -69,7 +69,7 @@ function testMultiplayerService(
             error: [] as string[],
         };
 
-        const {service, serverState} = implementMultiplayerService({
+        const {api, serverState} = implementMultiplayerApi({
             games: {
                 byId: {
                     test: AnyOrigin,
@@ -89,16 +89,13 @@ function testMultiplayerService(
 
         const webSocketMessages: Record<
             string,
-            DistributedOmit<
-                MultiplayerService['webSockets']['/connect']['MessageFromHostType'],
-                'messageId'
-            >[]
+            DistributedOmit<MultiplayerConnectHostMessage, 'messageId'>[]
         > = {};
 
         async function createClient(
             clientName: string,
-        ): ReturnType<MultiplayerServiceCallbackParams['createClient']> {
-            const webSocket = await connectWebSocket['/connect']({
+        ): ReturnType<MultiplayerApiCallbackParams['createClient']> {
+            const webSocket = await connectWebSocket(multiplayerConnectWebSocket, {
                 searchParams: {
                     gameId: ['test'],
                 },
@@ -175,7 +172,7 @@ function testMultiplayerService(
                 roomIds,
                 async () =>
                     await (
-                        await fetchEndpoint['/rooms']({
+                        await fetchEndpoint(multiplayerRoomsEndpoint, HttpMethod.Get, {
                             searchParams: {
                                 gameId: ['test'],
                             },
@@ -190,7 +187,7 @@ function testMultiplayerService(
             await Promise.all(allClients.map((client) => client.webSocket.close()));
         }
 
-        const {connectWebSocket, fetchEndpoint, kill} = await testService(service);
+        const {connectWebSocket, fetchEndpoint, kill} = await testApi(api);
 
         try {
             await callback({
@@ -209,14 +206,17 @@ function testMultiplayerService(
     });
 }
 
-describe('multiplayer service', () => {
-    testMultiplayerService(
+describe('multiplayer API', () => {
+    testMultiplayerApi(
         'hosts multiple room connections',
         async ({setupRooms, webSocketMessages, fetchEndpoint, closeAllWebSockets}) => {
-            assert.isTrue((await fetchEndpoint['/health']()).ok, 'server health should be okay');
+            assert.isTrue(
+                (await fetchEndpoint(multiplayerHealthEndpoint, HttpMethod.Get)).ok,
+                'server health should be okay',
+            );
             assert.deepEquals(
                 await (
-                    await fetchEndpoint['/rooms']({
+                    await fetchEndpoint(multiplayerRoomsEndpoint, HttpMethod.Get, {
                         searchParams: {
                             gameId: ['test'],
                         },
@@ -300,7 +300,7 @@ describe('multiplayer service', () => {
                 } satisfies MultiplayerClientRooms,
                 async () =>
                     await (
-                        await fetchEndpoint['/rooms']({
+                        await fetchEndpoint(multiplayerRoomsEndpoint, HttpMethod.Get, {
                             searchParams: {
                                 gameId: ['test'],
                             },
@@ -322,7 +322,7 @@ describe('multiplayer service', () => {
             await waitUntil.isEmpty(
                 async () =>
                     await (
-                        await fetchEndpoint['/rooms']({
+                        await fetchEndpoint(multiplayerRoomsEndpoint, HttpMethod.Get, {
                             searchParams: {
                                 gameId: ['test'],
                             },
