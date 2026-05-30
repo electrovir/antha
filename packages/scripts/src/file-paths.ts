@@ -6,5 +6,5 @@ export const packagesDirPath = join(monoRepoDirPath, 'packages');
 
 export const packageDirPaths = {
     antha: join(packagesDirPath, 'antha'),
-    demo: join(packagesDirPath, 'demo'),
+    demos: join(packagesDirPath, 'demos'),
 };

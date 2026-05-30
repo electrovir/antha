@@ -25,10 +25,10 @@ const builds: {
         buildCommand: 'docs',
     },
     {
-        buildName: 'Demo',
-        packageDirPath: packageDirPaths.demo,
+        buildName: 'Demos',
+        packageDirPath: packageDirPaths.demos,
         finalOutputDirPath: join(distDirPath, 'demo'),
-        buildOutputDirPath: join(packageDirPaths.demo, 'dist'),
+        buildOutputDirPath: join(packageDirPaths.demos, 'dist'),
         buildCommand: 'build',
     },
 ];
