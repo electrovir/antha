@@ -18,7 +18,7 @@
             "path": "../engine"
         },
         {
-            "path": "../multiplayer-lock-step"
+            "path": "../multiplayer-p2p-lock-step"
         }
     ]
 }

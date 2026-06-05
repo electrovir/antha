@@ -1,5 +1,4 @@
 export * from './multiplayer-api/errors.js';
-export * from './multiplayer-api/lock-step-controller.js';
 export * from './multiplayer-api/multiplayer-api.js';
 export * from './multiplayer-api/multiplayer-client.js';
 export * from './multiplayer-api/multiplayer-controller.js';

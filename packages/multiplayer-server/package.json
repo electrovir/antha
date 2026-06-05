@@ -35,7 +35,7 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@antha/multiplayer-lock-step": "^0.0.1",
+        "@antha/multiplayer-p2p-lock-step": "^0.0.1",
         "@augment-vir/assert": "^31.71.3",
         "@augment-vir/common": "^31.71.3",
         "@rest-vir/api": "^2.2.0",

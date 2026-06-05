@@ -15,9 +15,9 @@ import {
     type RoomInput,
 } from '@antha/multiplayer-core';
 import {
-    createAnthaMultiplayerLockStepMod,
-    type AnthaMultiplayerLockStepState,
-} from '@antha/multiplayer-lock-step';
+    createAnthaMultiplayerP2pLockStepMod,
+    type AnthaMultiplayerP2pLockStepState,
+} from '@antha/multiplayer-p2p-lock-step';
 import {combineErrorMessages, log, type PartialWithUndefined} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {ViraError} from 'vira';
@@ -79,16 +79,11 @@ const DemoConnectionStatus = defineElement<
     },
 });
 
-type ConnectorState = AnthaMultiplayerLockStepState & {
+type ConnectorState = AnthaMultiplayerP2pLockStepState & {
     connectionStarted: boolean;
     connectionError: string;
 };
 
-/**
- * Creates a mod that connects a `MultiplayerController` (from the lock step mod) to a pre-built
- * mock API client. This bypasses the normal `startMultiplayer()` flow which tries to reach a real
- * server.
- */
 function createConnectorMod(
     mockApiClientRef: Readonly<MultiplayerApiClient>,
     room: Readonly<RoomInput>,
@@ -96,16 +91,16 @@ function createConnectorMod(
     return defineAnthaMod<ConnectorState>({
         modName: 'room-connector',
         async execute({state}) {
-            if (!state.multiplayerLockStep) {
+            if (!state.multiplayerP2pLockStep) {
                 return 'Loading...';
             }
 
-            const controller = state.multiplayerLockStep.multiplayerController;
+            const controller = state.multiplayerP2pLockStep.multiplayerController;
 
             if (!state.connectionStarted) {
                 state.connectionStarted = true;
 
-                await controller.startMultiplayer({
+                await controller.initMultiplayer({
                     backendOrigin: mockApiClientRef.baseUrl,
                     multiplayerApiClient: mockApiClientRef,
                 });
@@ -118,7 +113,7 @@ function createConnectorMod(
                 }
             }
 
-            const connectionState = state.multiplayerLockStep.connectionState;
+            const connectionState = state.multiplayerP2pLockStep.connectionState;
 
             return html`
                 <${DemoConnectionStatus.assign({
@@ -138,7 +133,7 @@ function createRoomClientEngine(
     mockApiClientRef: Readonly<MultiplayerApiClient>,
     room: Readonly<RoomInput>,
 ) {
-    const lockStepMod = createAnthaMultiplayerLockStepMod({
+    const multiplayerP2pLockStepMod = createAnthaMultiplayerP2pLockStepMod({
         gameId: 'room-demo',
     });
     const connectorMod = createConnectorMod(mockApiClientRef, room);
@@ -146,7 +141,7 @@ function createRoomClientEngine(
     return new AnthaEngine({
         mods: [
             connectorMod,
-            lockStepMod,
+            multiplayerP2pLockStepMod,
         ],
     });
 }

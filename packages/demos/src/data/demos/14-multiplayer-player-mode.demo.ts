@@ -7,8 +7,10 @@ import {
     html,
     listen,
     nothing,
+    type AnthaMod,
 } from '@antha/engine';
 import {
+    ControllerClientEvent,
     ControllerConnectionEvent,
     ControllerRoomListEvent,
     createMockRoomHandlerServerApiClient,
@@ -28,12 +30,21 @@ import {createUtcFullDate} from 'date-vir';
 import {ViraError} from 'vira';
 import {type AnthaDemo} from '../demo.js';
 
-const roomSelectionGameId = 'room-selection-demo';
+const roomModeSelectionGameId = 'room-mode-selection-demo';
 
-const DemoRoomLobby = defineElement<{
+enum RoomMode {
+    Multiplayer = 'multiplayer',
+    Singleplayer = 'singleplayer',
+}
+
+type SelectableRoomState = AnthaMultiplayerP2pLockStepState & {
+    roomMode: RoomMode | undefined;
+};
+
+const DemoModeRoomLobby = defineElement<{
     p2pLockStepMultiplayer: AnthaMultiplayerP2pLockStepState['multiplayerP2pLockStep'];
 }>()({
-    tagName: 'demo-room-lobby',
+    tagName: 'demo-mode-room-lobby',
     styles: css`
         :host {
             display: flex;
@@ -47,16 +58,31 @@ const DemoRoomLobby = defineElement<{
             joinedRoom: undefined as Readonly<RoomInput> | undefined,
             cleanup: undefined as (() => void) | undefined,
             availableRooms: {} as Readonly<MultiplayerClientRooms>,
+            connectedClientCount: 0,
         };
     },
     init({inputs, updateState, state}) {
+        function updateConnectedClientCount() {
+            updateState({
+                connectedClientCount:
+                    inputs.p2pLockStepMultiplayer.multiplayerController.getAllClientIds().length,
+            });
+        }
+
         const cleanupCallbacks = [
+            inputs.p2pLockStepMultiplayer.multiplayerController.listen(
+                ControllerClientEvent,
+                () => {
+                    updateConnectedClientCount();
+                },
+            ),
             inputs.p2pLockStepMultiplayer.multiplayerController.listen(
                 ControllerConnectionEvent,
                 (event) => {
                     updateState({
                         connectionState: event.detail,
                     });
+                    updateConnectedClientCount();
                 },
             ),
             inputs.p2pLockStepMultiplayer.multiplayerController.listen(
@@ -89,6 +115,9 @@ const DemoRoomLobby = defineElement<{
                 await inputs.p2pLockStepMultiplayer.multiplayerController.joinOrCreateRoom(room);
                 updateState({
                     joinedRoom: room,
+                    connectedClientCount:
+                        inputs.p2pLockStepMultiplayer.multiplayerController.getAllClientIds()
+                            .length,
                 });
             } catch (error) {
                 log.error(error);
@@ -114,7 +143,7 @@ const DemoRoomLobby = defineElement<{
                 `Api: ${apiLabel}`,
                 `Room: ${roomLabel}`,
                 `Room Name: ${state.joinedRoom.roomName}`,
-                `Connected Clients: ${inputs.p2pLockStepMultiplayer.multiplayerController.getAllClientIds().length}`,
+                `Connected Clients: ${state.connectedClientCount}`,
             ];
 
             return html`
@@ -123,6 +152,7 @@ const DemoRoomLobby = defineElement<{
                         inputs.p2pLockStepMultiplayer.multiplayerController.leaveRoom();
                         updateState({
                             joinedRoom: undefined,
+                            connectedClientCount: 0,
                         });
                     })}
                 >
@@ -211,59 +241,130 @@ const DemoRoomLobby = defineElement<{
     },
 });
 
-function createRoomSelectionMod(mockApiClientRef: Readonly<MultiplayerApiClient>) {
-    return defineAnthaMod<AnthaMultiplayerP2pLockStepState>({
-        modName: 'room-selector',
-        async execute({state}) {
-            if (!state.multiplayerP2pLockStep) {
+const DemoSingleplayerStatus = defineElement<{
+    p2pLockStepMultiplayer: AnthaMultiplayerP2pLockStepState['multiplayerP2pLockStep'];
+}>()({
+    tagName: 'demo-singleplayer-status',
+    styles: css`
+        :host {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            font-family: monospace;
+        }
+    `,
+    render({inputs}) {
+        const statusLines = [
+            `Client ID: ${inputs.p2pLockStepMultiplayer.multiplayerController.getClientId() || 'pending...'}`,
+        ];
+
+        return html`
+            <strong>Singleplayer</strong>
+            ${statusLines.map((line) => {
+                return html`
+                    <span>${line}</span>
+                `;
+            })}
+        `;
+    },
+});
+
+function createRoomModeSelectionMod(
+    mockApiClientRef: Readonly<MultiplayerApiClient>,
+): AnthaMod<SelectableRoomState> {
+    return defineAnthaMod<SelectableRoomState>({
+        modName: 'room-mode-selector',
+        initState: {
+            roomMode: undefined,
+        },
+        execute({state}) {
+            const p2pLockStep = state.multiplayerP2pLockStep;
+            if (!p2pLockStep) {
                 return 'Loading...';
+            } else if (!state.roomMode) {
+                return html`
+                    <div class="mode-buttons">
+                        <button
+                            ${listen('click', () => {
+                                state.roomMode = RoomMode.Singleplayer;
+                                p2pLockStep.multiplayerController.startSingleplayer();
+                            })}
+                        >
+                            singleplayer
+                        </button>
+                        <button
+                            ${listen('click', async () => {
+                                state.roomMode = RoomMode.Multiplayer;
+
+                                await p2pLockStep.multiplayerController.initMultiplayer({
+                                    backendOrigin: mockApiClientRef.baseUrl,
+                                    multiplayerApiClient: mockApiClientRef,
+                                    roomUpdateInterval: {
+                                        seconds: 1,
+                                    },
+                                });
+                            })}
+                        >
+                            multiplayer
+                        </button>
+                    </div>
+                `;
             }
 
-            if (!state.multiplayerP2pLockStep.multiplayerController.currentConnection) {
-                await state.multiplayerP2pLockStep.multiplayerController.initMultiplayer({
-                    backendOrigin: mockApiClientRef.baseUrl,
-                    multiplayerApiClient: mockApiClientRef,
-                    roomUpdateInterval: {
-                        seconds: 1,
-                    },
-                });
-            }
-
-            return html`
-                <${DemoRoomLobby.assign({
-                    p2pLockStepMultiplayer: state.multiplayerP2pLockStep,
-                })}></${DemoRoomLobby}>
+            const backButton = html`
+                <button
+                    ${listen('click', () => {
+                        p2pLockStep.multiplayerController.leaveRoom();
+                        state.roomMode = undefined;
+                    })}
+                >
+                    Back
+                </button>
             `;
+
+            if (state.roomMode === RoomMode.Multiplayer) {
+                return html`
+                    ${backButton}
+                    <${DemoModeRoomLobby.assign({
+                        p2pLockStepMultiplayer: p2pLockStep,
+                    })}></${DemoModeRoomLobby}>
+                `;
+            } else {
+                return html`
+                    ${backButton}
+                    <${DemoSingleplayerStatus.assign({
+                        p2pLockStepMultiplayer: p2pLockStep,
+                    })}></${DemoSingleplayerStatus}>
+                `;
+            }
         },
     });
 }
 
-function createRoomSelectionEngine(mockApiClientRef: Readonly<MultiplayerApiClient>) {
+function createRoomModeEngine(mockApiClientRef: Readonly<MultiplayerApiClient>) {
     const multiplayerP2pLockStepMod = createAnthaMultiplayerP2pLockStepMod({
-        gameId: roomSelectionGameId,
+        gameId: roomModeSelectionGameId,
     });
-    const selectorMod = createRoomSelectionMod(mockApiClientRef);
+    const modeSelectionMod = createRoomModeSelectionMod(mockApiClientRef);
 
     return new AnthaEngine({
         mods: [
-            selectorMod,
+            modeSelectionMod,
             multiplayerP2pLockStepMod,
         ],
     });
 }
 
-const DemoRoomSelection = defineElement()({
-    tagName: 'demo-room-selection',
+const DemoRoomModeSelection = defineElement()({
+    tagName: 'demo-room-mode-selection',
     state() {
         return {
             engines: undefined as
-                | undefined
                 | {
                       clientA: AnthaEngine;
                       clientB: AnthaEngine;
-                      clientC: AnthaEngine;
-                      clientD: AnthaEngine;
-                  },
+                  }
+                | undefined,
         };
     },
     styles: css`
@@ -271,6 +372,7 @@ const DemoRoomSelection = defineElement()({
             display: flex;
             flex-wrap: wrap;
             justify-content: space-evenly;
+            align-items: flex-start;
             gap: 32px;
             padding: 32px;
             box-sizing: border-box;
@@ -284,6 +386,12 @@ const DemoRoomSelection = defineElement()({
             padding: 16px;
             flex-grow: 1;
             min-width: 280px;
+        }
+
+        .mode-buttons {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
         }
 
         table,
@@ -302,10 +410,8 @@ const DemoRoomSelection = defineElement()({
 
             updateState({
                 engines: {
-                    clientA: createRoomSelectionEngine(mockApiClient),
-                    clientB: createRoomSelectionEngine(mockApiClient),
-                    clientC: createRoomSelectionEngine(mockApiClient),
-                    clientD: createRoomSelectionEngine(mockApiClient),
+                    clientA: createRoomModeEngine(mockApiClient),
+                    clientB: createRoomModeEngine(mockApiClient),
                 },
             });
         }
@@ -333,19 +439,13 @@ const DemoRoomSelection = defineElement()({
             <${AnthaUi.assign({
                 engine: state.engines.clientB,
             })}></${AnthaUi}>
-            <${AnthaUi.assign({
-                engine: state.engines.clientC,
-            })}></${AnthaUi}>
-            <${AnthaUi.assign({
-                engine: state.engines.clientD,
-            })}></${AnthaUi}>
         `;
     },
 });
 
-export const multiplayerRoomSelectionDemo: AnthaDemo = {
-    demoName: 'Multiplayer Room Selection',
-    demoPathId: 'multiplayer-room-selection',
-    demoSortDate: createUtcFullDate('2026-04-08'),
-    element: DemoRoomSelection,
+export const multiplayerPlayerModeDemo: AnthaDemo = {
+    demoName: 'Multiplayer Player Mode',
+    demoPathId: 'multiplayer-player-mode',
+    demoSortDate: createUtcFullDate('2026-06-05'),
+    element: DemoRoomModeSelection,
 };

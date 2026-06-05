@@ -2,15 +2,15 @@ import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {
     ControllerConnectionEvent,
-    MultiplayerController,
+    MultiplayerRoomController,
     type ApiAndRoomConnectionState,
 } from './multiplayer-controller.js';
 
-describe(MultiplayerController.name, () => {
+describe(MultiplayerRoomController.name, () => {
     it('handles failure to connect to a room with port scanning', async () => {
         let externalState: undefined | ApiAndRoomConnectionState;
 
-        const controller = new MultiplayerController({
+        const controller = new MultiplayerRoomController({
             gameId: 'some id',
         });
 
@@ -19,7 +19,7 @@ describe(MultiplayerController.name, () => {
         });
         await assert.throws(
             () =>
-                controller.startMultiplayer({
+                controller.initMultiplayer({
                     backendOrigin: 'http://localhost:0',
                     portScanOptions: {
                         timeout: {
@@ -37,14 +37,14 @@ describe(MultiplayerController.name, () => {
     it('handles failure to connect to a room', async () => {
         let externalState: undefined | ApiAndRoomConnectionState;
 
-        const controller = new MultiplayerController({
+        const controller = new MultiplayerRoomController({
             gameId: 'some id',
         });
         controller.listen(ControllerConnectionEvent, (event) => {
             externalState = event.detail;
         });
         await assert.throws(() =>
-            controller.startMultiplayer({
+            controller.initMultiplayer({
                 backendOrigin: 'http://localhost:0',
             }),
         );

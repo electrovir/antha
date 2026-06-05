@@ -1,3 +1,3 @@
-# @antha/multiplayer-lock-step
+# @antha/multiplayer-core
 
-A multiplayer mod for the Antha engine that uses lock-step synchronization and WebRTC peer-to-peer connections.
+Core multiplayer room, API, and WebRTC utilities for Antha.

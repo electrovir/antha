@@ -21,7 +21,7 @@
         "@antha/graphics-2d": "*",
         "@antha/input": "*",
         "@antha/multiplayer-core": "*",
-        "@antha/multiplayer-lock-step": "*",
+        "@antha/multiplayer-p2p-lock-step": "*",
         "@augment-vir/assert": "^31.71.3",
         "@augment-vir/common": "^31.71.3",
         "@electrovir/color": "^1.7.9",
@@ -43,7 +43,7 @@
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-playwright": "^0.11.1",
         "istanbul-smart-text-reporter": "^1.1.5",
-        "typescript": "^5.9.3",
+        "typescript": "^6.0.3",
         "vite": "^8.0.14"
     },
     "engines": {

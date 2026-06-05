@@ -12,6 +12,7 @@ import {
     makeWritable,
     mergeDefinedProperties,
     randomString,
+    removeDuplicates,
     stringify,
 } from '@augment-vir/common';
 import {type ClientWebSocket} from '@rest-vir/api';
@@ -136,11 +137,6 @@ export class WebrtcMultiplayerController<
     constructor(
         private readonly gameId: string,
         private readonly multiplayerApiClient: Readonly<MultiplayerApiClient>,
-        /**
-         * - 'stun.l.google.com:19302'
-         * - 'stun.stunprotocol.org'
-         * - 'stun.cloudflare.com:3478'
-         */
         public readonly stunServerUrls: ReadonlyArray<string>,
         public readonly multiplayerRoom: Readonly<RoomInput>,
         /** The randomized client id for this controller and client. */
@@ -174,9 +170,9 @@ export class WebrtcMultiplayerController<
     /**
      * Get all connected client ids.
      *
-     * - For host clients, this will indicate how many member clients are connected to the host
-     *   client, _not_ including the host itself.
-     * - For non-host clients, this will only list the host's client.
+     * - For host clients, this indicates how many member clients are connected to the host client,
+     *   _not_ including the host itself.
+     * - For non-host clients, this only lists the local connection used to reach the host.
      *
      * For host clients, this does ont include the host client id whereas
      * {@link WebrtcMultiplayerController.getAllClientIds} does.
@@ -196,9 +192,9 @@ export class WebrtcMultiplayerController<
     /**
      * Get all room client ids.
      *
-     * - For host clients, this will indicate how many clients are connected to the room, including
-     *   the host client itself.
-     * - For non-host clients, this will only list the host's client.
+     * - For host clients, this indicates how many clients are connected to the room, including the
+     *   host client itself.
+     * - For non-host clients, this includes the member client and the host client once connected.
      *
      * For host clients, this includes the host client id whereas
      * {@link WebrtcMultiplayerController.getConnectedClientIds} does not.
@@ -206,12 +202,20 @@ export class WebrtcMultiplayerController<
     public getAllClientIds(): ClientId[] {
         const connectedClientIds = this.getConnectedClientIds();
 
-        const allClients = [
-            ...connectedClientIds,
-            ...(this.isHost() ? [this.clientId] : []),
-        ];
+        const allClients = this.isHost()
+            ? [
+                  ...connectedClientIds,
+                  this.clientId,
+              ]
+            : this.hostClientId && this.isConnected()
+              ? [
+                    ...connectedClientIds,
+                    this.clientId,
+                    this.hostClientId,
+                ]
+              : connectedClientIds;
 
-        return allClients;
+        return removeDuplicates(allClients);
     }
 
     /** Indicates whether ths client is connected to a multiplayer room. */

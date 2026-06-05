@@ -28,18 +28,23 @@ import {createMultiplayerRoomHandler} from './multiplayer-room-handler.js';
  * @example
  *
  * ```ts
- * import {
- *     createMockRoomHandlerServerApiClient,
- *     LockStepGameStateController,
- * } from '@antha/multiplayer-lock-step';
+ * import {createNewRoom, createMockRoomHandlerServerApiClient} from '@antha/multiplayer-core';
+ * import {P2pLockStepMultiplayerController} from '@antha/multiplayer-p2p-lock-step';
  *
  * const mockApiClient = createMockRoomHandlerServerApiClient();
- * const lockStep = new LockStepGameStateController({milliseconds: 16});
- * await lockStep.multiplayerConnect('my-game', mockApiClient, [], {
- *     roomId: 'some-room-id',
- *     roomName: 'My Room',
- *     roomPassword: '',
+ * const p2pLockStep = new P2pLockStepMultiplayerController({
+ *     gameId: 'my-game',
+ *     frameDuration: {milliseconds: 16},
  * });
+ * await p2pLockStep.initMultiplayer({
+ *     backendOrigin: mockApiClient.baseUrl,
+ *     multiplayerApiClient: mockApiClient,
+ * });
+ * await p2pLockStep.joinOrCreateRoom(
+ *     createNewRoom({
+ *         roomName: 'My Room',
+ *     }),
+ * );
  * ```
  */
 export function createMockRoomHandlerServerApiClient(

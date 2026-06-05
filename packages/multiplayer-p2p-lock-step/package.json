@@ -1,5 +1,5 @@
 {
-    "name": "@antha/multiplayer-lock-step",
+    "name": "@antha/multiplayer-p2p-lock-step",
     "version": "0.0.1",
     "description": "Multiplayer mod for the Antha engine.",
     "keywords": [
@@ -36,7 +36,10 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/common": "^31.71.3"
+        "@augment-vir/assert": "^31.71.3",
+        "@augment-vir/common": "^31.71.3",
+        "date-vir": "^8.3.2",
+        "typed-event-target": "^4.3.0"
     },
     "devDependencies": {
         "@augment-vir/test": "^31.71.3",
