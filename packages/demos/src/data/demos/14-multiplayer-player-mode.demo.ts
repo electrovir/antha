@@ -472,7 +472,7 @@ const multiplayerActionReactions = {
     [MultiplayerActionType.Click]({state}) {
         state.clickCount = (state.clickCount || 0) + 1;
     },
-    [MultiplayerActionType.StateSync]({}) {},
+    [MultiplayerActionType.StateSync]() {},
 } satisfies Readonly<{
     [ActionType in MultiplayerActionType]: (
         params: Readonly<{
