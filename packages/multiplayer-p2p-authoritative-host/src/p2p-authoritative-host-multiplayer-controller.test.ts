@@ -1,8 +1,9 @@
-import {assert} from '@augment-vir/assert';
+import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {
     ControllerStateEvent,
     P2pAuthoritativeHostMultiplayerController,
+    type StateEventDetail,
 } from './p2p-authoritative-host-multiplayer-controller.js';
 
 type CounterState = {
@@ -12,7 +13,7 @@ type CounterState = {
 describe(P2pAuthoritativeHostMultiplayerController.name, () => {
     it('applies singleplayer authoritative inputs and ticks', () => {
         const state: {
-            updates: ReadonlyArray<CounterState>;
+            updates: ReadonlyArray<StateEventDetail<number, CounterState>>;
         } = {
             updates: [],
         };
@@ -35,10 +36,10 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             },
         });
 
-        controller.listen(ControllerStateEvent<CounterState>, ({detail}) => {
+        controller.listen(ControllerStateEvent<CounterState, number>, ({detail}) => {
             state.updates = [
                 ...state.updates,
-                detail.state,
+                detail,
             ];
         });
 
@@ -46,6 +47,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             count: 0,
         });
         controller.startSingleplayer();
+        const clientId = assertWrap.isDefined(controller.getClientId());
         assert.isLengthExactly(controller.getAllClientIds(), 1);
         controller.act(2);
         controller.tick(3);
@@ -55,13 +57,24 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
         });
         assert.deepEquals(state.updates, [
             {
-                count: 0,
+                sequence: 0,
+                state: {
+                    count: 0,
+                },
             },
             {
-                count: 2,
+                clientId,
+                input: 2,
+                sequence: 1,
+                state: {
+                    count: 2,
+                },
             },
             {
-                count: 5,
+                sequence: 2,
+                state: {
+                    count: 5,
+                },
             },
         ]);
     });

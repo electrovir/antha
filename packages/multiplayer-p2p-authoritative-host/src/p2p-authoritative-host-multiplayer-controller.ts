@@ -5,9 +5,11 @@ import {
     ControllerConnectionEvent,
     ControllerMessageEvent,
     ControllerRoomListEvent,
+    createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
     type MultiplayerInitParams,
+    type MultiplayerRoomConnection,
     MultiplayerRoomController,
     type RoomInput,
     RoomRejectionError,
@@ -17,14 +19,90 @@ import {
     type MaybePromise,
     type PartialWithUndefined,
 } from '@augment-vir/common';
-import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
-import {
-    P2pAuthoritativeHostController,
-    type P2pAuthoritativeHostGameDefinition,
-    type P2pAuthoritativeHostMessage,
-    P2pAuthoritativeHostStateEvent,
-    type P2pAuthoritativeHostStateSnapshot,
-} from './p2p-authoritative-host-controller.js';
+import {defineTypedCustomEvent, ListenTarget, type TypedCustomEventInit} from 'typed-event-target';
+
+/**
+ * Message type for {@link P2pAuthoritativeHostMessage}.
+ *
+ * @category Internal
+ */
+export enum P2pAuthoritativeHostMessageType {
+    Input = 'input',
+    StateSnapshot = 'state-snapshot',
+}
+
+/**
+ * A state snapshot emitted when the authoritative state changes.
+ *
+ * @category Internal
+ */
+export type P2pAuthoritativeHostStateSnapshot<State extends JsonCompatibleValue> = {
+    sequence: number;
+    state: State;
+};
+
+/**
+ * Data received from {@link ControllerStateEvent}.
+ *
+ * @category Internal
+ */
+export type StateEventDetail<
+    Input extends JsonCompatibleValue,
+    State extends JsonCompatibleValue,
+> = P2pAuthoritativeHostStateSnapshot<State> &
+    PartialWithUndefined<{
+        clientId: ClientId;
+        input: Input;
+    }>;
+
+/**
+ * Messages exchanged by the authoritative-host state strategy.
+ *
+ * @category Internal
+ */
+export type P2pAuthoritativeHostMessage<
+    Input extends JsonCompatibleValue,
+    State extends JsonCompatibleValue,
+> =
+    | {
+          type: P2pAuthoritativeHostMessageType.Input;
+          input: Input;
+      }
+    | ({
+          type: P2pAuthoritativeHostMessageType.StateSnapshot;
+      } & StateEventDetail<Input, State>);
+
+/**
+ * Game-specific logic for an authoritative-host connection.
+ *
+ * @category Internal
+ */
+export type P2pAuthoritativeHostGameDefinition<
+    Input extends JsonCompatibleValue,
+    State extends JsonCompatibleValue,
+> = {
+    createInitialState: () => State;
+    applyInput: (
+        params: Readonly<{
+            clientId: ClientId;
+            input: Readonly<Input>;
+            state: Readonly<State>;
+        }>,
+    ) => State;
+    shouldAcceptInput?: (
+        params: Readonly<{
+            clientId: ClientId;
+            input: Readonly<Input>;
+            state: Readonly<State>;
+        }>,
+    ) => boolean | undefined;
+    tick?: (
+        params: Readonly<{
+            elapsedMs: number;
+            state: Readonly<State>;
+        }>,
+    ) => State;
+};
 
 /**
  * Constructor parameters for {@link P2pAuthoritativeHostMultiplayerController}.
@@ -64,8 +142,13 @@ export type P2pAuthoritativeHostMultiplayerControllerParams<
  */
 export class ControllerStateEvent<
     State extends JsonCompatibleValue,
+    Input extends JsonCompatibleValue = any,
 > extends defineTypedCustomEvent<any>()('controller-state') {
-    public declare detail: Readonly<P2pAuthoritativeHostStateSnapshot<State>>;
+    public declare detail: Readonly<StateEventDetail<Input, State>>;
+
+    constructor(eventInitDict: TypedCustomEventInit<Readonly<StateEventDetail<Input, State>>>) {
+        super(eventInitDict);
+    }
 }
 
 /**
@@ -73,8 +156,11 @@ export class ControllerStateEvent<
  *
  * @category Internal
  */
-export type AllP2pAuthoritativeHostMultiplayerControllerEvents<State extends JsonCompatibleValue> =
-    | ControllerStateEvent<State>
+export type AllP2pAuthoritativeHostMultiplayerControllerEvents<
+    Input extends JsonCompatibleValue,
+    State extends JsonCompatibleValue,
+> =
+    | ControllerStateEvent<State, Input>
     | ControllerRoomListEvent
     | ControllerClientEvent
     | ControllerConnectionEvent;
@@ -87,7 +173,7 @@ export type AllP2pAuthoritativeHostMultiplayerControllerEvents<State extends Jso
 export class P2pAuthoritativeHostMultiplayerController<
     Input extends JsonCompatibleValue = any,
     State extends JsonCompatibleValue = any,
-> extends ListenTarget<AllP2pAuthoritativeHostMultiplayerControllerEvents<State>> {
+> extends ListenTarget<AllP2pAuthoritativeHostMultiplayerControllerEvents<Input, State>> {
     /** All events emitted by this controller. */
     public static readonly events = {
         ControllerStateEvent,
@@ -104,15 +190,19 @@ export class P2pAuthoritativeHostMultiplayerController<
     public readonly roomController: MultiplayerRoomController<
         P2pAuthoritativeHostMessage<Input, State>
     >;
-    /** Current p2p-authoritative-host connection. */
-    public currentConnection: P2pAuthoritativeHostController<Input, State> | undefined;
-    private readonly initialState: State;
+    protected readonly localClientId = createMultiplayerId.client();
+    protected roomConnection:
+        | MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, State>>
+        | undefined;
+    protected currentState: State;
+    protected currentSequence = 0;
+    protected singleplayer = false;
 
     constructor(
         protected readonly params: P2pAuthoritativeHostMultiplayerControllerParams<Input, State>,
     ) {
         super();
-        this.initialState = params.createInitialState();
+        this.currentState = params.createInitialState();
         this.roomController = new MultiplayerRoomController<
             P2pAuthoritativeHostMessage<Input, State>
         >({
@@ -124,6 +214,16 @@ export class P2pAuthoritativeHostMultiplayerController<
                 : undefined,
         });
         this.listenToRoomController();
+    }
+
+    /** Current p2p-authoritative-host connection, exposed for compatibility checks. */
+    public get currentConnection(): this | undefined {
+        return this.isConnected() ? this : undefined;
+    }
+
+    /** The current client id. */
+    public get clientId(): ClientId {
+        return this.roomConnection?.clientId || this.localClientId;
     }
 
     /**
@@ -163,7 +263,11 @@ export class P2pAuthoritativeHostMultiplayerController<
      * current connection.
      */
     public getClientId(): ClientId | undefined {
-        return this.currentConnection?.clientId || this.roomController.getClientId();
+        if (this.singleplayer) {
+            return this.localClientId;
+        }
+
+        return this.roomConnection?.clientId || this.roomController.getClientId();
     }
 
     /**
@@ -174,7 +278,7 @@ export class P2pAuthoritativeHostMultiplayerController<
      * - For non-host clients, this only lists the local connection used to reach the host.
      */
     public getConnectedClientIds(): ClientId[] {
-        return this.currentConnection?.getConnectedClientIds() || [];
+        return this.roomConnection?.getConnectedClientIds() || [];
     }
 
     /**
@@ -185,12 +289,18 @@ export class P2pAuthoritativeHostMultiplayerController<
      * - For non-host clients, this includes the member client and the host client once connected.
      */
     public getAllClientIds(): ClientId[] {
-        return this.currentConnection?.getAllClientIds() || [];
+        if (this.singleplayer) {
+            return [
+                this.localClientId,
+            ];
+        }
+
+        return this.roomConnection?.getAllClientIds() || [];
     }
 
     /** Get the latest local state view. */
     public getState(): State {
-        return this.currentConnection ? this.currentConnection.getState() : this.initialState;
+        return this.currentState;
     }
 
     /** Start multiplayer mode. This delegates API connectivity and room polling to multiplayer core. */
@@ -204,8 +314,8 @@ export class P2pAuthoritativeHostMultiplayerController<
             throw new Error('Cannot start singleplayer with a connection already present.');
         }
 
-        this.currentConnection = this.createP2pAuthoritativeHostConnection();
-        this.currentConnection.startSingleplayer();
+        this.singleplayer = true;
+        this.dispatchState(this.createStateEventDetail());
         this.dispatch(
             new ControllerConnectionEvent({
                 detail: {
@@ -218,28 +328,51 @@ export class P2pAuthoritativeHostMultiplayerController<
 
     /** Send or apply a local input. */
     public act(input: Readonly<Input>) {
-        this.getCurrentConnection().act(input);
+        if (!this.currentConnection || !this.currentConnection.isConnected()) {
+            throw new Error('Cannot perform input: not connected to a room.');
+        }
+
+        if (this.isHost()) {
+            this.applyInput({
+                clientId: this.clientId,
+                input,
+            });
+        } else {
+            this.roomConnection?.sendMessage({
+                type: P2pAuthoritativeHostMessageType.Input,
+                input,
+            });
+        }
     }
 
     /** Run one authoritative tick. Only the host advances canonical state. */
     public tick(elapsedMs = 0) {
-        this.getCurrentConnection().tick(elapsedMs);
+        if (!this.isHost() || !this.params.tick) {
+            return;
+        }
+
+        this.updateState(
+            this.params.tick({
+                elapsedMs,
+                state: this.currentState,
+            }),
+        );
     }
 
     /** Detects if this controller is the room host or not. */
     public isHost(): boolean {
-        return this.currentConnection?.isHost() || false;
+        return this.singleplayer || this.roomConnection?.isHost() || false;
     }
 
     /** Detects if this controller is connected to a room or not. */
     public isConnected(): boolean {
-        return this.currentConnection?.isConnected() || false;
+        return this.singleplayer || this.roomConnection?.isConnected() || false;
     }
 
     /** Cleanup everything. */
     public override destroy() {
-        this.currentConnection?.destroy();
-        this.currentConnection = undefined;
+        this.roomConnection = undefined;
+        this.singleplayer = false;
         this.roomController.destroy();
         super.destroy();
     }
@@ -254,9 +387,6 @@ export class P2pAuthoritativeHostMultiplayerController<
             throw new Error('Cannot join room: connection already established.');
         }
 
-        const authoritativeHostConnection = this.createP2pAuthoritativeHostConnection();
-        this.currentConnection = authoritativeHostConnection;
-
         try {
             await this.roomController.joinOrCreateRoom(room);
             if (!this.roomController.currentConnection) {
@@ -265,12 +395,9 @@ export class P2pAuthoritativeHostMultiplayerController<
                 );
             }
 
-            authoritativeHostConnection.attachMultiplayerRoomConnection(
-                this.roomController.currentConnection,
-            );
+            this.attachMultiplayerRoomConnection(this.roomController.currentConnection);
         } catch (error: unknown) {
-            authoritativeHostConnection.destroy();
-            this.currentConnection = undefined;
+            this.roomConnection = undefined;
             throw error;
         }
     }
@@ -281,12 +408,12 @@ export class P2pAuthoritativeHostMultiplayerController<
             return;
         }
 
-        this.currentConnection.destroy();
-        this.currentConnection = undefined;
+        this.roomConnection = undefined;
+        this.singleplayer = false;
         this.roomController.leaveRoom();
     }
 
-    private listenToRoomController() {
+    protected listenToRoomController() {
         this.roomController.listen(ControllerRoomListEvent, (event) => {
             this.dispatch(event);
         });
@@ -295,38 +422,153 @@ export class P2pAuthoritativeHostMultiplayerController<
         });
         this.roomController.listen(ControllerClientEvent, (event) => {
             if ('newMember' in event.detail) {
-                this.currentConnection?.syncNewMember(event.detail.newMember);
+                this.syncNewMember(event.detail.newMember);
             }
             this.dispatch(event);
         });
         this.roomController.listen(
             ControllerMessageEvent<P2pAuthoritativeHostMessage<Input, State>>,
             (event) => {
-                this.currentConnection?.handleReceivedMessage(event.sourceClientId, event.detail);
+                this.handleReceivedMessage(event.sourceClientId, event.detail);
             },
         );
     }
 
-    private getCurrentConnection() {
-        if (!this.currentConnection) {
-            throw new Error('Cannot use authoritative host state: not connected to a room.');
-        }
+    protected attachMultiplayerRoomConnection(
+        roomConnection: Readonly<
+            MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, State>>
+        >,
+    ) {
+        this.roomConnection = roomConnection;
+        this.dispatchState(this.createStateEventDetail());
 
-        return this.currentConnection;
+        if (this.isHost()) {
+            this.sendStateSnapshot(this.createStateEventDetail());
+        }
     }
 
-    private createP2pAuthoritativeHostConnection() {
-        const connection = new P2pAuthoritativeHostController<Input, State>(
-            this.params,
-            this.initialState,
-        );
-        connection.listen(P2pAuthoritativeHostStateEvent<State>, (event) => {
-            this.dispatch(
-                new ControllerStateEvent<State>({
-                    detail: event.detail,
-                }),
+    protected syncNewMember(clientId: ClientId) {
+        if (this.roomConnection && this.isHost()) {
+            this.roomConnection.sendToOnlyOneClient(
+                clientId,
+                this.createStateSnapshotMessage(this.createStateEventDetail()),
             );
+        }
+    }
+
+    protected handleReceivedMessage(
+        sourceClientId: ClientId,
+        message: Readonly<P2pAuthoritativeHostMessage<Input, State>>,
+    ) {
+        if (!this.roomConnection) {
+            return;
+        }
+
+        if (this.isHost() && message.type === P2pAuthoritativeHostMessageType.Input) {
+            this.applyInput({
+                clientId: sourceClientId,
+                input: message.input,
+            });
+        } else if (
+            !this.isHost() &&
+            message.type === P2pAuthoritativeHostMessageType.StateSnapshot &&
+            message.sequence >= this.currentSequence
+        ) {
+            this.currentSequence = message.sequence;
+            this.currentState = message.state;
+            this.dispatchState(message);
+        }
+    }
+
+    protected applyInput({
+        clientId,
+        input,
+    }: Readonly<{
+        clientId: ClientId;
+        input: Readonly<Input>;
+    }>) {
+        const shouldAcceptInput =
+            this.params.shouldAcceptInput?.({
+                clientId,
+                input,
+                state: this.currentState,
+            }) ?? true;
+
+        if (shouldAcceptInput) {
+            this.updateStateFromInput({
+                clientId,
+                input,
+                state: this.params.applyInput({
+                    clientId,
+                    input,
+                    state: this.currentState,
+                }),
+            });
+        }
+    }
+
+    protected updateState(state: State) {
+        this.currentState = state;
+        this.currentSequence++;
+        const detail = this.createStateEventDetail();
+        this.dispatchState(detail);
+        this.sendStateSnapshot(detail);
+    }
+
+    protected updateStateFromInput({
+        clientId,
+        input,
+        state,
+    }: Readonly<{
+        clientId: ClientId;
+        input: Readonly<Input>;
+        state: State;
+    }>) {
+        this.currentState = state;
+        this.currentSequence++;
+        const detail = this.createStateEventDetail({
+            clientId,
+            input,
         });
-        return connection;
+        this.dispatchState(detail);
+        this.sendStateSnapshot(detail);
+    }
+
+    protected dispatchState(detail: Readonly<StateEventDetail<Input, State>>) {
+        this.dispatch(
+            new ControllerStateEvent<State, Input>({
+                detail,
+            }),
+        );
+    }
+
+    protected sendStateSnapshot(detail: Readonly<StateEventDetail<Input, State>>) {
+        if (this.roomConnection && this.isHost()) {
+            this.roomConnection.sendMessage(this.createStateSnapshotMessage(detail));
+        }
+    }
+
+    protected createStateSnapshotMessage(
+        detail: Readonly<StateEventDetail<Input, State>>,
+    ): P2pAuthoritativeHostMessage<Input, State> {
+        return {
+            ...detail,
+            type: P2pAuthoritativeHostMessageType.StateSnapshot,
+        };
+    }
+
+    protected createStateEventDetail(
+        source: Readonly<
+            PartialWithUndefined<{
+                clientId: ClientId;
+                input: Readonly<Input>;
+            }>
+        > = {},
+    ): StateEventDetail<Input, State> {
+        return {
+            ...source,
+            sequence: this.currentSequence,
+            state: this.currentState,
+        };
     }
 }

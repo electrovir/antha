@@ -108,7 +108,7 @@ const DemoAuthoritativeCounter = defineElement<{
     },
     init({inputs, updateState}) {
         const cleanup = inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-            ControllerStateEvent<CounterState>,
+            ControllerStateEvent<CounterState, CounterInput>,
             ({detail}) => {
                 updateState({
                     count: detail.state.count,

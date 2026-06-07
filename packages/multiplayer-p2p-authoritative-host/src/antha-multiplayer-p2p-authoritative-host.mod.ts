@@ -84,7 +84,7 @@ export function createAnthaMultiplayerP2pAuthoritativeHostMod<
                 );
 
                 state.multiplayerP2pAuthoritativeHost.multiplayerController.listen(
-                    ControllerStateEvent<State>,
+                    ControllerStateEvent<State, Input>,
                     ({detail}) => {
                         if (!state.multiplayerP2pAuthoritativeHost) {
                             return;
