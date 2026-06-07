@@ -39,6 +39,7 @@
         "@augment-vir/assert": "^31.72.1",
         "@augment-vir/common": "^31.72.1",
         "@rest-vir/api": "^2.2.0",
+        "@sinclair/typebox": "^0.34.49",
         "date-vir": "^8.3.2",
         "object-shape-tester": "^6.13.0",
         "type-fest": "^5.6.0",

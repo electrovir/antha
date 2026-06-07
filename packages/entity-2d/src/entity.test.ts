@@ -723,12 +723,12 @@ describe('BaseEntity', () => {
         assert.isUndefined(instance.serialize());
     });
 
-    it('exposes an unaborted abortSignal before destruction', async () => {
+    it('exposes an not aborted abortSignal before destruction', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
-            key: 'AbortableUnaborted',
+            key: 'AbortableNotAborted',
             paramsShape: undefined,
         }) {
             public override update(): void {}

@@ -4,8 +4,8 @@ Utilities for game development with Antha, though not necessarily specific to or
 
 Includes:
 
--   stablized, seeded random functions
--   stablized Math operations through rounding
+-   stabilized, seeded random functions
+-   stabilized Math operations through rounding
 
 -   Demo: https://electrovir.github.io/antha/demo
 

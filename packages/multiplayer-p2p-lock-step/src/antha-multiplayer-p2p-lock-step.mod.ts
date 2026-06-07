@@ -17,16 +17,31 @@ import {
     type P2pLockStepMultiplayerControllerParams,
 } from './p2p-lock-step-multiplayer-controller.js';
 
+/**
+ * Engine state added by the p2p-lock-step multiplayer mod.
+ *
+ * @category Internal
+ */
 export type AnthaMultiplayerP2pLockStepState<MultiplayerPacket extends JsonCompatibleValue = any> =
     {
+        /** Enables verbose multiplayer debug logs. */
         debugMultiplayer?: boolean | undefined;
+        /** P2p-lock-step controller state. */
         multiplayerP2pLockStep: {
+            /** Controller used to drive singleplayer or multiplayer frame sync. */
             multiplayerController: P2pLockStepMultiplayerController<MultiplayerPacket>;
+            /** Current backend API and room connection state. */
             connectionState: ApiAndRoomConnectionState;
+            /** Rooms currently available for joining. */
             availableRooms: MultiplayerClientRooms;
         };
     };
 
+/**
+ * Options for {@link createAnthaMultiplayerP2pLockStepMod}.
+ *
+ * @category Internal
+ */
 export type AnthaMultiplayerP2pLockStepOptions<
     MultiplayerPacket extends JsonCompatibleValue = any,
 > = PartialWithUndefined<
@@ -40,6 +55,11 @@ export type AnthaMultiplayerP2pLockStepOptions<
     >
 >;
 
+/**
+ * Create the engine mod that owns p2p-lock-step multiplayer state.
+ *
+ * @category Main
+ */
 export function createAnthaMultiplayerP2pLockStepMod<
     const MultiplayerPacket extends JsonCompatibleValue = any,
 >(options: Readonly<AnthaMultiplayerP2pLockStepOptions<MultiplayerPacket>> = {}) {

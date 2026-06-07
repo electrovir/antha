@@ -72,4 +72,31 @@ describe('stable math', () => {
             },
         );
     });
+
+    it('wraps inverse and root math functions', () => {
+        assert.deepEquals(
+            {
+                acos: StableMath.acos(0, {
+                    digits: 4,
+                }),
+                asin: StableMath.asin(1, {
+                    digits: 4,
+                }),
+                atan: StableMath.atan(1, {
+                    digits: 4,
+                }),
+                infinity: StableMath.round(Infinity),
+                sqrt: StableMath.sqrt(2, {
+                    digits: 4,
+                }),
+            },
+            {
+                acos: 1.5708,
+                asin: 1.5708,
+                atan: 0.7854,
+                infinity: Infinity,
+                sqrt: 1.4142,
+            },
+        );
+    });
 });

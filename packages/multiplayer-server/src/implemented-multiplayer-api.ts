@@ -83,7 +83,13 @@ export const defaultMultiplayerApiLogger: ServerLogger = {
     info: silentServerLogger.info,
 };
 
-type MultiplayerHostContext = {
+/**
+ * Per-request host context derived from the multiplayer API request.
+ *
+ * @category Internal
+ */
+export type MultiplayerHostContext = {
+    /** Game id associated with the request or WebSocket connection. */
     gameId: string;
 };
 

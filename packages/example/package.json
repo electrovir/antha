@@ -1,7 +1,6 @@
 {
-    "name": "example",
-    "description": "",
-    "keywords": [],
+    "name": "@antha/example",
+    "private": true,
     "homepage": "https://github.com/electrovir/antha",
     "bugs": {
         "url": "https://github.com/electrovir/antha/issues"
@@ -17,9 +16,6 @@
     },
     "sideEffects": false,
     "type": "module",
-    "main": "src/index.ts",
-    "module": "src/index.ts",
-    "types": "src/index.ts",
     "scripts": {
         "build": "virmator frontend build",
         "compile": "virmator compile",
@@ -29,6 +25,9 @@
         "test:coverage": "npm run test coverage",
         "test:docs": "virmator docs check",
         "test:update": "npm test update"
+    },
+    "dependencies": {
+        "element-vir": "^26.17.0"
     },
     "engines": {
         "node": ">=22"

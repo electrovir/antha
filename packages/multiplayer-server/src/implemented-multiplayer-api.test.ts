@@ -3,6 +3,7 @@ import {
     multiplayerConnectWebSocket,
     multiplayerHealthEndpoint,
     multiplayerRoomsEndpoint,
+    multiplayerRootEndpoint,
     MultiplayerWebSocketMessageType,
     type ClientId,
     type MultiplayerClientRooms,
@@ -19,7 +20,7 @@ import {
     type Values,
 } from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
-import {AnyOrigin, HttpMethod, type ClientWebSocket} from '@rest-vir/api';
+import {AnyOrigin, HttpMethod, HttpStatus, type ClientWebSocket} from '@rest-vir/api';
 import {testApi, type FetchTestEndpoint} from '@rest-vir/host';
 import {type DistributedOmit} from 'type-fest';
 import {
@@ -44,8 +45,10 @@ type TestClient = {
 };
 
 type MultiplayerApiCallbackParams = Readonly<{
+    api: ImplementedMultiplayerApi;
     serverState: MultiplayerServerState;
     fetchEndpoint: FetchTestEndpoint<ImplementedMultiplayerApi>;
+    server: Awaited<ReturnType<typeof testApi<ImplementedMultiplayerApi>>>['server'];
     createClient: (name: string) => Promise<TestClient>;
     webSocketMessages: Record<
         string,
@@ -187,14 +190,16 @@ function testMultiplayerApi(
             await Promise.all(allClients.map((client) => client.webSocket.close()));
         }
 
-        const {connectWebSocket, fetchEndpoint, kill} = await testApi(api);
+        const {connectWebSocket, fetchEndpoint, kill, server} = await testApi(api);
 
         try {
             await callback({
+                api,
                 serverState,
                 createClient,
                 setupRooms,
                 fetchEndpoint,
+                server,
                 logs,
                 webSocketMessages,
                 closeAllWebSockets,
@@ -207,6 +212,127 @@ function testMultiplayerApi(
 }
 
 describe('multiplayer API', () => {
+    testMultiplayerApi(
+        'handles endpoint authorization paths',
+        async ({api, fetchEndpoint, logs, server}) => {
+            assert.deepEquals(
+                await (await fetchEndpoint(multiplayerRootEndpoint, HttpMethod.Get)).json(),
+                'ok',
+            );
+            assert.deepEquals(
+                await (await fetchEndpoint(multiplayerHealthEndpoint, HttpMethod.Get)).json(),
+                'ok',
+            );
+
+            assert.strictEquals(
+                (
+                    await server.inject({
+                        method: HttpMethod.Get,
+                        url: '/missing',
+                    })
+                ).statusCode,
+                404,
+            );
+
+            const hostContextRuntimeParams = {
+                api,
+                request: {},
+                response: {},
+                server: {},
+            } satisfies Record<string, unknown> as Pick<
+                Parameters<typeof api.implementation.createHostContext>[0],
+                'api' | 'request' | 'response' | 'server'
+            >;
+
+            assert.deepEquals(
+                await api.implementation.createHostContext({
+                    ...hostContextRuntimeParams,
+                    endpointDefinition: undefined,
+                    method: HttpMethod.Get,
+                    requestData: undefined,
+                    requestHeaders: {},
+                    searchParams: {},
+                    webSocketDefinition: undefined,
+                }),
+                {
+                    reject: {
+                        statusCode: HttpStatus.NotFound,
+                    },
+                },
+            );
+
+            assert.deepEquals(
+                await api.implementation.createHostContext({
+                    ...hostContextRuntimeParams,
+                    endpointDefinition: multiplayerRoomsEndpoint,
+                    method: HttpMethod.Get,
+                    requestData: undefined,
+                    requestHeaders: {},
+                    searchParams: {},
+                    webSocketDefinition: undefined,
+                }),
+                {
+                    reject: {
+                        statusCode: HttpStatus.Unauthorized,
+                    },
+                },
+            );
+            assert.isTrue(logs.error.includes("Invalid game ID: 'undefined'"));
+        },
+    );
+
+    it('checks default game configuration and request origins', async () => {
+        const logs = {
+            info: [] as unknown[],
+            error: [] as string[],
+        };
+
+        const {api} = implementMultiplayerApi({
+            games: {
+                default: 'https://allowed.example',
+            },
+            logger: {
+                error(error) {
+                    logs.error.push(extractErrorMessage(error));
+                },
+                info(...args) {
+                    logs.info.push(...args);
+                },
+            },
+        });
+        const {server, kill} = await testApi(api);
+
+        try {
+            assert.strictEquals(
+                (
+                    await server.inject({
+                        headers: {
+                            origin: 'https://allowed.example',
+                        },
+                        method: HttpMethod.Get,
+                        url: '/rooms?gameId=empty',
+                    })
+                ).statusCode,
+                200,
+            );
+            assert.strictEquals(
+                (
+                    await server.inject({
+                        headers: {
+                            origin: 'https://blocked.example',
+                        },
+                        method: HttpMethod.Get,
+                        url: '/rooms?gameId=empty',
+                    })
+                ).statusCode,
+                401,
+            );
+            assert.isTrue(logs.error.includes("Origin check failed for game: 'empty'"));
+        } finally {
+            await kill();
+        }
+    });
+
     testMultiplayerApi(
         'hosts multiple room connections',
         async ({setupRooms, webSocketMessages, fetchEndpoint, closeAllWebSockets}) => {

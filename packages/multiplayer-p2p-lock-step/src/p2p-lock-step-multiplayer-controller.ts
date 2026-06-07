@@ -129,6 +129,11 @@ export type AllP2pLockStepMultiplayerControllerEvents<
     | ControllerClientEvent
     | ControllerConnectionEvent;
 
+/**
+ * Listener callback for p2p-lock-step frame events.
+ *
+ * @category Internal
+ */
 export type ControllerFrameListener<MultiplayerPacket extends JsonCompatibleValue> = (
     event: Readonly<ControllerFrameEvent<MultiplayerPacket>>,
 ) => MaybePromise<void>;
@@ -217,6 +222,7 @@ export class P2pLockStepMultiplayerController<
         return this.roomController.enableRoomUpdates;
     }
 
+    /** Update whether room list polling is enabled while not connected to a room. */
     public set enableRoomUpdates(value: boolean) {
         this.roomController.enableRoomUpdates = value;
     }
@@ -423,6 +429,7 @@ export class P2pLockStepMultiplayerController<
         this.roomController.leaveRoom();
     }
 
+    /** Forward core room-controller events into this frame-sync controller. */
     protected listenToRoomController() {
         this.roomController.listen(ControllerRoomListEvent, (event) => {
             this.dispatch(event);
@@ -451,6 +458,7 @@ export class P2pLockStepMultiplayerController<
         );
     }
 
+    /** Attach an established room transport and publish initial frame readiness. */
     protected attachMultiplayerRoomConnection(
         roomConnection: Readonly<MultiplayerRoomConnection<P2pLockStepMessage<MultiplayerPacket>>>,
     ) {
@@ -470,6 +478,7 @@ export class P2pLockStepMultiplayerController<
         }
     }
 
+    /** Send an empty frame to a newly connected member so it can join the frame flow. */
     protected syncNewMember(clientId: ClientId) {
         this.debugLog(`syncNewMember called for ${clientId}; host=${this.isHost()}`);
         if (this.roomConnection && this.isHost()) {
@@ -480,6 +489,7 @@ export class P2pLockStepMultiplayerController<
         }
     }
 
+    /** Apply received member actions on the host or received frames on member clients. */
     protected handleReceivedMessage(
         sourceClientId: ClientId,
         message: Readonly<P2pLockStepMessage<MultiplayerPacket>>,
@@ -530,6 +540,7 @@ export class P2pLockStepMultiplayerController<
         }
     }
 
+    /** Recalculate the current data-flow FPS from completed frames. */
     protected calculateFps() {
         const now = Date.now();
         const diff = Date.now() - this.lastFpsCalculation.timestamp;
@@ -547,6 +558,7 @@ export class P2pLockStepMultiplayerController<
         }
     }
 
+    /** Complete the current frame and schedule the next automatic frame when configured. */
     protected finishFrame() {
         const currentFrameActions = this.frameActions;
         this.frameActions = [];
@@ -571,6 +583,7 @@ export class P2pLockStepMultiplayerController<
         }
     }
 
+    /** Complete a frame when this host has reached its configured readiness conditions. */
     protected maybeFinishFrame() {
         if (!this.isHost()) {
             this.debugLog('maybeFinishFrame skipped because this client is not host');
@@ -592,6 +605,7 @@ export class P2pLockStepMultiplayerController<
         this.finishFrame();
     }
 
+    /** Write a multiplayer debug log when debug logging is enabled. */
     protected debugLog(message: string) {
         log.if(!!this.params.debugMultiplayer).faint(`[multiplayer] ${message}`);
     }

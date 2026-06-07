@@ -66,13 +66,21 @@ export const emptyApiAndRoomConnectionState: Readonly<ApiAndRoomConnectionState>
  * @category Internal
  */
 export type MultiplayerRoomConnection<Message extends JsonCompatibleValue> = {
+    /** The id assigned to the local room client. */
     clientId: ClientId;
+    /** Whether the local client is currently the room host. */
     isHost(): boolean;
+    /** Whether the local client has an active room connection. */
     isConnected(): boolean;
+    /** Get the ids of clients with active peer connections. */
     getConnectedClientIds(): ClientId[];
+    /** Get every known client id in the room, including the host when known. */
     getAllClientIds(): ClientId[];
+    /** Send a message through the room connection. */
     sendMessage(message: Readonly<Message>): void;
+    /** Send a message to one specific room client. */
     sendToOnlyOneClient(clientId: ClientId, message: Readonly<Message>): void;
+    /** Terminate the room connection and release transport resources. */
     destroy(): void;
 };
 

@@ -23,7 +23,9 @@ import {MultiplayerWebSocketMessageType} from '../webrtc/web-rtc-communication.j
  * @category Internal
  */
 export type MultiplayerTransportClient = {
+    /** Send a signaling message to the connected transport client. */
     send: (message: MultiplayerConnectHostMessage) => void;
+    /** Current WebSocket-compatible connection state. */
     readyState: CommonWebSocketState;
 };
 
@@ -66,7 +68,9 @@ export type RoomHandlerRooms = {
  * @category Internal
  */
 export type RoomHandlerLogger = {
+    /** Log informational room handler messages. */
     info: (...args: ReadonlyArray<unknown>) => void;
+    /** Log room handler errors. */
     error: (error: Error) => void;
 };
 

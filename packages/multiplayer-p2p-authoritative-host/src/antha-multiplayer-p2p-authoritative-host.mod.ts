@@ -17,18 +17,33 @@ import {
     type P2pAuthoritativeHostMultiplayerControllerParams,
 } from './p2p-authoritative-host-multiplayer-controller.js';
 
+/**
+ * Engine state added by the p2p-authoritative-host multiplayer mod.
+ *
+ * @category Internal
+ */
 export type AnthaMultiplayerP2pAuthoritativeHostState<
     Input extends JsonCompatibleValue = any,
     State extends JsonCompatibleValue = any,
 > = {
+    /** P2p-authoritative-host controller state. */
     multiplayerP2pAuthoritativeHost: {
+        /** Controller used to drive singleplayer or multiplayer state sync. */
         multiplayerController: P2pAuthoritativeHostMultiplayerController<Input, State>;
+        /** Current backend API and room connection state. */
         connectionState: ApiAndRoomConnectionState;
+        /** Rooms currently available for joining. */
         availableRooms: MultiplayerClientRooms;
+        /** Latest state emitted by the multiplayer controller. */
         currentState: State;
     };
 };
 
+/**
+ * Options for {@link createAnthaMultiplayerP2pAuthoritativeHostMod}.
+ *
+ * @category Internal
+ */
 export type AnthaMultiplayerP2pAuthoritativeHostOptions<
     Input extends JsonCompatibleValue = any,
     State extends JsonCompatibleValue = any,
@@ -51,6 +66,11 @@ export type AnthaMultiplayerP2pAuthoritativeHostOptions<
         >
     >;
 
+/**
+ * Create the engine mod that owns p2p-authoritative-host multiplayer state.
+ *
+ * @category Main
+ */
 export function createAnthaMultiplayerP2pAuthoritativeHostMod<
     const Input extends JsonCompatibleValue = any,
     const State extends JsonCompatibleValue = any,

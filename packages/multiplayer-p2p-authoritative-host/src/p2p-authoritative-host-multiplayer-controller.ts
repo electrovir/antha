@@ -81,7 +81,9 @@ export type P2pAuthoritativeHostGameDefinition<
     Input extends JsonCompatibleValue,
     State extends JsonCompatibleValue,
 > = {
+    /** Create the initial game state before singleplayer or multiplayer starts. */
     createInitialState: () => State;
+    /** Apply an accepted input to the current authoritative state. */
     applyInput: (
         params: Readonly<{
             clientId: ClientId;
@@ -89,6 +91,7 @@ export type P2pAuthoritativeHostGameDefinition<
             state: Readonly<State>;
         }>,
     ) => State;
+    /** Return `false` to reject an input before it changes authoritative state. */
     shouldAcceptInput?: (
         params: Readonly<{
             clientId: ClientId;
@@ -96,6 +99,7 @@ export type P2pAuthoritativeHostGameDefinition<
             state: Readonly<State>;
         }>,
     ) => boolean | undefined;
+    /** Advance authoritative state from elapsed time without a player input. */
     tick?: (
         params: Readonly<{
             elapsedMs: number;
@@ -234,6 +238,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         return this.roomController.enableRoomUpdates;
     }
 
+    /** Update whether room list polling is enabled while not connected to a room. */
     public set enableRoomUpdates(value: boolean) {
         this.roomController.enableRoomUpdates = value;
     }
@@ -345,7 +350,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         }
     }
 
-    /** Run one authoritative tick. Only the host advances canonical state. */
+    /** Advance authoritative time-based state. Only the host advances canonical state. */
     public tick(elapsedMs = 0) {
         if (!this.isHost() || !this.params.tick) {
             return;
@@ -413,6 +418,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         this.roomController.leaveRoom();
     }
 
+    /** Forward core room-controller events into this state-sync controller. */
     protected listenToRoomController() {
         this.roomController.listen(ControllerRoomListEvent, (event) => {
             this.dispatch(event);
@@ -434,6 +440,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         );
     }
 
+    /** Attach an established room transport and publish the current state view. */
     protected attachMultiplayerRoomConnection(
         roomConnection: Readonly<
             MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, State>>
@@ -447,6 +454,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         }
     }
 
+    /** Send the latest authoritative state to a newly connected member. */
     protected syncNewMember(clientId: ClientId) {
         if (this.roomConnection && this.isHost()) {
             this.roomConnection.sendToOnlyOneClient(
@@ -456,6 +464,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         }
     }
 
+    /** Apply received inputs on the host or received state snapshots on member clients. */
     protected handleReceivedMessage(
         sourceClientId: ClientId,
         message: Readonly<P2pAuthoritativeHostMessage<Input, State>>,
@@ -480,6 +489,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         }
     }
 
+    /** Validate and apply an input against the current authoritative state. */
     protected applyInput({
         clientId,
         input,
@@ -507,6 +517,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         }
     }
 
+    /** Publish a new authoritative state that was not caused by a player input. */
     protected updateState(state: State) {
         this.currentState = state;
         this.currentSequence++;
@@ -515,6 +526,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         this.sendStateSnapshot(detail);
     }
 
+    /** Publish a new authoritative state caused by a player input. */
     protected updateStateFromInput({
         clientId,
         input,
@@ -534,6 +546,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         this.sendStateSnapshot(detail);
     }
 
+    /** Dispatch the typed state event to local listeners. */
     protected dispatchState(detail: Readonly<StateEventDetail<Input, State>>) {
         this.dispatch(
             new ControllerStateEvent<State, Input>({
@@ -542,12 +555,14 @@ export class P2pAuthoritativeHostMultiplayerController<
         );
     }
 
+    /** Broadcast a state snapshot when the local client is the host. */
     protected sendStateSnapshot(detail: Readonly<StateEventDetail<Input, State>>) {
         if (this.roomConnection && this.isHost()) {
             this.roomConnection.sendMessage(this.createStateSnapshotMessage(detail));
         }
     }
 
+    /** Create a network message from state event detail. */
     protected createStateSnapshotMessage(
         detail: Readonly<StateEventDetail<Input, State>>,
     ): P2pAuthoritativeHostMessage<Input, State> {
@@ -557,6 +572,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         };
     }
 
+    /** Create the local state event detail for the current sequence and state. */
     protected createStateEventDetail(
         source: Readonly<
             PartialWithUndefined<{
