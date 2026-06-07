@@ -21,9 +21,10 @@
         "@antha/graphics-2d": "*",
         "@antha/input": "*",
         "@antha/multiplayer-core": "*",
+        "@antha/multiplayer-p2p-authoritative-host": "*",
         "@antha/multiplayer-p2p-lock-step": "*",
-        "@augment-vir/assert": "^31.71.3",
-        "@augment-vir/common": "^31.71.3",
+        "@augment-vir/assert": "^31.72.1",
+        "@augment-vir/common": "^31.72.1",
         "@electrovir/color": "^1.7.9",
         "date-vir": "^8.3.2",
         "detect-collisions": "^10.10.2025",
@@ -37,7 +38,7 @@
         "vira": "^31.21.1"
     },
     "devDependencies": {
-        "@augment-vir/test": "^31.71.3",
+        "@augment-vir/test": "^31.72.1",
         "@vitejs/plugin-basic-ssl": "^2.3.0",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",

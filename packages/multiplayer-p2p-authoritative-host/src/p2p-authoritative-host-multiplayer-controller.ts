@@ -13,137 +13,112 @@ import {
     RoomRejectionError,
 } from '@antha/multiplayer-core';
 import {
-    ensureArray,
     type JsonCompatibleValue,
-    log,
     type MaybePromise,
     type PartialWithUndefined,
 } from '@augment-vir/common';
-import {type AnyDuration} from 'date-vir';
 import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
 import {
-    P2pLockStepFrameEvent,
-    P2pLockStepGameStateController,
-    type P2pLockStepMessage,
-} from './p2p-lock-step-controller.js';
+    P2pAuthoritativeHostController,
+    type P2pAuthoritativeHostGameDefinition,
+    type P2pAuthoritativeHostMessage,
+    P2pAuthoritativeHostStateEvent,
+    type P2pAuthoritativeHostStateSnapshot,
+} from './p2p-authoritative-host-controller.js';
 
 /**
- * Constructor parameters for {@link P2pLockStepMultiplayerController}.
+ * Constructor parameters for {@link P2pAuthoritativeHostMultiplayerController}.
  *
  * @category Internal
  */
-export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatibleValue> = {
+export type P2pAuthoritativeHostMultiplayerControllerParams<
+    Input extends JsonCompatibleValue,
+    State extends JsonCompatibleValue,
+> = {
     /**
      * A unique string id that represents your game so that your lobby server can serve multiple
      * games at once. Your lobby server will need to know this game id ahead of time and match it to
      * your frontend's origin.
      */
     gameId: string;
-} & PartialWithUndefined<{
-    /**
-     * This is fired when a WebRTC peer attempts to connect to the host client. Return `true` to
-     * accept the connection. Return `false` to reject it.
-     *
-     * @default accept all connections
-     */
-    acceptConnection?:
-        | ((
-              connectingClientId: ClientId,
-              controller: P2pLockStepMultiplayerController<Action>,
-          ) => MaybePromise<boolean>)
-        | undefined;
-
-    /** Enables verbose multiplayer debug logs. */
-    debugMultiplayer?: boolean | undefined;
-
-    /**
-     * The duration between each frame. This should probably always be smaller than your supported
-     * render frame duration.
-     *
-     * @default {milliseconds: 10}
-     */
-    frameDuration?: AnyDuration | undefined;
-}>;
+} & P2pAuthoritativeHostGameDefinition<Input, State> &
+    PartialWithUndefined<{
+        /**
+         * This is fired when a WebRTC peer attempts to connect to the host client. Return `true` to
+         * accept the connection. Return `false` to reject it.
+         *
+         * @default accept all connections
+         */
+        acceptConnection?:
+            | ((
+                  connectingClientId: ClientId,
+                  controller: P2pAuthoritativeHostMultiplayerController<Input, State>,
+              ) => MaybePromise<boolean>)
+            | undefined;
+    }>;
 
 /**
- * This is fired whenever a new p2p-lock-step frame is received from the host client.
+ * This is fired whenever the local authoritative-host state view updates.
  *
  * @category Events
  */
-export class ControllerFrameEvent<
-    MultiplayerPacket extends JsonCompatibleValue,
-> extends defineTypedCustomEvent<any>()('controller-frame') {
-    public declare detail: ReadonlyArray<FrameEventDetail<MultiplayerPacket>>;
+export class ControllerStateEvent<
+    State extends JsonCompatibleValue,
+> extends defineTypedCustomEvent<any>()('controller-state') {
+    public declare detail: Readonly<P2pAuthoritativeHostStateSnapshot<State>>;
 }
-
-/**
- * Data received from {@link ControllerFrameEvent}.
- *
- * @category Internal
- */
-export type FrameEventDetail<MultiplayerPacket extends JsonCompatibleValue> = {
-    packet: MultiplayerPacket;
-    clientId: ClientId;
-};
 
 /**
  * All events emitted by this controller.
  *
  * @category Internal
  */
-export type AllP2pLockStepMultiplayerControllerEvents<
-    MultiplayerPacket extends JsonCompatibleValue,
-> =
-    | ControllerFrameEvent<MultiplayerPacket>
+export type AllP2pAuthoritativeHostMultiplayerControllerEvents<State extends JsonCompatibleValue> =
+    | ControllerStateEvent<State>
     | ControllerRoomListEvent
     | ControllerClientEvent
     | ControllerConnectionEvent;
 
-export type ControllerFrameListener<MultiplayerPacket extends JsonCompatibleValue> = (
-    event: Readonly<ControllerFrameEvent<MultiplayerPacket>>,
-) => MaybePromise<void>;
-
-const defaultFrameDuration: AnyDuration = {
-    milliseconds: 10,
-};
-
 /**
- * An all-in-one controller for singleplayer or p2p-lock-step multiplayer game state.
+ * An all-in-one controller for singleplayer or p2p-authoritative-host multiplayer game state.
  *
  * @category Main
  */
-export class P2pLockStepMultiplayerController<
-    MultiplayerPacket extends JsonCompatibleValue = any,
-> extends ListenTarget<AllP2pLockStepMultiplayerControllerEvents<MultiplayerPacket>> {
+export class P2pAuthoritativeHostMultiplayerController<
+    Input extends JsonCompatibleValue = any,
+    State extends JsonCompatibleValue = any,
+> extends ListenTarget<AllP2pAuthoritativeHostMultiplayerControllerEvents<State>> {
     /** All events emitted by this controller. */
     public static readonly events = {
-        ControllerFrameEvent,
+        ControllerStateEvent,
     };
     /** All events emitted by this controller. */
-    public readonly events = P2pLockStepMultiplayerController.events;
+    public readonly events = P2pAuthoritativeHostMultiplayerController.events;
 
     public static readonly knownErrors = {
         RoomRejectionError,
     };
-    public readonly knownErrors = P2pLockStepMultiplayerController.knownErrors;
+    public readonly knownErrors = P2pAuthoritativeHostMultiplayerController.knownErrors;
 
     /** Core multiplayer room controller that owns API, room polling, signaling, and transport. */
     public readonly roomController: MultiplayerRoomController<
-        P2pLockStepMessage<MultiplayerPacket>
+        P2pAuthoritativeHostMessage<Input, State>
     >;
-    /** Current p2p-lock-step connection. */
-    public currentConnection: P2pLockStepGameStateController<MultiplayerPacket> | undefined;
+    /** Current p2p-authoritative-host connection. */
+    public currentConnection: P2pAuthoritativeHostController<Input, State> | undefined;
+    private readonly initialState: State;
 
     constructor(
-        protected readonly params: P2pLockStepMultiplayerControllerParams<MultiplayerPacket>,
+        protected readonly params: P2pAuthoritativeHostMultiplayerControllerParams<Input, State>,
     ) {
         super();
-        this.debugLog(`constructing controller for game '${params.gameId}'`);
-        this.roomController = new MultiplayerRoomController<P2pLockStepMessage<MultiplayerPacket>>({
+        this.initialState = params.createInitialState();
+        this.roomController = new MultiplayerRoomController<
+            P2pAuthoritativeHostMessage<Input, State>
+        >({
             gameId: params.gameId,
             acceptConnection: params.acceptConnection
                 ? (connectingClientId) => {
-                      this.debugLog(`checking incoming connection from ${connectingClientId}`);
                       return params.acceptConnection?.(connectingClientId, this) ?? true;
                   }
                 : undefined,
@@ -213,11 +188,14 @@ export class P2pLockStepMultiplayerController<
         return this.currentConnection?.getAllClientIds() || [];
     }
 
+    /** Get the latest local state view. */
+    public getState(): State {
+        return this.currentConnection ? this.currentConnection.getState() : this.initialState;
+    }
+
     /** Start multiplayer mode. This delegates API connectivity and room polling to multiplayer core. */
     public async initMultiplayer(params: Readonly<MultiplayerInitParams>) {
-        this.debugLog(`initializing multiplayer with backend ${params.backendOrigin}`);
         await this.roomController.initMultiplayer(params);
-        this.debugLog('multiplayer API initialized');
     }
 
     /** Start singleplayer mode. */
@@ -226,10 +204,7 @@ export class P2pLockStepMultiplayerController<
             throw new Error('Cannot start singleplayer with a connection already present.');
         }
 
-        this.debugLog('starting singleplayer connection');
-        this.currentConnection = this.createP2pLockStepConnection(
-            this.params.frameDuration || defaultFrameDuration,
-        );
+        this.currentConnection = this.createP2pAuthoritativeHostConnection();
         this.currentConnection.startSingleplayer();
         this.dispatch(
             new ControllerConnectionEvent({
@@ -239,35 +214,16 @@ export class P2pLockStepMultiplayerController<
                 },
             }),
         );
-        this.debugLog(
-            `singleplayer connection ready with client ${this.getClientId() || 'unknown'}`,
-        );
     }
 
-    /**
-     * Manually run the next frame.
-     *
-     * @throws Error if `frameDuration` has been set.
-     */
-    public runFrame(actions?: ReadonlyArray<MultiplayerPacket> | undefined) {
-        this.debugLog(`runFrame called with ${actions?.length || 0} actions`);
-        this.currentConnection?.runFrame(actions);
+    /** Send or apply a local input. */
+    public act(input: Readonly<Input>) {
+        this.getCurrentConnection().act(input);
     }
 
-    /** The current FPS of the data flow. */
-    public getFps(): number {
-        return this.currentConnection?.currentFps || 0;
-    }
-
-    /** Fire an action. This will be sent to all clients in the room so they can process it. */
-    public act(actions: MultiplayerPacket | ReadonlyArray<MultiplayerPacket>) {
-        if (!this.currentConnection || !this.currentConnection.isConnected()) {
-            throw new Error('Cannot perform action: not connected to a room.');
-        }
-
-        const actionArray = ensureArray<MultiplayerPacket>(actions);
-        this.debugLog(`act called with ${actionArray.length} actions`);
-        this.currentConnection.act(actionArray);
+    /** Run one authoritative tick. Only the host advances canonical state. */
+    public tick(elapsedMs = 0) {
+        this.getCurrentConnection().tick(elapsedMs);
     }
 
     /** Detects if this controller is the room host or not. */
@@ -282,7 +238,6 @@ export class P2pLockStepMultiplayerController<
 
     /** Cleanup everything. */
     public override destroy() {
-        this.debugLog('destroying controller');
         this.currentConnection?.destroy();
         this.currentConnection = undefined;
         this.roomController.destroy();
@@ -299,33 +254,22 @@ export class P2pLockStepMultiplayerController<
             throw new Error('Cannot join room: connection already established.');
         }
 
-        this.debugLog(`joining or creating room '${room.roomName}' (${room.roomId})`);
-        const p2pLockStepConnection = this.createP2pLockStepConnection(
-            this.params.frameDuration || defaultFrameDuration,
-        );
-        this.currentConnection = p2pLockStepConnection;
-        this.debugLog('created p2p-lock-step connection before joining room');
+        const authoritativeHostConnection = this.createP2pAuthoritativeHostConnection();
+        this.currentConnection = authoritativeHostConnection;
 
         try {
             await this.roomController.joinOrCreateRoom(room);
-            this.debugLog(
-                `room controller joined room '${room.roomName}' (${room.roomId}); client=${this.roomController.getClientId() || 'unknown'} host=${this.roomController.isHost()}`,
-            );
             if (!this.roomController.currentConnection) {
                 throw new Error(
-                    'Cannot start p2p-lock-step multiplayer: room connection is missing.',
+                    'Cannot start p2p-authoritative-host multiplayer: room connection is missing.',
                 );
             }
 
-            p2pLockStepConnection.attachMultiplayerRoomConnection(
+            authoritativeHostConnection.attachMultiplayerRoomConnection(
                 this.roomController.currentConnection,
             );
-            this.debugLog(
-                `attached p2p-lock-step connection; client=${this.getClientId() || 'unknown'} host=${this.isHost()} connected=${this.isConnected()}`,
-            );
         } catch (error: unknown) {
-            this.debugLog(`join room failed: ${String(error)}`);
-            p2pLockStepConnection.destroy();
+            authoritativeHostConnection.destroy();
             this.currentConnection = undefined;
             throw error;
         }
@@ -334,60 +278,55 @@ export class P2pLockStepMultiplayerController<
     /** Leave the current room or single player connection. */
     public leaveRoom() {
         if (!this.currentConnection) {
-            this.debugLog('leaveRoom called without a current connection');
             return;
         }
 
-        this.debugLog(`leaving room '${this.roomId || 'unknown'}'`);
         this.currentConnection.destroy();
         this.currentConnection = undefined;
         this.roomController.leaveRoom();
     }
 
-    protected listenToRoomController() {
+    private listenToRoomController() {
         this.roomController.listen(ControllerRoomListEvent, (event) => {
             this.dispatch(event);
         });
         this.roomController.listen(ControllerConnectionEvent, (event) => {
-            this.debugLog(
-                `connection event received: api=${String(event.detail.api)} room=${String(event.detail.room)}`,
-            );
             this.dispatch(event);
         });
         this.roomController.listen(ControllerClientEvent, (event) => {
-            this.debugLog(`client event received: ${JSON.stringify(event.detail)}`);
+            if ('newMember' in event.detail) {
+                this.currentConnection?.syncNewMember(event.detail.newMember);
+            }
             this.dispatch(event);
         });
         this.roomController.listen(
-            ControllerMessageEvent<P2pLockStepMessage<MultiplayerPacket>>,
+            ControllerMessageEvent<P2pAuthoritativeHostMessage<Input, State>>,
             (event) => {
-                this.debugLog(
-                    `message event received from ${event.sourceClientId}: type=${event.detail.type}`,
-                );
                 this.currentConnection?.handleReceivedMessage(event.sourceClientId, event.detail);
             },
         );
     }
 
-    protected createP2pLockStepConnection(frameDuration: AnyDuration | undefined) {
-        this.debugLog(
-            `creating p2p-lock-step state controller; frameDuration=${frameDuration ? JSON.stringify(frameDuration) : 'manual'}`,
+    private getCurrentConnection() {
+        if (!this.currentConnection) {
+            throw new Error('Cannot use authoritative host state: not connected to a room.');
+        }
+
+        return this.currentConnection;
+    }
+
+    private createP2pAuthoritativeHostConnection() {
+        const connection = new P2pAuthoritativeHostController<Input, State>(
+            this.params,
+            this.initialState,
         );
-        const connection = new P2pLockStepGameStateController<MultiplayerPacket>(
-            frameDuration,
-            this.params.debugMultiplayer,
-        );
-        connection.listen(P2pLockStepFrameEvent, (event) => {
+        connection.listen(P2pAuthoritativeHostStateEvent<State>, (event) => {
             this.dispatch(
-                new ControllerFrameEvent({
+                new ControllerStateEvent<State>({
                     detail: event.detail,
                 }),
             );
         });
         return connection;
-    }
-
-    protected debugLog(message: string) {
-        log.if(!!this.params.debugMultiplayer).faint(`[multiplayer] ${message}`);
     }
 }

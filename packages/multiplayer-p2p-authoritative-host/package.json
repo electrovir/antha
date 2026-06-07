@@ -1,14 +1,14 @@
 {
-    "name": "@antha/graphics-2d",
+    "name": "@antha/multiplayer-p2p-authoritative-host",
     "version": "0.0.1",
-    "description": "An Antha mod for rendering 2D graphics to a canvas.",
+    "description": "P2P authoritative-host multiplayer strategy for the Antha engine.",
     "keywords": [
         "vir",
         "antha",
-        "render",
-        "canvas",
-        "graphics",
-        "2d"
+        "WebRTC",
+        "signal server",
+        "multiplayer",
+        "gaming"
     ],
     "homepage": "https://github.com/electrovir/antha",
     "bugs": {
@@ -36,26 +36,19 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^31.72.1",
-        "@augment-vir/common": "^31.72.1"
+        "@augment-vir/common": "^31.72.1",
+        "typed-event-target": "^4.3.0"
     },
     "devDependencies": {
-        "@antha/engine": "*",
+        "@augment-vir/assert": "^31.72.1",
         "@augment-vir/test": "^31.72.1",
-        "@electrovir/color": "^1.7.9",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-playwright": "^0.11.1",
-        "istanbul-smart-text-reporter": "^1.1.5",
-        "pixi.js": "^8.18.1",
-        "vira": "31.21.1",
-        "web-test-runner-plugin-pixi": "^0.0.2"
+        "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
-        "@antha/engine": "*",
-        "@electrovir/color": ">=1",
-        "pixi.js": ">=8",
-        "vira": "^31.21.1"
+        "@antha/multiplayer-core": "^0.0.1"
     },
     "engines": {
         "node": ">=22"
