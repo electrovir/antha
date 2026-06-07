@@ -472,7 +472,9 @@ const multiplayerActionReactions = {
     [MultiplayerActionType.Click]({state}) {
         state.clickCount = (state.clickCount || 0) + 1;
     },
-    [MultiplayerActionType.StateSync]() {},
+    [MultiplayerActionType.StateSync]({detail, state}) {
+        state.clickCount = detail.packet.currentClickCount;
+    },
 } satisfies Readonly<{
     [ActionType in MultiplayerActionType]: (
         params: Readonly<{
@@ -534,7 +536,20 @@ function createRoomModeSelectionMod(
                     },
                 );
 
-                // todo: also listen to connection events and send sync event to clients
+                state.multiplayerP2pLockStep.multiplayerController.listen(
+                    ControllerClientEvent,
+                    (event) => {
+                        if (
+                            state.multiplayerP2pLockStep?.multiplayerController.isHost() &&
+                            event.detail.newMember
+                        ) {
+                            state.multiplayerP2pLockStep.multiplayerController.act({
+                                type: MultiplayerActionType.StateSync,
+                                currentClickCount: state.clickCount || 0,
+                            });
+                        }
+                    },
+                );
             }
 
             return html`
