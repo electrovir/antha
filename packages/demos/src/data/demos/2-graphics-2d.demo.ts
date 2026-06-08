@@ -1,4 +1,4 @@
-import {AnthaEngine, SkipExecution, css, type AnthaMod} from '@antha/engine';
+import {AnthaEngine, SkipExecution, type AnthaMod} from '@antha/engine';
 import {createAnthaFpsMod} from '@antha/fps';
 import {
     createAnthaGraphics2dMod,
@@ -7,6 +7,7 @@ import {
 } from '@antha/graphics-2d';
 import {createArray, randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
+import {css} from 'element-vir';
 import {Graphics} from 'pixi.js';
 import {type AnthaDemo} from '../demo.js';
 

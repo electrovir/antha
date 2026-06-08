@@ -1,4 +1,4 @@
-import {defineAnthaMod, html} from '@antha/engine';
+import {defineAnthaMod} from '@antha/engine';
 import {
     mapObject,
     type PartialWithUndefined,
@@ -6,6 +6,7 @@ import {
     type SetRequired,
     type Values,
 } from '@augment-vir/common';
+import {html} from 'element-vir';
 import {
     defaultGamepadLayouts,
     defaultGamepadModelMap,

@@ -1,7 +1,8 @@
 import {createAnthaAssetMod, defineAsset, type AnthaAssetModState} from '@antha/asset';
-import {AnthaEngine, css, defineAnthaMod, html} from '@antha/engine';
+import {AnthaEngine, defineAnthaMod} from '@antha/engine';
 import {randomInteger, wait} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
+import {css, html} from 'element-vir';
 import {type AnthaDemo} from '../demo.js';
 
 const maxProgress = 100;

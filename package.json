@@ -27,9 +27,9 @@
         "lint": "virmator lint fix",
         "publish": "virmator publish npm run test:all",
         "start": "npm start --workspace @antha/demos",
-        "test": "mono-vir for-each npm run test",
+        "test": "mono-vir for-each-async npm run test",
         "test:all": "npm run compile && runstorm --names tests,spelling,format,docs,deps,lint \"npm run test:coverage\" \"npm run test:spelling\" \"npm run test:format\" \"npm run test:docs\" \"npm run test:deps\" \"npm run test:lint\"",
-        "test:coverage": "mono-vir for-each npm run test:coverage",
+        "test:coverage": "mono-vir for-each-async npm run test:coverage",
         "test:deps": "virmator deps check",
         "test:docs": "virmator docs check",
         "test:format": "virmator format check",
@@ -49,10 +49,8 @@
         "eslint": "^10.4.0",
         "eslint-config-prettier": "^10.1.8",
         "eslint-plugin-jsdoc": "^63.0.0",
-        "eslint-plugin-monorepo-cop": "^1.0.2",
         "eslint-plugin-playwright": "^2.10.4",
         "eslint-plugin-prettier": "^5.5.6",
-        "eslint-plugin-require-extensions": "^0.1.3",
         "eslint-plugin-sonarjs": "^4.0.3",
         "eslint-plugin-unicorn": "^64.0.0",
         "markdown-code-example-inserter": "^3.0.5",
@@ -69,7 +67,7 @@
         "runstorm": "^1.0.2",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.60.0",
-        "virmator": "^14.21.1"
+        "virmator": "^14.22.0"
     },
     "engines": {
         "node": ">=22"

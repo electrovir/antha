@@ -1,6 +1,6 @@
-import {html} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {describe, it, testWeb} from '@augment-vir/test';
+import {html} from 'element-vir';
 import {AnthaActiveBindingsDebug} from './antha-active-bindings-debug.element.js';
 
 describe(AnthaActiveBindingsDebug.tagName, () => {

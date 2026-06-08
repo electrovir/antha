@@ -36,6 +36,7 @@
         "@augment-vir/assert": "^31.72.1",
         "@augment-vir/common": "^31.72.1",
         "date-vir": "^8.3.2",
+        "element-vir": "^26.17.0",
         "gamepad-type": "^2.0.2",
         "input-device-handler": "^9.0.3",
         "object-shape-tester": "^6.13.0"

@@ -36,6 +36,7 @@
     "dependencies": {
         "@augment-vir/assert": "^31.72.1",
         "@augment-vir/common": "^31.72.1",
+        "element-vir": "^26.17.0",
         "typed-event-target": "^4.3.0"
     },
     "devDependencies": {

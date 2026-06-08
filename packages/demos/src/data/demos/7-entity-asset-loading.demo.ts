@@ -3,15 +3,7 @@ import {
     type AnthaAssetModState,
     type AssetIncrementProgressCallback,
 } from '@antha/asset';
-import {
-    AnthaEngine,
-    SkipExecution,
-    css,
-    defineAnthaMod,
-    defineElement,
-    html,
-    listen,
-} from '@antha/engine';
+import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
 import {
     createAnthaEntityMod2d,
     type AnthaEntity2dModState,
@@ -22,6 +14,7 @@ import {createAnthaGraphics2dMod, type AnthaGraphics2dModState} from '@antha/gra
 import {check} from '@augment-vir/assert';
 import {randomInteger, wait, type MinMax} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
+import {css, defineElement, html, listen} from 'element-vir';
 import {Container, Graphics, Text} from 'pixi.js';
 import {ViraError} from 'vira';
 import {type AnthaDemo} from '../demo.js';

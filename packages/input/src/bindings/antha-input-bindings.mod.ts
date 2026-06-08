@@ -1,4 +1,4 @@
-import {defineAnthaMod, html} from '@antha/engine';
+import {defineAnthaMod} from '@antha/engine';
 import {check} from '@augment-vir/assert';
 import {
     filterMap,
@@ -7,6 +7,7 @@ import {
     mapObjectValuesSync,
     type SelectFrom,
 } from '@augment-vir/common';
+import {html} from 'element-vir';
 import {GamepadInputDeviceKey} from 'input-device-handler';
 import {
     AnthaReadRawInputMod,

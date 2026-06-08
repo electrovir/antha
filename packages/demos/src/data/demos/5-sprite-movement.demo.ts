@@ -1,4 +1,4 @@
-import {AnthaEngine, SkipExecution, css, defineAnthaMod} from '@antha/engine';
+import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
 import {
     createAnthaEntityMod2d,
     type AnthaEntity2dModState,
@@ -8,6 +8,7 @@ import {
 import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {createUtcFullDate} from 'date-vir';
+import {css} from 'element-vir';
 import {defineShape} from 'object-shape-tester';
 import {AnimatedSprite, Assets, Spritesheet, type SpritesheetData} from 'pixi.js';
 import {joinUrlPaths} from 'url-vir';

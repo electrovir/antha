@@ -1,11 +1,12 @@
 import {anthaAssetModName, AssetLoader, type AnthaAssetModState} from '@antha/asset';
-import {defineAnthaMod, html, SkipExecution} from '@antha/engine';
+import {defineAnthaMod, SkipExecution} from '@antha/engine';
 import {type AnthaGraphics2dModState} from '@antha/graphics-2d';
 import {
     mergeDefinedProperties,
     type AnyObject,
     type PartialWithUndefined,
 } from '@augment-vir/common';
+import {html} from 'element-vir';
 import {defineEntitySuite2d} from './entity-suite.js';
 import {type EntityStore2d, type EntityStore2dConstructorParams} from './entity.js';
 

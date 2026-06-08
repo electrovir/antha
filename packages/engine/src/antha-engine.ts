@@ -119,7 +119,8 @@ export type ModOptions = {
  * @example
  *
  * ```ts
- * import {AnthaMod, html} from '@antha/engine';
+ * import {AnthaMod} from '@antha/engine';
+ * import {html} from 'element-vir';
  *
  * const myMod: AnthaMod<{count: number}> = {
  *     execute({state}) {
@@ -173,7 +174,8 @@ export type AnthaModeState<Mod extends AnthaMod> =
  * @example
  *
  * ```ts
- * import {defineAnthaMod, html} from '@antha/engine';
+ * import {defineAnthaMod} from '@antha/engine';
+ * import {html} from 'element-vir';
  *
  * defineAnthaMod<{count: number}>({
  *     execute({state}) {
@@ -257,7 +259,8 @@ export type AnthaEngineInit<State extends AnyObject = AnyObject> = PartialWithUn
  * @example
  *
  * ```ts
- * import {AnthaEngine, defineAnthaMod, html} from '@antha/engine';
+ * import {AnthaEngine, defineAnthaMod} from '@antha/engine';
+ * import {html} from 'element-vir';
  *
  * new AnthaEngine({
  *     mods: [

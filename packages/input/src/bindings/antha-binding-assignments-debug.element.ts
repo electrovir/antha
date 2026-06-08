@@ -1,5 +1,5 @@
-import {css, defineElement, html} from '@antha/engine';
 import {getObjectTypedEntries} from '@augment-vir/common';
+import {css, defineElement, html} from 'element-vir';
 import {isGamepadDeviceKey} from 'input-device-handler';
 import {type PlayersBindingAssignments} from './player-bindings.js';
 
