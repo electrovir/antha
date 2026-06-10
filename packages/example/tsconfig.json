@@ -13,5 +13,19 @@
         "eslint.config.ts",
         "src/all-files-for-code-coverage.test.ts"
     ],
-    "extends": "../../configs/tsconfig.base.json"
+    "extends": "../../configs/tsconfig.base.json",
+    "references": [
+        {
+            "path": "../entity-2d"
+        },
+        {
+            "path": "../asset"
+        },
+        {
+            "path": "../util"
+        },
+        {
+            "path": "../engine"
+        }
+    ]
 }

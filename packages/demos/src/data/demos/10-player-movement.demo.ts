@@ -14,7 +14,7 @@ import {
     InputDirection,
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
-    type AnthaInputBindingsState,
+    type AnthaInputBindingsModState,
     type PlayersActiveBindings,
 } from '@antha/input';
 import {clamp, type Coords} from '@augment-vir/common';
@@ -31,7 +31,7 @@ enum PlayerAction {
 
 type PlayerMovementGameState = {
     player: PlayerEntity;
-} & AnthaInputBindingsState<PlayerAction>;
+} & AnthaInputBindingsModState<PlayerAction>;
 
 const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod2d<PlayerMovementGameState>({});
 
@@ -157,101 +157,102 @@ function calculatePlayerMovement(
     return undefined;
 }
 
-const bindingAssignments: Readonly<AnthaInputBindingsState<PlayerAction>['bindingAssignments']> = {
-    1: {
-        [PlayerAction.Up]: [
-            {
-                deviceKey: AnyGamepad,
-                direction: InputDirection.Positive,
-                inputName: 'd-pad-up',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-KeyW',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-KeyI',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-ArrowUp',
-            },
-        ],
-        [PlayerAction.Down]: [
-            {
-                deviceKey: AnyGamepad,
-                direction: InputDirection.Positive,
-                inputName: 'd-pad-down',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-KeyS',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-KeyK',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-ArrowDown',
-            },
-        ],
-        [PlayerAction.Left]: [
-            {
-                deviceKey: AnyGamepad,
-                direction: InputDirection.Positive,
-                inputName: 'd-pad-left',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-KeyA',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-KeyJ',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-ArrowLeft',
-            },
-        ],
-        [PlayerAction.Right]: [
-            {
-                deviceKey: AnyGamepad,
-                direction: InputDirection.Positive,
-                inputName: 'd-pad-right',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-KeyD',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-KeyL',
-            },
-            {
-                deviceKey: 'keyboard',
-                direction: InputDirection.Positive,
-                inputName: 'button-ArrowRight',
-            },
-        ],
-    },
-};
+const bindingAssignments: Readonly<AnthaInputBindingsModState<PlayerAction>['bindingAssignments']> =
+    {
+        1: {
+            [PlayerAction.Up]: [
+                {
+                    deviceKey: AnyGamepad,
+                    direction: InputDirection.Positive,
+                    inputName: 'd-pad-up',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-KeyW',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-KeyI',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-ArrowUp',
+                },
+            ],
+            [PlayerAction.Down]: [
+                {
+                    deviceKey: AnyGamepad,
+                    direction: InputDirection.Positive,
+                    inputName: 'd-pad-down',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-KeyS',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-KeyK',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-ArrowDown',
+                },
+            ],
+            [PlayerAction.Left]: [
+                {
+                    deviceKey: AnyGamepad,
+                    direction: InputDirection.Positive,
+                    inputName: 'd-pad-left',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-KeyA',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-KeyJ',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-ArrowLeft',
+                },
+            ],
+            [PlayerAction.Right]: [
+                {
+                    deviceKey: AnyGamepad,
+                    direction: InputDirection.Positive,
+                    inputName: 'd-pad-right',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-KeyD',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-KeyL',
+                },
+                {
+                    deviceKey: 'keyboard',
+                    direction: InputDirection.Positive,
+                    inputName: 'button-ArrowRight',
+                },
+            ],
+        },
+    };
 
 type PlayerMovementState = AnthaEntity2dModState<PlayerMovementGameState> &
-    AnthaInputBindingsState<PlayerAction>;
+    AnthaInputBindingsModState<PlayerAction>;
 
 const playerMovementMod = defineAnthaMod<PlayerMovementState>({
     modName: 'demo-player-movement',
@@ -278,7 +279,7 @@ export const playerMovementDemo: AnthaDemo = {
         return new AnthaEngine({
             initState: {
                 bindingAssignments,
-            } satisfies Partial<AnthaInputBindingsState<PlayerAction>>,
+            } satisfies Partial<AnthaInputBindingsModState<PlayerAction>>,
             mods: [
                 createAnthaGraphics2dMod({
                     dynamicCanvasSize: true,

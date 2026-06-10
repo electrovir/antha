@@ -35,7 +35,7 @@ import {
  */
 export type AnthaInputBindingsModOptions<BindingNames extends string = string> = Partial<
     SelectFrom<
-        AnthaInputBindingsState<BindingNames>,
+        AnthaInputBindingsModState<BindingNames>,
         {
             debugBindingAssignments: true;
             debugActiveBindings: true;
@@ -50,7 +50,7 @@ export type AnthaInputBindingsModOptions<BindingNames extends string = string> =
  *
  * @category Internal
  */
-export type AnthaInputBindingsState<BindingNames extends string = string> = Pick<
+export type AnthaInputBindingsModState<BindingNames extends string = string> = Pick<
     AnthaReadRawInputModState,
     'rawInputs'
 > & {
@@ -76,7 +76,7 @@ export type AnthaInputBindingsState<BindingNames extends string = string> = Pick
 export function createAnthaInputBindingsMod<const BindingNames extends string = string>(
     options: Readonly<AnthaInputBindingsModOptions> = {},
 ) {
-    return defineAnthaMod<AnthaInputBindingsState<BindingNames>>({
+    return defineAnthaMod<AnthaInputBindingsModState<BindingNames>>({
         modName: 'antha-input-bindings',
         initState: options,
         execute({state, msSinceLastExecute}) {

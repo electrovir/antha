@@ -67,7 +67,7 @@
         "runstorm": "^1.0.2",
         "typescript": "^5.9.3",
         "typescript-eslint": "^8.60.0",
-        "virmator": "^14.22.0"
+        "virmator": "^14.21.3"
     },
     "engines": {
         "node": ">=22"

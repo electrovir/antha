@@ -17,6 +17,7 @@ import {type EntityStore2d, type EntityStore2dConstructorParams} from './entity.
  */
 export type AnthaEntity2dModState<State extends AnyObject = any> = {
     entityStore: EntityStore2d<Partial<AnthaEntity2dModState<State>>>;
+    /** If `true`, hit boxes are visually rendered for debugging purposes. */
     debugHitboxes: boolean;
 } & State &
     AnthaGraphics2dModState &

@@ -16,6 +16,7 @@ export type AnthaAssetModLoadingScreenState = {
      * complete.
      */
     current: number;
+    currentResourceName?: string | undefined;
     completedAt: DOMHighResTimeStamp | undefined;
 };
 
@@ -67,6 +68,7 @@ export const AnthaAssetLoadingScreen = defineElement<{
     progressPercent: number;
     dotCount: number;
     completed: boolean;
+    currentResourceName: string | undefined;
 }>()({
     tagName: 'antha-asset-loading-screen',
     hostClasses: {
@@ -90,11 +92,14 @@ export const AnthaAssetLoadingScreen = defineElement<{
 
         .loading-text {
             font-size: 24px;
-            margin-right: -24px;
+            position: relative;
         }
 
         .dots {
             font-family: monospace;
+            position: absolute;
+            left: 100%;
+            bottom: 0;
         }
 
         .progress-track {
@@ -102,6 +107,11 @@ export const AnthaAssetLoadingScreen = defineElement<{
             height: 1em;
             overflow: hidden;
             border: 4px solid white;
+        }
+
+        .current-resource-name {
+            font-size: 14px;
+            opacity: 0.7;
         }
 
         .progress-fill {
@@ -123,13 +133,21 @@ export const AnthaAssetLoadingScreen = defineElement<{
                 Loading
                 <span class="dots">${dots}</span>
             </span>
-            <div class="progress-track">
-                <div
-                    class="progress-fill"
-                    style=${css`
-                        width: ${inputs.progressPercent}%;
+            <div>
+                <span class="current-resource-name">
+                    ${inputs.currentResourceName ||
+                    html`
+                        &nbsp;
                     `}
-                ></div>
+                </span>
+                <div class="progress-track">
+                    <div
+                        class="progress-fill"
+                        style=${css`
+                            width: ${inputs.progressPercent}%;
+                        `}
+                    ></div>
+                </div>
             </div>
         `;
     },
@@ -208,6 +226,7 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
                         progressPercent,
                         dotCount: Math.floor(engine.totalMs / 500) % 4,
                         completed: !!state.loadingScreenState.completedAt,
+                        currentResourceName: state.loadingScreenState.currentResourceName,
                     })}></${AnthaAssetLoadingScreen}>
                 `;
             } else {

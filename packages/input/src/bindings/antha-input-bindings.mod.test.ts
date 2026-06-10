@@ -5,7 +5,7 @@ import {GamepadInputDeviceKey, InputDeviceKey, InputDeviceType} from 'input-devi
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
     createAnthaInputBindingsMod,
-    type AnthaInputBindingsState,
+    type AnthaInputBindingsModState,
 } from './antha-input-bindings.mod.js';
 import {AnyGamepad} from './player-bindings.js';
 
@@ -19,7 +19,7 @@ describe(createAnthaInputBindingsMod.name, () => {
     it('sets activeBindings to empty when no bindingAssignments exist', async () => {
         const mod = createAnthaInputBindingsMod();
 
-        const engine = new AnthaEngine<AnthaInputBindingsState>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState>({
             mods: [
                 mod,
             ],
@@ -33,7 +33,7 @@ describe(createAnthaInputBindingsMod.name, () => {
     it('detects active bindings from raw inputs', async () => {
         const mod = createAnthaInputBindingsMod<'moveUp'>();
 
-        const engine = new AnthaEngine<AnthaInputBindingsState<'moveUp'>>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'moveUp'>>({
             mods: [
                 mod,
             ],
@@ -88,7 +88,7 @@ describe(createAnthaInputBindingsMod.name, () => {
     it('accumulates hold duration on subsequent ticks', async () => {
         const mod = createAnthaInputBindingsMod<'moveUp'>();
 
-        const engine = new AnthaEngine<AnthaInputBindingsState<'moveUp'>>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'moveUp'>>({
             mods: [
                 mod,
             ],
@@ -140,7 +140,7 @@ describe(createAnthaInputBindingsMod.name, () => {
     it('does not activate bindings when direction does not match', async () => {
         const mod = createAnthaInputBindingsMod<'moveUp'>();
 
-        const engine = new AnthaEngine<AnthaInputBindingsState<'moveUp'>>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'moveUp'>>({
             mods: [
                 mod,
             ],
@@ -202,7 +202,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             debugActiveBindings: true,
         });
 
-        const engine = new AnthaEngine<AnthaInputBindingsState>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState>({
             mods: [
                 mod,
             ],
@@ -221,7 +221,7 @@ describe(createAnthaInputBindingsMod.name, () => {
     it('supports AnyGamepad device key', async () => {
         const mod = createAnthaInputBindingsMod<'fire'>();
 
-        const engine = new AnthaEngine<AnthaInputBindingsState<'fire'>>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'fire'>>({
             mods: [
                 mod,
             ],
@@ -271,7 +271,7 @@ describe(createAnthaInputBindingsMod.name, () => {
     it('supports gamepadKeyMap remapping', async () => {
         const mod = createAnthaInputBindingsMod<'fire'>();
 
-        const engine = new AnthaEngine<AnthaInputBindingsState<'fire'>>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'fire'>>({
             mods: [
                 mod,
             ],
@@ -324,7 +324,7 @@ describe(createAnthaInputBindingsMod.name, () => {
     it('filters by gamepadBrand when specified', async () => {
         const mod = createAnthaInputBindingsMod<'fire'>();
 
-        const engine = new AnthaEngine<AnthaInputBindingsState<'fire'>>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'fire'>>({
             mods: [
                 mod,
             ],
@@ -374,7 +374,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             debugBindingAssignments: true,
         });
 
-        const engine = new AnthaEngine<AnthaInputBindingsState>({
+        const engine = new AnthaEngine<AnthaInputBindingsModState>({
             mods: [
                 mod,
             ],
