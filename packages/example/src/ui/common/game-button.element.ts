@@ -21,7 +21,7 @@ export const GameButton = defineElement<{
     `,
     render({inputs}) {
         return html`
-            <button ${nav(inputs.navController)} autofocus>${inputs.text}</button>
+            <button ${nav(inputs.navController)}>${inputs.text}</button>
         `;
     },
 });

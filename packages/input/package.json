@@ -33,16 +33,16 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^31.72.1",
-        "@augment-vir/common": "^31.72.1",
-        "date-vir": "^8.3.2",
+        "@augment-vir/assert": "^31.73.0",
+        "@augment-vir/common": "^31.73.0",
+        "date-vir": "^8.4.0",
         "element-vir": "^26.17.0",
         "gamepad-type": "^2.0.2",
         "input-device-handler": "^9.0.3",
         "object-shape-tester": "^6.13.0"
     },
     "devDependencies": {
-        "@augment-vir/test": "^31.72.1",
+        "@augment-vir/test": "^31.73.0",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-playwright": "^0.11.1",
