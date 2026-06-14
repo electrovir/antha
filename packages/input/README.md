@@ -1,6 +1,6 @@
 # @antha/input
 
-A pre-built [Antha](https://www.npmjs.com/package/antha) mod for handling inputs.
+Pre-built [Antha](https://www.npmjs.com/package/antha) mods and elements for handling inputs.
 
 ## Install
 

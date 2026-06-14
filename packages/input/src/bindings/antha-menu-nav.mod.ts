@@ -2,7 +2,7 @@ import {defineAnthaMod} from '@antha/engine';
 import {check} from '@augment-vir/assert';
 import {getObjectTypedEntries, getObjectTypedValues} from '@augment-vir/common';
 import {type AnyDuration, convertDuration} from 'date-vir';
-import {NavController, type NavControllerOptions, NavDirection} from 'device-navigation';
+import {NavController, type NavControllerOptions, NavDirection, NavValue} from 'device-navigation';
 import {PredefinedGamepadBrand} from 'gamepad-type';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
@@ -299,6 +299,7 @@ export function createAnthaMenuNavMod(
             }).milliseconds;
 
             const bindingsToAct: Partial<Record<MenuNavBinding, boolean>> = {};
+            const activeMenuBindings: Partial<Record<MenuNavBinding, boolean>> = {};
 
             getObjectTypedValues(state.activeBindings).forEach((playerActiveBindings) => {
                 getObjectTypedEntries(playerActiveBindings).forEach(
@@ -309,6 +310,8 @@ export function createAnthaMenuNavMod(
                         if (!check.isEnumValue(bindingName, MenuNavBinding)) {
                             return;
                         }
+
+                        activeMenuBindings[bindingName] = true;
 
                         if (activeBinding.holdDuration.milliseconds >= repeatThreshold) {
                             if (
@@ -332,12 +335,22 @@ export function createAnthaMenuNavMod(
             });
 
             if (bindingsToAct[MenuNavBinding.MenuEnter]) {
-                state.navController.enterInto();
+                state.navController.enterInto({
+                    fallbackToActivate: true,
+                });
                 return;
             } else if (bindingsToAct[MenuNavBinding.MenuExit]) {
                 state.navController.exitOutOf();
                 return;
             }
+
+            if (
+                !activeMenuBindings[MenuNavBinding.MenuEnter] &&
+                state.navController.currentNavEntry?.entry.navValue === NavValue.Active
+            ) {
+                state.navController.deactivate();
+            }
+
             const sectionDirection =
                 bindingsToAct[MenuNavBinding.MenuSectionNext] &&
                 !bindingsToAct[MenuNavBinding.MenuSectionPrevious]

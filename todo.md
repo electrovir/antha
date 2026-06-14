@@ -1,6 +1,10 @@
--   add 3d graphics mod?
+-   add 3d entity + graphics mods
 -   add extensive readme docs
 -   resize dynamic canvas by host element, not the window
 -   multiplayer room connection (demo 13) does not handle well the host leaving the room. (the room does not go away and clients cannot connect to it)
 -   investigate using canvas.transferControlToOffscreen to allow fully moving the game loop to a worker
 -   deprecate game-vir
+-   add `<input>` and `<textarea>` element wrappers that allow cursor navigation with the on-screen keyboard
+-   press shift to transition the arrow keys to vertical arrow keys
+-   add shortcuts to the special keys on the on-screen keyboard (like R2 hits enter, x hits backspace, etc.)
+-   create template repo on github

@@ -16,7 +16,7 @@ import {
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
     type AnthaInputBindingsModOptions,
-    type AnthaInputBindingsState,
+    type AnthaInputBindingsModState,
     type AnthaReadRawInputModOptions,
     type AnthaReadRawInputModState,
 } from '@antha/input';
@@ -52,7 +52,7 @@ export type DefaultAnthaEngineState<
     AnthaAudioState &
     AnthaEntity2dModState<ExtraState> &
     AnthaReadRawInputModState &
-    AnthaInputBindingsState<UserCommandName> &
+    AnthaInputBindingsModState<UserCommandName> &
     ExtraState;
 
 /**
@@ -73,7 +73,7 @@ export function createDefaultAnthaEngine<
         AnthaGraphics2dModState &
             AnthaAudioState &
             AnthaReadRawInputModState &
-            AnthaInputBindingsState<UserCommandName> &
+            AnthaInputBindingsModState<UserCommandName> &
             ExtraState
     >(options);
 

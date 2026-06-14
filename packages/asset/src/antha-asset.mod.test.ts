@@ -185,6 +185,7 @@ describe(AnthaAssetLoadingScreen.tagName, () => {
                 progressPercent: 50,
                 dotCount: 2,
                 completed: false,
+                currentResourceName: undefined,
             })}></${AnthaAssetLoadingScreen}>
         `);
 
@@ -198,6 +199,7 @@ describe(AnthaAssetLoadingScreen.tagName, () => {
                 progressPercent: 100,
                 dotCount: 0,
                 completed: true,
+                currentResourceName: undefined,
             })}></${AnthaAssetLoadingScreen}>
         `);
 

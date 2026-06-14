@@ -17,10 +17,10 @@ export const inputBindingsDemo: AnthaDemo = {
     demoPathId: 'input-bindings',
     demoSortDate: createUtcFullDate('2026-04-03T11:00:00'),
     engine() {
-        return new AnthaEngine({
+        return new AnthaEngine<AnthaInputBindingsModState>({
             initState: {
                 bindingAssignments: defaultBindings,
-            } satisfies Partial<AnthaInputBindingsModState>,
+            },
             mods: [
                 createAnthaFpsMod({
                     hideFps: true,

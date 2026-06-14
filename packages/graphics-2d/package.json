@@ -37,8 +37,7 @@
     },
     "dependencies": {
         "@augment-vir/assert": "^31.73.0",
-        "@augment-vir/common": "^31.73.0",
-        "element-vir": "^26.17.0"
+        "@augment-vir/common": "^31.73.0"
     },
     "devDependencies": {
         "@antha/engine": "*",
@@ -49,12 +48,13 @@
         "@web/test-runner-playwright": "^0.11.1",
         "istanbul-smart-text-reporter": "^1.1.5",
         "pixi.js": "^8.19.0",
-        "vira": "31.22.2",
+        "vira": "31.24.0",
         "web-test-runner-plugin-pixi": "^0.0.2"
     },
     "peerDependencies": {
         "@antha/engine": "*",
         "@electrovir/color": ">=1",
+        "element-vir": ">=26",
         "pixi.js": ">=8",
         "vira": "^31.21.1"
     },
