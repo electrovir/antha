@@ -131,21 +131,15 @@ function createP2pAuthoritativeHostState<
         gameId: options.gameId || 'antha',
         applyInput: options.applyInput,
         createInitialState: options.createInitialState,
-        ...(options.acceptConnection
-            ? {
-                  acceptConnection: options.acceptConnection,
-              }
-            : {}),
-        ...(options.shouldAcceptInput
-            ? {
-                  shouldAcceptInput: options.shouldAcceptInput,
-              }
-            : {}),
-        ...(options.tick
-            ? {
-                  tick: options.tick,
-              }
-            : {}),
+        ...(options.acceptConnection && {
+            acceptConnection: options.acceptConnection,
+        }),
+        ...(options.shouldAcceptInput && {
+            shouldAcceptInput: options.shouldAcceptInput,
+        }),
+        ...(options.tick && {
+            tick: options.tick,
+        }),
     });
 
     return {

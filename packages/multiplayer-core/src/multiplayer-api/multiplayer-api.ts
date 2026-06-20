@@ -62,7 +62,7 @@ export type MultiplayerClientRooms = typeof multiplayerClientRoomsShape.runtimeT
  *
  * @category Internal
  */
-export const defaultMultiplayerApiPort = 3500;
+export const defaultMultiplayerApiPort = 9348;
 /**
  * The default multiplayer API origin.
  *

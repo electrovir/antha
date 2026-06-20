@@ -650,7 +650,7 @@ describe(MultiplayerRoomController.name, () => {
                 scannedBaseUrl: scannedClient.baseUrl,
             },
             {
-                defaultBaseUrl: 'http://localhost:3500',
+                defaultBaseUrl: 'http://localhost:9348',
                 noPortScannedBaseUrl: 'http://localhost',
                 scannedBaseUrl: 'http://localhost:1234',
             },

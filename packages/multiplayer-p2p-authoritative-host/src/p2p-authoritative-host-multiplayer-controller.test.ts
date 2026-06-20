@@ -178,21 +178,15 @@ function createController(
                     count: state.count + input,
                 };
             }),
-        ...(params.acceptConnection
-            ? {
-                  acceptConnection: params.acceptConnection,
-              }
-            : {}),
-        ...(params.shouldAcceptInput
-            ? {
-                  shouldAcceptInput: params.shouldAcceptInput,
-              }
-            : {}),
-        ...(params.tick
-            ? {
-                  tick: params.tick,
-              }
-            : {}),
+        ...(params.acceptConnection && {
+            acceptConnection: params.acceptConnection,
+        }),
+        ...(params.shouldAcceptInput && {
+            shouldAcceptInput: params.shouldAcceptInput,
+        }),
+        ...(params.tick && {
+            tick: params.tick,
+        }),
     });
 }
 

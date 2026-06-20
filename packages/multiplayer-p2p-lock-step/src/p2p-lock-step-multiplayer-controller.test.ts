@@ -184,11 +184,9 @@ function createController({
     return new InspectableP2pLockStepMultiplayerController({
         gameId,
         debugMultiplayer,
-        ...(acceptConnection
-            ? {
-                  acceptConnection,
-              }
-            : {}),
+        ...(acceptConnection && {
+            acceptConnection,
+        }),
         frameDuration: {
             milliseconds: 1,
         },

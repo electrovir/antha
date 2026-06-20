@@ -50,6 +50,8 @@ const pauseButtons: PauseButton[] = [
     },
 ];
 
+/** To be used later. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ExampleEnterPlayerNameElement = defineElement<{
     navController: NavController;
 }>()({

@@ -1,10 +1,9 @@
 import {createAnthaEntityMod2d} from '@antha/entity-2d';
-
-export type ExampleEntityState = {};
+import {type EmptyObject} from 'type-fest';
 
 export const {
     defineEntity,
     defineLogicEntity,
     entityKeys,
     mod: exampleGameEntityMod,
-} = createAnthaEntityMod2d();
+} = createAnthaEntityMod2d<EmptyObject>();

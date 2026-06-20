@@ -22,24 +22,29 @@ import {
 } from 'date-vir';
 import {FuzzyIndex, type FuzzyIndexKey} from 'fuzzy-vir';
 
+/** @category Internal */
 export type ThrottleLogCacheEntry = {
     intervalCount: number;
     intervalStartAt: FullDate<UtcTimezone>;
 };
 
+/** @category Internal */
 export const throttleLogCache = new Map<FuzzyIndexKey, ThrottleLogCacheEntry>();
 
+/** @category Internal */
 export const fuzzyLogIndex = new FuzzyIndex({
     onEvict(logKey) {
         throttleLogCache.delete(logKey);
     },
 });
 
+/** @category Internal */
 export type ThrottleLogOptions = {
     disableThrottling: boolean;
     throttleInterval: AnyDuration;
 };
 
+/** @category Internal */
 export const defaultThrottleLogOptions: ThrottleLogOptions = {
     disableThrottling: false,
     throttleInterval: {
@@ -47,12 +52,14 @@ export const defaultThrottleLogOptions: ThrottleLogOptions = {
     },
 };
 
+/** @category Internal */
 export enum ThrottleLogTransitionKind {
     None = 'none',
     Started = 'started',
     Ended = 'ended',
 }
 
+/** @category Internal */
 export type ThrottleLogTransition =
     | {
           kind: ThrottleLogTransitionKind.None;
@@ -65,12 +72,18 @@ export type ThrottleLogTransition =
           suppressedCount: number;
       };
 
+/**
+ * Output from {@link shouldThrottleLog}.
+ *
+ * @category Internal
+ */
 export type ThrottleLogResult = {
     shouldThrottle: boolean;
     logKey: string | undefined;
     transition: ThrottleLogTransition;
 };
 
+/** @category Internal */
 export function clearThrottleLogCache() {
     throttleLogCache.clear();
     fuzzyLogIndex.destroy();
@@ -81,6 +94,7 @@ const throttleLogStringOptions: LoggerOptions = {
     omitColors: true,
 };
 
+/** @category Internal */
 export function shouldThrottleLog(
     logMessage: string,
     throttleOptions: Readonly<PartialWithUndefined<ThrottleLogOptions>> = {},
@@ -148,6 +162,11 @@ export function shouldThrottleLog(
     };
 }
 
+/**
+ * Create a custom throttle logger.
+ *
+ * @category Internal
+ */
 export function createThrottleLog({
     logger = log,
     ...options
@@ -176,6 +195,11 @@ export function createThrottleLog({
     };
 }
 
+/**
+ * A logger that throttles logs so you can put logs in every frame without blowing up your console.
+ *
+ * @category Util
+ */
 export const throttleLog = createThrottleLog();
 
 function createThrottleLogMessage(args: ReadonlyArray<unknown>) {

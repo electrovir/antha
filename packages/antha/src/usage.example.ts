@@ -22,7 +22,6 @@ const {defineEntity, engine, StateType} = createDefaultAnthaEngine<
     },
     PlayerAction
 >({
-    dynamicCanvasSize: true,
     bindingAssignments: {
         1: {
             [PlayerAction.Up]: [

@@ -26,6 +26,12 @@
         },
         {
             "path": "../engine"
+        },
+        {
+            "path": "../multiplayer-core"
+        },
+        {
+            "path": "../multiplayer-server"
         }
     ]
 }

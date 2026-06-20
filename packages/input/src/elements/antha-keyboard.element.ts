@@ -22,11 +22,17 @@ import {
     viraTheme,
 } from 'vira';
 
+/**
+ * Keypress details emitted by the `keyPress` event from {@link AnthaKeyboard}.
+ *
+ * @category Internal
+ */
 export type AnthaKeyboardKeyPress = RequireExactlyOne<{
     typedCharacter: string;
     special: AnthaKeyboardSpecialKey;
 }>;
 
+/** @category Internal */
 export enum AnthaKeyboardSpecialKey {
     Backspace = 'backspace',
     Enter = 'enter',
@@ -41,7 +47,8 @@ export enum AnthaKeyboardSpecialKey {
     ClearAll = 'clear-all',
 }
 
-enum ToggleKey {
+/** @category Internal */
+export enum ToggleKey {
     Shift = 'shift',
     CapsLock = 'caps-lock',
 }
@@ -151,6 +158,11 @@ function pressKeyboardKey({
     };
 }
 
+/**
+ * An on-screen keyboard that works with `AnthaMenuNavMod` to allow navigation by controller.
+ *
+ * @category Pre-Build Mods
+ */
 export const AnthaKeyboard = defineElement<
     {
         navController: NavController;
@@ -780,11 +792,9 @@ export const AnthaKeyboard = defineElement<
                                         </span>
                                     </span>
                                 `
-                              : key.key
-                                ? isUppercase
-                                    ? key.key.toUpperCase()
-                                    : key.key
-                                : '';
+                              : isUppercase
+                                ? assertWrap.isDefined(key.key).toUpperCase()
+                                : assertWrap.isDefined(key.key);
 
                         return html`
                             <button
@@ -877,6 +887,7 @@ export const AnthaKeyboard = defineElement<
 function scrollBeamIntoView(beam: Readonly<HTMLElement>) {
     requestAnimationFrame(() => {
         const container = beam.parentElement;
+        /* c8 ignore next 3 */
         if (!container) {
             return;
         }
@@ -893,6 +904,13 @@ function scrollBeamIntoView(beam: Readonly<HTMLElement>) {
     });
 }
 
+/**
+ * A helper for handling key press events from {@link AnthaKeyboard}. This is used internally in
+ * {@link AnthaKeyboard} but is useful if you want to hide the keyboard's built-in text pane and use
+ * your own processing.
+ *
+ * @category Internal
+ */
 export async function handleKeyPress({
     currentValue,
     keyPress,

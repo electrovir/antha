@@ -1,6 +1,6 @@
 {
     "name": "@evir/antha-root",
-    "version": "0.0.0",
+    "version": "0.0.1",
     "private": true,
     "homepage": "https://github.com/electrovir/antha",
     "bugs": {
@@ -70,7 +70,7 @@
         "runstorm": "^1.0.2",
         "typescript": "^6.0.3",
         "typescript-eslint": "^8.61.0",
-        "virmator": "^14.25.0"
+        "virmator": "^14.26.0"
     },
     "engines": {
         "node": ">=22"

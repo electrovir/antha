@@ -31,7 +31,7 @@ export async function createMultiplayerApiClient({
     const foundPort = portScanOptions
         ? await findDevServerPort(multiplayerApi, {
               startOrigin: initialOrigin,
-              ...(check.isBoolean(portScanOptions) ? {} : portScanOptions),
+              ...(!check.isBoolean(portScanOptions) && portScanOptions),
           })
         : undefined;
 

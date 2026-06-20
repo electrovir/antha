@@ -48,11 +48,12 @@
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-playwright": "^0.11.1",
-        "element-vir": ">=26",
+        "element-vir": "^26.17.0",
         "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
-        "@antha/engine": "*"
+        "@antha/engine": "*",
+        "element-vir": ">=26"
     },
     "engines": {
         "node": ">=22"

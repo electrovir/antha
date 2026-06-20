@@ -47,6 +47,11 @@ export enum MenuNavBinding {
     MenuSectionPrevious = 'menu-section-previous',
 }
 
+/**
+ * Default menu nav bindings for {@link AnthaMenuNavMod}.
+ *
+ * @category Internal
+ */
 export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>> = {
     [MenuNavBinding.MenuLeft]: [
         {
@@ -246,6 +251,11 @@ export type MenuNavOptions = Readonly<
     }>
 >;
 
+/**
+ * State for {@link createAnthaMenuNavMod}.
+ *
+ * @category Internal
+ */
 export type MenuNavModState = {
     /** Set to true to enable menu navigation. */
     isInMenu: boolean;
@@ -256,6 +266,7 @@ export type MenuNavModState = {
     navController: NavController;
 };
 
+/** @category Internal */
 export const defaultMenuNavOptions: Required<MenuNavOptions> = {
     repeatThreshold: {
         milliseconds: 500,
@@ -266,6 +277,12 @@ export const defaultMenuNavOptions: Required<MenuNavOptions> = {
     allowWrapping: true,
 };
 
+/**
+ * A pre-built mod that enables menu navigation. Set `isInMenu` on your game state to true to
+ * activate it.
+ *
+ * @category Pre-Built Mods
+ */
 export function createAnthaMenuNavMod(
     options: Readonly<MenuNavOptions & NavControllerOptions> = {},
 ) {
@@ -392,4 +409,9 @@ export function createAnthaMenuNavMod(
     });
 }
 
+/**
+ * The mod created by {@link createAnthaMenuNavMod}.
+ *
+ * @category Internal
+ */
 export type AnthaMenuNavMod = ReturnType<typeof createAnthaMenuNavMod>;

@@ -4,11 +4,13 @@ import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
 import {
     AnthaAssetLoadingScreen,
+    type AnthaAssetModLoadingScreenState,
     type AnthaAssetModState,
     anthaAssetModName,
     createAnthaAssetMod,
     loadingScreenFadeMs,
 } from './antha-asset.mod.js';
+import {AssetLoaderProgressUpdateEvent} from './asset-loader.js';
 
 describe(createAnthaAssetMod.name, () => {
     it('creates a mod with the correct name', () => {
@@ -52,6 +54,44 @@ describe(createAnthaAssetMod.name, () => {
         await waitUntil.isFalse(() => {
             return engine.state.isShowingLoadingScreen ?? false;
         });
+    });
+
+    it('preserves current resource name when completion has none', async () => {
+        const mod = createAnthaAssetMod();
+        const engine = new AnthaEngine<AnthaAssetModState>({
+            mods: [mod],
+        });
+
+        await engine.runSingleTick();
+
+        assertWrap.isDefined(engine.state.assetLoader).dispatch(
+            new AssetLoaderProgressUpdateEvent({
+                detail: {
+                    complete: false,
+                    current: 1,
+                    total: 2,
+                    currentResourceName: 'test-asset',
+                },
+            }),
+        );
+
+        assertWrap.isDefined(engine.state.assetLoader).dispatch(
+            new AssetLoaderProgressUpdateEvent({
+                detail: {
+                    complete: true,
+                    current: 2,
+                    total: 2,
+                    currentResourceName: undefined,
+                },
+            }),
+        );
+
+        assert.deepEquals(engine.state.loadingScreenState, {
+            current: 1,
+            total: 1,
+            currentResourceName: 'test-asset',
+            completedAt: engine.totalMs,
+        } satisfies AnthaAssetModLoadingScreenState);
     });
 
     it('cleanup destroys the AssetLoader', async () => {

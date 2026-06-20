@@ -4,6 +4,14 @@ type RegisteredListener = (this: void, value: any) => MaybePromise<void>;
 
 const registry = new WeakMap<AnyObject, Record<PropertyKey, Set<RegisteredListener>>>();
 
+/**
+ * Listen to sets on a specific object key. Note that this does not trigger on:
+ *
+ * - Mutations of anything at the given key
+ * - Deletions of the given key
+ *
+ * @category Util
+ */
 export function listenToObject<const Original extends AnyObject, const Key extends keyof Original>(
     original: Original,
     key: Key,
