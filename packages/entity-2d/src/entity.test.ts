@@ -528,8 +528,39 @@ describe('EntityStore', () => {
             }
         }
 
-        await store.loadEntityAssets([AssetEntity]);
+        await store.loadEntityAssets({
+            entities: [
+                AssetEntity,
+            ],
+        });
         assert.isTrue(loadCalled);
+    });
+
+    it('loads other assets via loadEntityAssets', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite, {
+            assetLoader: new AssetLoader(),
+        });
+        let otherAssetLoadCalled = false;
+
+        await store.loadEntityAssets({
+            entities: [],
+            otherAssets: [
+                {
+                    name: 'Other asset',
+                    maxProgress: 1,
+                    load({incrementProgressCallback}) {
+                        otherAssetLoadCalled = true;
+                        incrementProgressCallback();
+                        return {
+                            value: 'other-value',
+                        };
+                    },
+                },
+            ],
+        });
+
+        assert.isTrue(otherAssetLoadCalled);
     });
 
     it('handles async collide returning a Promise', async () => {

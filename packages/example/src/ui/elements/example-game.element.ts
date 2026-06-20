@@ -11,6 +11,10 @@ export const ExampleGame = defineElement()({
     },
     styles: css`
         ${AnthaUi} {
+            display: fixed;
+            width: 100dwh;
+            height: 100dwh;
+            overflow: hidden;
             padding: 0;
         }
     `,

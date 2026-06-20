@@ -36,8 +36,8 @@
     },
     "dependencies": {
         "@antha/multiplayer-p2p-lock-step": "^0.0.1",
-        "@augment-vir/assert": "^31.73.0",
-        "@augment-vir/common": "^31.73.0",
+        "@augment-vir/assert": "^31.73.1",
+        "@augment-vir/common": "^31.73.1",
         "@rest-vir/api": "^2.2.0",
         "@rest-vir/host": "^2.2.0",
         "date-vir": "^8.5.0",
@@ -45,7 +45,7 @@
         "type-fest": "^5.7.0"
     },
     "devDependencies": {
-        "@augment-vir/test": "^31.73.0",
+        "@augment-vir/test": "^31.73.1",
         "@types/node": "^25.9.3",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",

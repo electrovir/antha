@@ -30,7 +30,6 @@ export type AnthaGraphics2dModOptions = PartialWithUndefined<{
     canvas: HTMLCanvasElement;
     extraCanvasStyles: CSSResult | string;
     extraCanvasWrapperStyles: CSSResult | string;
-    dynamicCanvasSize: boolean;
 }>;
 
 /**
@@ -40,8 +39,6 @@ export type AnthaGraphics2dModOptions = PartialWithUndefined<{
  */
 export const defaultPixiOptions = {
     background: 'black',
-    height: 1000,
-    width: 1000,
     antialias: true,
     powerPreference: 'high-performance',
 } satisfies Partial<ApplicationOptions>;
@@ -65,7 +62,7 @@ export function createAnthaGraphics2dMod(
         cleanup({state}) {
             state.pixi?.pixiApplication?.destroy(true);
         },
-        async execute({state}) {
+        async execute({hostElement, state}) {
             const pixiState = getOrSet(state, 'pixi', () => {
                 return {};
             });
@@ -75,16 +72,12 @@ export function createAnthaGraphics2dMod(
             if (!pixiState.pixiApplication && canvas) {
                 const pixiApplication = new PixiApplication();
                 await pixiApplication.init({
+                    resizeTo: hostElement,
                     ...pixiApplicationOptions,
                     canvas,
-                    ...(modOptions?.dynamicCanvasSize && {
-                        resizeTo: window,
-                    }),
                 });
                 pixiState.pixiApplication = pixiApplication;
             }
-
-            const aspectRatio = pixiApplicationOptions.width / pixiApplicationOptions.height;
 
             return pixiApplicationOptions.canvas
                 ? undefined
@@ -106,15 +99,9 @@ export function createAnthaGraphics2dMod(
                           <canvas
                               style=${css`
                                   box-sizing: border-box;
-                                  ${modOptions?.dynamicCanvasSize
-                                      ? css`
-                                            width: 100%;
-                                            height: 100%;
-                                        `
-                                      : css`
-                                            width: min(100cqw, calc(100cqh * ${aspectRatio}));
-                                            aspect-ratio: ${aspectRatio};
-                                        `}
+
+                                  width: 100%;
+                                  height: 100%;
                                   ${unsafeCSS(modOptions?.extraCanvasStyles)}
                               `}
                               id="antha-graphics-2d"

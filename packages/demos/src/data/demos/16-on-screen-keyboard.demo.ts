@@ -59,7 +59,7 @@ export const onScreenKeyboardDemo: AnthaDemo = {
             mods: [
                 createAnthaReadRawInputMod(),
                 createAnthaInputBindingsMod<MenuNavBinding>(),
-                createAnthaMenuNavMod({}),
+                createAnthaMenuNavMod(),
                 onScreenKeyboardDemoMod,
             ],
         });

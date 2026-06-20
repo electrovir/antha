@@ -231,7 +231,11 @@ describe(AssetLoader.name, () => {
             const events: {current: number; total: number; complete: boolean}[] = [];
 
             loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
-                events.push(event.detail);
+                events.push({
+                    current: event.detail.current,
+                    total: event.detail.total,
+                    complete: event.detail.complete,
+                });
             });
 
             await loader.bulkLoadAssets([
@@ -239,6 +243,11 @@ describe(AssetLoader.name, () => {
             ]);
 
             assert.deepEquals(events, [
+                {
+                    current: 0,
+                    total: 1,
+                    complete: false,
+                },
                 {
                     current: 0,
                     total: 1,
@@ -267,7 +276,11 @@ describe(AssetLoader.name, () => {
             const progressUpdates: {current: number; total: number; complete: boolean}[] = [];
 
             loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
-                progressUpdates.push(event.detail);
+                progressUpdates.push({
+                    current: event.detail.current,
+                    total: event.detail.total,
+                    complete: event.detail.complete,
+                });
             });
 
             const asset1 = defineAsset({
@@ -309,7 +322,17 @@ describe(AssetLoader.name, () => {
                     complete: false,
                 },
                 {
+                    current: 0,
+                    total: 3,
+                    complete: false,
+                },
+                {
                     current: 1,
+                    total: 3,
+                    complete: false,
+                },
+                {
+                    current: 2,
                     total: 3,
                     complete: false,
                 },
@@ -328,6 +351,40 @@ describe(AssetLoader.name, () => {
                     total: 3,
                     complete: true,
                 },
+            ]);
+        });
+
+        it('dispatches the current asset name in progress events', async () => {
+            const loader = new AssetLoader();
+            const resourceNames: (string | undefined)[] = [];
+
+            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
+                resourceNames.push(event.detail.currentResourceName);
+            });
+
+            const asset = defineAsset({
+                name: 'entity:asset',
+                maxProgress: 2,
+                load({incrementProgressCallback}) {
+                    incrementProgressCallback();
+                    incrementProgressCallback();
+                    return {
+                        value: 'asset-value',
+                    };
+                },
+            });
+
+            await loader.bulkLoadAssets([
+                asset,
+            ]);
+
+            assert.deepEquals(resourceNames, [
+                'entity:asset',
+                'entity:asset',
+                'entity:asset',
+                'entity:asset',
+                'entity:asset',
+                'entity:asset',
             ]);
         });
 
@@ -420,7 +477,11 @@ describe(AssetLoader.name, () => {
             const progressUpdates: {current: number; total: number; complete: boolean}[] = [];
 
             loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
-                progressUpdates.push(event.detail);
+                progressUpdates.push({
+                    current: event.detail.current,
+                    total: event.detail.total,
+                    complete: event.detail.complete,
+                });
             });
 
             const asset = defineAsset({
@@ -440,6 +501,11 @@ describe(AssetLoader.name, () => {
             ]);
 
             assert.deepEquals(progressUpdates, [
+                {
+                    current: 0,
+                    total: 5,
+                    complete: false,
+                },
                 {
                     current: 0,
                     total: 5,

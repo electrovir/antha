@@ -1,10 +1,53 @@
-import {type AnthaAssetModLoadingScreenState, type AnthaAssetModState} from '@antha/asset';
-import {defineAnthaMod} from '@antha/engine';
-import {ensureErrorAndPrependMessage} from '@augment-vir/common';
+import {type Asset} from '@antha/asset';
+import {defineAnthaMod, SkipExecution} from '@antha/engine';
+import {Assets} from '@antha/graphics-2d';
 import {Store} from 'indexed-vir';
+import {HangarEntity} from '../entities/hangar.entity.js';
+import {PlayerShipEntity} from '../entities/player-ship.entity.js';
+import {type FullExampleGameState} from '../game-state.js';
 import {emptySaveState, type SaveState, saveStateShape} from '../save-state.js';
 
+// cspell:words airstrike airstrikeplat
 const saveStateKey = 'save-state';
+const fontDefinitions = [
+    {
+        family: 'AirStrikePlat',
+        src: '/fonts/airstrikeplat.woff2',
+    },
+    {
+        family: 'AirStrike',
+        src: '/fonts/airstrike.woff2',
+    },
+] as const;
+
+const fontsAsset: Asset<ReadonlyArray<FontFace | FontFace[]>> = {
+    name: 'Fonts',
+    maxProgress: fontDefinitions.length,
+    async load({incrementProgressCallback}) {
+        const fonts = await Promise.all(
+            fontDefinitions.map(async (fontDefinition) => {
+                const font = await Assets.load<FontFace | FontFace[]>({
+                    alias: fontDefinition.family,
+                    src: fontDefinition.src,
+                    data: {
+                        family: fontDefinition.family,
+                        weights: [
+                            'normal',
+                        ],
+                    },
+                });
+
+                incrementProgressCallback();
+
+                return font;
+            }),
+        );
+
+        return {
+            value: fonts,
+        };
+    },
+};
 
 export class ExampleSaveStateStore {
     protected readonly store = new Store('example-game-save-state');
@@ -18,52 +61,62 @@ export class ExampleSaveStateStore {
     }
 }
 
-export type SaveStateModState = {
-    saveState: SaveState;
-    saveStateLoadPromise: Promise<void> | undefined;
+function createSaveStateAsset({
+    saveStateStore,
+    state,
+}: Readonly<{
     saveStateStore: ExampleSaveStateStore;
-} & AnthaAssetModState;
+    state: Partial<FullExampleGameState>;
+}>): Asset<SaveState> {
+    return {
+        name: 'Save data',
+        maxProgress: 1,
+        async load({incrementProgressCallback}) {
+            const saveState = (await saveStateStore.loadState()) || emptySaveState;
+            state.saveState = saveState;
+            incrementProgressCallback();
 
-const sharedLoadingScreenState = {
-    total: 1,
-    currentResourceName: 'Save data',
-} as const satisfies Readonly<Partial<AnthaAssetModLoadingScreenState>>;
+            return {
+                value: saveState,
+            };
+        },
+    };
+}
 
-export const saveStateMod = defineAnthaMod<SaveStateModState>({
+export const saveStateMod = defineAnthaMod<FullExampleGameState>({
     modName: 'save-state',
-    execute({state, engine}) {
+    execute({state}) {
+        if (!state.entityStore) {
+            return SkipExecution;
+        }
+
         if (!state.saveStateStore) {
             state.saveStateStore = new ExampleSaveStateStore();
         }
 
-        if (!state.saveState && !state.saveStateLoadPromise) {
-            state.isShowingLoadingScreen = true;
-            state.loadingScreenState = {
-                ...sharedLoadingScreenState,
-                current: 0,
-                completedAt: undefined,
-            };
+        if (!state.saveState && !state.loadPromise) {
+            const saveStateStore = state.saveStateStore;
 
-            state.saveStateLoadPromise = state.saveStateStore
-                .loadState()
-                .then((savedState) => {
-                    state.saveState = savedState || emptySaveState;
-                })
-                .catch((error: unknown) => {
-                    state.saveState = emptySaveState;
-                    engine.log.error(
-                        ensureErrorAndPrependMessage(error, 'Failed to load saved game state.'),
-                    );
-                })
-                .finally(() => {
-                    state.saveStateLoadPromise = undefined;
-                    state.isShowingLoadingScreen = false;
-                    state.loadingScreenState = {
-                        ...sharedLoadingScreenState,
-                        current: 1,
-                        completedAt: performance.now() - engine.engineStartTime,
-                    };
-                });
+            state.loadPromise = state.entityStore.loadEntityAssets(
+                {
+                    entities: [
+                        HangarEntity,
+                        PlayerShipEntity,
+                    ],
+                    otherAssets: [
+                        fontsAsset,
+                        createSaveStateAsset({
+                            saveStateStore,
+                            state,
+                        }),
+                    ],
+                },
+                {
+                    maxParallelism: 1,
+                },
+            );
         }
+
+        return undefined;
     },
 });

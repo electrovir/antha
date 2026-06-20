@@ -1,10 +1,6 @@
 import {AnthaEngine, SkipExecution, type AnthaMod} from '@antha/engine';
 import {createAnthaFpsMod} from '@antha/fps';
-import {
-    createAnthaGraphics2dMod,
-    defaultPixiOptions,
-    type AnthaGraphics2dModState,
-} from '@antha/graphics-2d';
+import {createAnthaGraphics2dMod, type AnthaGraphics2dModState} from '@antha/graphics-2d';
 import {createArray, randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css} from 'element-vir';
@@ -78,11 +74,11 @@ const bouncingBallsMod: AnthaMod<
                 });
                 const x = randomInteger({
                     min: radius,
-                    max: defaultPixiOptions.width - radius,
+                    max: pixiApp.screen.width - radius,
                 });
                 const y = randomInteger({
                     min: radius,
-                    max: defaultPixiOptions.height - radius,
+                    max: pixiApp.screen.height - radius,
                 });
                 const ball: Ball = {
                     graphic: new Graphics(),

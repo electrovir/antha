@@ -133,6 +133,7 @@ export type AssetLoaderOptions = PartialWithUndefined<{
 export class AssetLoaderProgressUpdateEvent extends defineTypedCustomEvent<{
     current: number;
     total: number;
+    currentResourceName?: string | undefined;
     /**
      * Always check this complete field first, as any misconfigured assets ma not correctly
      * increment `total` but complete will always reliably mark the end of loading.
@@ -247,15 +248,12 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
         let currentProgress = 0;
 
         if (!options.hideLoadingScreen && assetsToLoad.length) {
-            this.dispatch(
-                new AssetLoaderProgressUpdateEvent({
-                    detail: {
-                        current: currentProgress,
-                        total: maxProgress,
-                        complete: false,
-                    },
-                }),
-            );
+            this.dispatchProgressUpdate({
+                current: currentProgress,
+                total: maxProgress,
+                currentResourceName: assetsToLoad[0]?.name,
+                complete: false,
+            });
         }
 
         await this.unloadAssets(assetsToCleanup);
@@ -266,15 +264,12 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
 
         currentProgress += cleanupCount;
         if (!options.hideLoadingScreen) {
-            this.dispatch(
-                new AssetLoaderProgressUpdateEvent({
-                    detail: {
-                        current: currentProgress,
-                        total: maxProgress,
-                        complete: false,
-                    },
-                }),
-            );
+            this.dispatchProgressUpdate({
+                current: currentProgress,
+                total: maxProgress,
+                currentResourceName: assetsToLoad[0]?.name,
+                complete: false,
+            });
         }
 
         const chunkedAssets: ArrayElement<typeof assetsToLoad>[][] = options.maxParallelism
@@ -283,20 +278,19 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
               })
             : [[...assets]];
 
-        const incrementProgressCallback: AssetIncrementProgressCallback = (amount) => {
-            currentProgress += amount ?? 1;
-            if (!options.hideLoadingScreen) {
-                this.dispatch(
-                    new AssetLoaderProgressUpdateEvent({
-                        detail: {
-                            current: currentProgress,
-                            total: maxProgress,
-                            complete: false,
-                        },
-                    }),
-                );
-            }
-        };
+        const createIncrementProgressCallback =
+            (asset: Readonly<Asset>): AssetIncrementProgressCallback =>
+            (amount) => {
+                currentProgress += amount ?? 1;
+                if (!options.hideLoadingScreen) {
+                    this.dispatchProgressUpdate({
+                        current: currentProgress,
+                        total: maxProgress,
+                        currentResourceName: asset.name,
+                        complete: false,
+                    });
+                }
+            };
 
         const results: unknown[] = (
             await awaitedBlockingMap(chunkedAssets, async (assetChunk) => {
@@ -306,8 +300,17 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
                             return (await this.assetCache.get(asset))?.value;
                         }
 
+                        if (!options.hideLoadingScreen) {
+                            this.dispatchProgressUpdate({
+                                current: currentProgress,
+                                total: maxProgress,
+                                currentResourceName: asset.name,
+                                complete: false,
+                            });
+                        }
+
                         return await this.loadIndividualAsset({
-                            incrementProgressCallback,
+                            incrementProgressCallback: createIncrementProgressCallback(asset),
                             asset,
                         });
                     }),
@@ -332,17 +335,24 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
             );
         }
         if (!options.hideLoadingScreen) {
-            this.dispatch(
-                new AssetLoaderProgressUpdateEvent({
-                    detail: {
-                        current: maxProgress,
-                        total: maxProgress,
-                        complete: true,
-                    },
-                }),
-            );
+            this.dispatchProgressUpdate({
+                current: maxProgress,
+                total: maxProgress,
+                currentResourceName: assetsToLoad[assetsToLoad.length - 1]?.name,
+                complete: true,
+            });
         }
 
         return results;
+    }
+
+    private dispatchProgressUpdate(
+        detail: ConstructorParameters<typeof AssetLoaderProgressUpdateEvent>[0]['detail'],
+    ): void {
+        this.dispatch(
+            new AssetLoaderProgressUpdateEvent({
+                detail,
+            }),
+        );
     }
 }

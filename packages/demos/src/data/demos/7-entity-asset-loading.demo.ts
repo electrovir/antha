@@ -313,12 +313,12 @@ const entityAssetDemoMod = defineAnthaMod<
         if (!state.assetsLoaded) {
             state.assetsLoaded = true;
             void (async () => {
-                await entityStore.loadEntityAssets(
-                    [
+                await entityStore.loadEntityAssets({
+                    entities: [
                         RedCircleEntity,
                         state.yellowToggle && YellowCircleEntity,
                     ].filter(check.isTruthy),
-                );
+                });
                 if (state.yellowToggle) {
                     await entityStore.addEntity(YellowCircleEntity);
                 }

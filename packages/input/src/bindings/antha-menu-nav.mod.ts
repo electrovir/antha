@@ -267,28 +267,26 @@ export const defaultMenuNavOptions: Required<MenuNavOptions> = {
 };
 
 export function createAnthaMenuNavMod(
-    options: Readonly<MenuNavOptions & NavControllerOptions> | undefined,
+    options: Readonly<MenuNavOptions & NavControllerOptions> = {},
 ) {
     return defineAnthaMod<MenuNavModState>({
         modName: 'menu-nav',
         initState: {
-            menuNavOptions: options
-                ? {
-                      ...defaultMenuNavOptions,
-                      ...options,
-                  }
-                : undefined,
+            menuNavOptions: {
+                ...defaultMenuNavOptions,
+                ...options,
+            },
         },
         execute({state, hostElement}) {
-            if (!state.isInMenu || !state.menuNavOptions || !state.activeBindings) {
-                return;
-            }
             if (!state.navController) {
                 state.navController = new NavController(hostElement, {
                     alwaysRequireFocused: true,
                     activateOnMouseUp: false,
                     ...options,
                 });
+            }
+            if (!state.isInMenu || !state.menuNavOptions || !state.activeBindings) {
+                return;
             }
 
             const repeatThreshold = convertDuration(state.menuNavOptions.repeatThreshold, {
@@ -313,22 +311,16 @@ export function createAnthaMenuNavMod(
 
                         activeMenuBindings[bindingName] = true;
 
-                        if (activeBinding.holdDuration.milliseconds >= repeatThreshold) {
-                            if (
+                        if (
+                            !activeBinding.actCount ||
+                            (activeBinding.holdDuration.milliseconds >= repeatThreshold &&
                                 activeBinding.holdDuration.milliseconds -
                                     activeBinding.lastActDuration.milliseconds >
-                                repeatInterval
-                            ) {
-                                bindingsToAct[bindingName] = true;
-                                activeBinding.actCount++;
-                                activeBinding.lastActDuration = activeBinding.holdDuration;
-                            }
-                        } else if (
-                            !activeBinding.holdDuration.milliseconds &&
-                            !activeBinding.actCount
+                                    repeatInterval)
                         ) {
                             bindingsToAct[bindingName] = true;
                             activeBinding.actCount++;
+                            activeBinding.lastActDuration = activeBinding.holdDuration;
                         }
                     },
                 );

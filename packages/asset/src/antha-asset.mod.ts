@@ -192,6 +192,9 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
                             state.loadingScreenState = {
                                 current: 1,
                                 total: 1,
+                                currentResourceName:
+                                    event.detail.currentResourceName ||
+                                    state.loadingScreenState?.currentResourceName,
                                 completedAt: engine.totalMs,
                             };
                             state.isShowingLoadingScreen = false;
@@ -200,6 +203,7 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
                             state.loadingScreenState = {
                                 current: event.detail.current,
                                 total: event.detail.total,
+                                currentResourceName: event.detail.currentResourceName,
                                 completedAt: undefined,
                             };
                         }

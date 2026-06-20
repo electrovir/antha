@@ -281,9 +281,7 @@ export const playerMovementDemo: AnthaDemo = {
                 bindingAssignments,
             } satisfies Partial<AnthaInputBindingsModState<PlayerAction>>,
             mods: [
-                createAnthaGraphics2dMod({
-                    dynamicCanvasSize: true,
-                }),
+                createAnthaGraphics2dMod(),
                 createAnthaFpsMod(),
                 createAnthaAssetMod(),
                 entityStoreMod,

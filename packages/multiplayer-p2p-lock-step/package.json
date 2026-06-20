@@ -36,13 +36,13 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^31.73.0",
-        "@augment-vir/common": "^31.73.0",
+        "@augment-vir/assert": "^31.73.1",
+        "@augment-vir/common": "^31.73.1",
         "date-vir": "^8.5.0",
         "typed-event-target": "^4.3.1"
     },
     "devDependencies": {
-        "@augment-vir/test": "^31.73.0",
+        "@augment-vir/test": "^31.73.1",
         "@web/dev-server-esbuild": "^1.0.5",
         "@web/test-runner": "^0.20.2",
         "@web/test-runner-playwright": "^0.11.1",

@@ -168,14 +168,23 @@ export class EntityStore2d<State extends AnyObject = any> {
      * only.
      */
     public async loadEntityAssets(
-        entities: ReadonlyArray<Entity2dConstructor>,
+        {
+            entities,
+            otherAssets,
+        }: Readonly<{
+            entities: ReadonlyArray<Entity2dConstructor>;
+            otherAssets?: ReadonlyArray<Readonly<Asset>> | undefined;
+        }>,
         options?: Readonly<AssetBulkLoaderLoadOptions> | undefined,
     ) {
-        const assets: ReadonlyArray<Readonly<Asset>> = entities.flatMap((entity) => {
-            return Object.values(entity.assets).map((asset) => {
-                return asset;
-            });
-        });
+        const assets: ReadonlyArray<Readonly<Asset>> = [
+            ...(otherAssets || []),
+            ...entities.flatMap((entity) => {
+                return Object.values(entity.assets).map((asset) => {
+                    return asset;
+                });
+            }),
+        ];
         return await this.assetLoader.bulkLoadAssets(assets, options);
     }
 

@@ -135,11 +135,11 @@ describe(createAnthaGraphics2dMod.name, () => {
         testWeb.cleanupRender();
     });
 
-    it('uses dynamic canvas sizing when dynamicCanvasSize is true', async () => {
-        const mod = createAnthaGraphics2dMod({
-            dynamicCanvasSize: true,
-        });
+    it('resizes the canvas to the host element', async () => {
+        const mod = createAnthaGraphics2dMod();
+        const hostElement = document.createElement('div');
         const engine = new AnthaEngine<AnthaGraphics2dModState>({
+            hostElement,
             mods: [
                 mod,
             ],
@@ -152,6 +152,7 @@ describe(createAnthaGraphics2dMod.name, () => {
         await engine.runSingleTick();
 
         assert.isDefined(engine.state.pixi.pixiApplication);
+        assert.strictEquals(engine.state.pixi.pixiApplication.resizeTo, hostElement);
         assert.isDefined(engine.currentTemplateMap.get(mod));
 
         await engine.reset();
