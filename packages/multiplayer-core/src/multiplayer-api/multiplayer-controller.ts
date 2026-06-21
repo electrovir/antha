@@ -418,21 +418,18 @@ export class MultiplayerRoomController<
         this.stopRoomUpdates();
     }
 
-    /**
-     * Join or create a room.
-     *
-     * @throws `Error` if this controller is already connected to a room.
-     */
+    /** Join or create a room. */
     public async joinOrCreateRoom(room: Readonly<RoomInput>) {
-        if (this.currentConnection) {
-            throw new Error('Cannot join room: connection already established.');
-        } else if (!this.multiplayerApiClient || !this.multiplayerParams) {
+        if (!this.multiplayerApiClient || !this.multiplayerParams) {
             throw new Error(
                 'Cannot join room. Please start this controller in multiplayer mode to join rooms.',
             );
         } else if (this.rejectedRoomIds.has(room.roomId)) {
             throw new RoomRejectionError(room);
         }
+
+        const previousConnection = this.currentConnection;
+        const previousRoomId = this.roomId;
 
         this.updateConnectionState({
             room: MultiplayerConnectionState.Connecting,
@@ -451,7 +448,6 @@ export class MultiplayerRoomController<
                 : undefined,
         );
 
-        this.currentConnection = currentConnection;
         currentConnection.listen(WebrtcMultiplayerMessageEvent<Message>, (event) => {
             this.dispatch(new ControllerMessageEvent(event.sourceClientId, event.detail));
         });
@@ -463,34 +459,47 @@ export class MultiplayerRoomController<
             );
         });
 
-        await currentConnection.initConnection();
-        const connectionResult = await waitUntil.isDefined(() => {
-            const connected = currentConnection.isConnected();
-            const destroyed = currentConnection.isDestroyed;
+        try {
+            await currentConnection.initConnection();
+            const connectionResult = await waitUntil.isDefined(() => {
+                const connected = currentConnection.isConnected();
+                const destroyed = currentConnection.isDestroyed;
 
-            return !connected && !destroyed
-                ? undefined
-                : {
-                      connected,
-                      destroyed,
-                  };
-        });
-
-        if (connectionResult.connected) {
-            makeWritable(this).roomId = room.roomId;
-            this.stopRoomUpdates();
-            this.updateConnectionState({
-                room: MultiplayerConnectionState.Connected,
+                return !connected && !destroyed
+                    ? undefined
+                    : {
+                          connected,
+                          destroyed,
+                      };
             });
-        } else {
+
+            if (connectionResult.connected) {
+                this.currentConnection = currentConnection;
+                previousConnection?.destroy();
+                makeWritable(this).roomId = room.roomId;
+                this.stopRoomUpdates();
+                this.updateConnectionState({
+                    room: MultiplayerConnectionState.Connected,
+                });
+            } else {
+                this.rejectedRoomIds.add(room.roomId);
+                throw new RoomRejectionError(room);
+            }
+        } catch (error) {
             currentConnection.destroy();
-            this.rejectedRoomIds.add(room.roomId);
-            this.currentConnection = undefined;
-            const error = new RoomRejectionError(room);
 
-            this.updateConnectionState({
-                room: error,
-            });
+            if (previousConnection) {
+                this.currentConnection = previousConnection;
+                makeWritable(this).roomId = previousRoomId;
+                this.updateConnectionState({
+                    room: MultiplayerConnectionState.Connected,
+                });
+            } else {
+                this.currentConnection = undefined;
+                this.updateConnectionState({
+                    room: ensureError(error),
+                });
+            }
             throw error;
         }
     }

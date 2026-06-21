@@ -730,16 +730,27 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
         });
     });
 
-    it('clears room connection on join failures', async () => {
-        const controller = createController();
+    it('preserves room connection on join failures while connected', async () => {
+        const disconnectedController = createController();
+        const connectedController = createController();
+        const previousConnection = createFakeConnection();
 
-        controller.roomController.joinOrCreateRoom = () => Promise.resolve();
+        disconnectedController.roomController.joinOrCreateRoom = () => Promise.resolve();
 
-        await assert.throws(() => controller.joinOrCreateRoom(createNewRoom()), {
+        await assert.throws(() => disconnectedController.joinOrCreateRoom(createNewRoom()), {
             matchMessage: 'room connection is missing',
         });
 
-        assert.isUndefined(controller.roomConnectionForTest);
+        assert.isUndefined(disconnectedController.roomConnectionForTest);
+
+        connectedController.roomController.joinOrCreateRoom = () => Promise.resolve();
+        connectedController.setRoomConnectionForTest(previousConnection);
+
+        await assert.throws(() => connectedController.joinOrCreateRoom(createNewRoom()), {
+            matchMessage: 'room connection is missing',
+        });
+
+        assert.strictEquals(connectedController.roomConnectionForTest, previousConnection);
     });
 
     it('passes through room rejection errors', async () => {

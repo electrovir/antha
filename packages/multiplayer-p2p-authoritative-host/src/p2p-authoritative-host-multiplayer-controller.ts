@@ -396,16 +396,32 @@ export class P2pAuthoritativeHostMultiplayerController<
         super.destroy();
     }
 
-    /**
-     * Join or create a room.
-     *
-     * @throws `Error` if this controller is already connected to a room.
-     */
+    /** Join or create a room. */
     public async joinOrCreateRoom(room: Readonly<RoomInput>) {
-        if (this.currentConnection) {
+        if (this.singleplayer) {
             throw new Error('Cannot join room: connection already established.');
         }
 
+        const previousRoomConnection = this.roomConnection;
+
+        const roomConnection = await this.joinRoom({
+            previousRoomConnection,
+            room,
+        });
+
+        this.attachMultiplayerRoomConnection(roomConnection);
+    }
+
+    /** Join through the core room controller while preserving the wrapper connection on failure. */
+    protected async joinRoom({
+        previousRoomConnection,
+        room,
+    }: Readonly<{
+        previousRoomConnection:
+            | MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, State>>
+            | undefined;
+        room: Readonly<RoomInput>;
+    }>) {
         try {
             await this.roomController.joinOrCreateRoom(room);
             if (!this.roomController.currentConnection) {
@@ -414,9 +430,9 @@ export class P2pAuthoritativeHostMultiplayerController<
                 );
             }
 
-            this.attachMultiplayerRoomConnection(this.roomController.currentConnection);
+            return this.roomController.currentConnection;
         } catch (error: unknown) {
-            this.roomConnection = undefined;
+            this.roomConnection = previousRoomConnection;
             throw error;
         }
     }

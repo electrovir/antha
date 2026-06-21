@@ -313,17 +313,17 @@ describe(P2pLockStepMultiplayerController.name, () => {
         assert.deepEquals(state.frames, [
             [
                 {
-                    clientId,
+                    sourceClientId: clientId,
                     packet: 'one',
                 },
             ],
             [
                 {
-                    clientId,
+                    sourceClientId: clientId,
                     packet: 'two',
                 },
                 {
-                    clientId,
+                    sourceClientId: clientId,
                     packet: 'three',
                 },
             ],
@@ -522,11 +522,11 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 frames: [
                     [
                         {
-                            clientId: fakeConnection.clientId,
+                            sourceClientId: fakeConnection.clientId,
                             packet: 'host-action',
                         },
                         {
-                            clientId: memberClientId,
+                            sourceClientId: memberClientId,
                             packet: 'member-action',
                         },
                     ],
@@ -554,11 +554,11 @@ describe(P2pLockStepMultiplayerController.name, () => {
                     {
                         actions: [
                             {
-                                clientId: fakeConnection.clientId,
+                                sourceClientId: fakeConnection.clientId,
                                 packet: 'host-action',
                             },
                             {
-                                clientId: memberClientId,
+                                sourceClientId: memberClientId,
                                 packet: 'member-action',
                             },
                         ],
@@ -598,7 +598,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 hostClientId,
                 createFrameMessage([
                     {
-                        clientId: hostClientId,
+                        sourceClientId: hostClientId,
                         packet: 'host-frame',
                     },
                 ]),
@@ -625,7 +625,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 frames: [
                     [
                         {
-                            clientId: hostClientId,
+                            sourceClientId: hostClientId,
                             packet: 'host-frame',
                         },
                     ],
@@ -670,7 +670,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         assert.deepEquals(state.frames, [
             [
                 {
-                    clientId,
+                    sourceClientId: clientId,
                     packet: 'manual',
                 },
             ],
@@ -776,7 +776,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                     hostClientId,
                     createFrameMessage([
                         {
-                            clientId: memberClientId,
+                            sourceClientId: memberClientId,
                             packet: 'member-action',
                         },
                     ]),
@@ -809,7 +809,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                     memberFrames: [
                         [
                             {
-                                clientId: memberClientId,
+                                sourceClientId: memberClientId,
                                 packet: 'member-action',
                             },
                         ],
@@ -825,16 +825,62 @@ describe(P2pLockStepMultiplayerController.name, () => {
         });
     });
 
-    it('clears room connection on join failures', async () => {
+    it('resets frame state when joining another room while connected', async () => {
         const controller = createController();
+        const previousConnection = createFakeConnection();
+        const nextConnection = createFakeConnection({
+            host: false,
+        });
 
-        controller.roomController.joinOrCreateRoom = () => Promise.resolve();
+        controller.setRoomConnectionForTest(previousConnection);
+        controller.setFrameTickReadyForTest(false);
+        controller.roomController.joinOrCreateRoom = () => {
+            controller.roomController.currentConnection = nextConnection;
 
-        await assert.throws(() => controller.joinOrCreateRoom(createNewRoom()), {
+            return Promise.resolve();
+        };
+
+        await controller.joinOrCreateRoom(createNewRoom());
+
+        assert.deepEquals(
+            {
+                nextConnectionMessages: nextConnection.sentMessages,
+                roomConnection: controller.roomConnectionForTest,
+            },
+            {
+                nextConnectionMessages: [
+                    {
+                        actions: [],
+                        sourceClientId: nextConnection.clientId,
+                        type: P2pLockStepMessageType.Actions,
+                    },
+                ],
+                roomConnection: nextConnection,
+            },
+        );
+    });
+
+    it('preserves room connection on join failures while connected', async () => {
+        const disconnectedController = createController();
+        const connectedController = createController();
+        const previousConnection = createFakeConnection();
+
+        disconnectedController.roomController.joinOrCreateRoom = () => Promise.resolve();
+
+        await assert.throws(() => disconnectedController.joinOrCreateRoom(createNewRoom()), {
             matchMessage: 'room connection is missing',
         });
 
-        assert.isUndefined(controller.roomConnectionForTest);
+        assert.isUndefined(disconnectedController.roomConnectionForTest);
+
+        connectedController.roomController.joinOrCreateRoom = () => Promise.resolve();
+        connectedController.setRoomConnectionForTest(previousConnection);
+
+        await assert.throws(() => connectedController.joinOrCreateRoom(createNewRoom()), {
+            matchMessage: 'room connection is missing',
+        });
+
+        assert.strictEquals(connectedController.roomConnectionForTest, previousConnection);
     });
 
     it('passes through room rejection errors', async () => {

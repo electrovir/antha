@@ -565,6 +565,116 @@ describe(MultiplayerRoomController.name, () => {
         });
     });
 
+    it('joins another room after already connected', async () => {
+        await withMockPeerConnection(async () => {
+            const firstRoom = createNewRoom({
+                roomName: 'First Joined Room',
+            });
+            const secondRoom = createNewRoom({
+                roomName: 'Second Joined Room',
+            });
+            const controller = new MultiplayerRoomController<TestMessage>({
+                gameId: 'room-switch-test',
+            });
+
+            await controller.initMultiplayer({
+                backendOrigin: 'http://mock.example',
+                multiplayerApiClient: createMockRoomHandlerServerApiClient(),
+            });
+            await controller.joinOrCreateRoom(firstRoom);
+
+            const firstConnection = controller.currentConnection;
+            assert.isDefined(firstConnection);
+
+            await controller.joinOrCreateRoom(secondRoom);
+
+            const secondConnection = controller.currentConnection;
+            assert.isDefined(secondConnection);
+            const firstWebrtcConnection =
+                firstConnection satisfies MultiplayerRoomConnection<TestMessage> as WebrtcMultiplayerController<TestMessage>;
+
+            assert.deepEquals(
+                {
+                    firstConnectionDestroyed: firstWebrtcConnection.isDestroyed,
+                    isConnected: controller.isConnected(),
+                    isHost: controller.isHost(),
+                    roomId: controller.roomId,
+                    switchedConnection: firstConnection !== secondConnection,
+                },
+                {
+                    firstConnectionDestroyed: true,
+                    isConnected: true,
+                    isHost: true,
+                    roomId: secondRoom.roomId,
+                    switchedConnection: true,
+                },
+            );
+
+            controller.destroy();
+        });
+    });
+
+    it('keeps the current room when joining another room fails', async () => {
+        await withMockPeerConnection(async () => {
+            const currentRoom = createNewRoom({
+                roomName: 'Current Room',
+            });
+            const rejectedRoom = createNewRoom({
+                roomName: 'Rejected Switch Room',
+            });
+            const apiClient = createMockRoomHandlerServerApiClient();
+            const controller = new MultiplayerRoomController<TestMessage>({
+                gameId: 'failed-room-switch-test',
+            });
+            const rejectingHost = new MultiplayerRoomController<TestMessage>({
+                gameId: 'failed-room-switch-test',
+                acceptConnection() {
+                    return false;
+                },
+            });
+
+            await controller.initMultiplayer({
+                backendOrigin: 'http://mock.example',
+                multiplayerApiClient: apiClient,
+            });
+            await rejectingHost.initMultiplayer({
+                backendOrigin: 'http://mock.example',
+                multiplayerApiClient: apiClient,
+            });
+            await controller.joinOrCreateRoom(currentRoom);
+            await rejectingHost.joinOrCreateRoom(rejectedRoom);
+
+            const currentConnection = controller.currentConnection;
+            assert.isDefined(currentConnection);
+            const currentWebrtcConnection =
+                currentConnection satisfies MultiplayerRoomConnection<TestMessage> as WebrtcMultiplayerController<TestMessage>;
+
+            await assert.throws(() => controller.joinOrCreateRoom(rejectedRoom), {
+                matchMessage: 'Room connection rejected',
+            });
+
+            assert.deepEquals(
+                {
+                    currentConnectionDestroyed: currentWebrtcConnection.isDestroyed,
+                    isConnected: controller.isConnected(),
+                    roomConnectionState: controller.roomConnectionState,
+                    roomId: controller.roomId,
+                    sameConnection: controller.currentConnection === currentConnection,
+                },
+                {
+                    currentConnectionDestroyed: false,
+                    isConnected: true,
+                    roomConnectionState: MultiplayerConnectionState.Connected,
+                    roomId: currentRoom.roomId,
+                    sameConnection: true,
+                },
+            );
+
+            controller.destroy();
+            rejectingHost.destroy();
+        });
+    });
+
     it('joins an existing room as a member', async () => {
         await withMockPeerConnection(async () => {
             const room = createNewRoom({

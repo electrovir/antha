@@ -48,7 +48,7 @@ export enum P2pLockStepMessageType {
  */
 export type FrameEventDetail<MultiplayerPacket extends JsonCompatibleValue> = {
     packet: MultiplayerPacket;
-    clientId: ClientId;
+    sourceClientId: ClientId;
 };
 
 /**
@@ -63,6 +63,8 @@ export type P2pLockStepMessage<MultiplayerPacket extends JsonCompatibleValue> =
           sourceClientId: ClientId;
           actions: MultiplayerPacket[];
       }
+
+    /** Sent from the host to clients when a frame is ready. */
     | {
           type: P2pLockStepMessageType.Frame;
           actions: FrameEventDetail<MultiplayerPacket>[];
@@ -366,9 +368,9 @@ export class P2pLockStepMultiplayerController<
         this.debugLog(`act called with ${actionArray.length} actions`);
         this.frameActions = [
             ...this.frameActions,
-            ...actionArray.map((packet) => {
+            ...actionArray.map((packet): FrameEventDetail<MultiplayerPacket> => {
                 return {
-                    clientId: this.clientId,
+                    sourceClientId: this.clientId,
                     packet,
                 };
             }),
@@ -395,18 +397,43 @@ export class P2pLockStepMultiplayerController<
         super.destroy();
     }
 
-    /**
-     * Join or create a room.
-     *
-     * @throws `Error` if this controller is already connected to a room.
-     */
+    /** Join or create a room. */
     public async joinOrCreateRoom(room: Readonly<RoomInput>) {
-        if (this.currentConnection) {
+        if (this.singleplayer) {
             throw new Error('Cannot join room: connection already established.');
         }
 
+        const previousRoomConnection = this.roomConnection;
+
         this.debugLog(`joining or creating room '${room.roomName}' (${room.roomId})`);
 
+        const roomConnection = await this.joinRoom({
+            previousRoomConnection,
+            room,
+        });
+
+        if (previousRoomConnection) {
+            globalThis.clearTimeout(this.timeoutId);
+            this.clientsResponded = {};
+            this.frameActions = [];
+            this.frameTickReady = true;
+        }
+        this.attachMultiplayerRoomConnection(roomConnection);
+        this.debugLog(
+            `attached p2p-lock-step connection; client=${this.getClientId() || 'unknown'} host=${this.isHost()} connected=${this.isConnected()}`,
+        );
+    }
+
+    /** Join through the core room controller while preserving the wrapper connection on failure. */
+    protected async joinRoom({
+        previousRoomConnection,
+        room,
+    }: Readonly<{
+        previousRoomConnection:
+            | MultiplayerRoomConnection<P2pLockStepMessage<MultiplayerPacket>>
+            | undefined;
+        room: Readonly<RoomInput>;
+    }>) {
         try {
             await this.roomController.joinOrCreateRoom(room);
             this.debugLog(
@@ -418,13 +445,10 @@ export class P2pLockStepMultiplayerController<
                 );
             }
 
-            this.attachMultiplayerRoomConnection(this.roomController.currentConnection);
-            this.debugLog(
-                `attached p2p-lock-step connection; client=${this.getClientId() || 'unknown'} host=${this.isHost()} connected=${this.isConnected()}`,
-            );
+            return this.roomController.currentConnection;
         } catch (error: unknown) {
             this.debugLog(`join room failed: ${String(error)}`);
-            this.roomConnection = undefined;
+            this.roomConnection = previousRoomConnection;
             throw error;
         }
     }
@@ -524,9 +548,9 @@ export class P2pLockStepMultiplayerController<
             };
             this.frameActions = [
                 ...this.frameActions,
-                ...message.actions.map((packet) => {
+                ...message.actions.map((packet): FrameEventDetail<MultiplayerPacket> => {
                     return {
-                        clientId: sourceClientId,
+                        sourceClientId,
                         packet,
                     };
                 }),
