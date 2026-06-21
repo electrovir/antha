@@ -27,12 +27,12 @@
         "test:update": "npm test update"
     },
     "dependencies": {
-        "@antha/asset": "^0.0.6",
-        "@antha/engine": "^0.0.6",
-        "@antha/entity-2d": "^0.0.6",
-        "@antha/multiplayer-core": "^0.0.6",
-        "@antha/multiplayer-server": "^0.0.6",
-        "@antha/util": "^0.0.6",
+        "@antha/asset": "^0.0.7",
+        "@antha/engine": "^0.0.7",
+        "@antha/entity-2d": "^0.0.7",
+        "@antha/multiplayer-core": "^0.0.7",
+        "@antha/multiplayer-server": "^0.0.7",
+        "@antha/util": "^0.0.7",
         "@augment-vir/assert": "^31.73.1",
         "@augment-vir/common": "^31.73.1",
         "@faker-js/faker": "^10.4.0",

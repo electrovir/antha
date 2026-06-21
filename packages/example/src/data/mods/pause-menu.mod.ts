@@ -224,10 +224,10 @@ export const examplePauseMenuMod = defineAnthaMod<ExamplePauseMenuModState>({
     execute({state}) {
         if (!state.isPaused) {
             Object.values(state.activeBindings || {}).forEach((bindings) => {
-                const exitBinding = bindings[MenuNavBinding.MenuExit];
+                const openPauseMenuBinding = bindings[MenuNavBinding.OpenPauseMenu];
 
-                if (exitBinding && !exitBinding.actCount) {
-                    exitBinding.actCount = 1;
+                if (openPauseMenuBinding && !openPauseMenuBinding.actCount) {
+                    openPauseMenuBinding.actCount = 1;
                     state.isPaused = true;
                 }
             });

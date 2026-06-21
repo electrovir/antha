@@ -45,6 +45,8 @@ export enum MenuNavBinding {
     MenuSectionNext = 'menu-section-next',
     /** Navigate to the previous section in a menu. */
     MenuSectionPrevious = 'menu-section-previous',
+
+    OpenPauseMenu = 'open-pause-menu',
 }
 
 /**
@@ -207,6 +209,18 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
             inputName: KnownInput.L1,
+        },
+    ],
+    [MenuNavBinding.OpenPauseMenu]: [
+        {
+            deviceKey: 'keyboard',
+            direction: InputDirection.Positive,
+            inputName: 'button-Escape',
+        },
+        {
+            deviceKey: AnyGamepad,
+            direction: InputDirection.Positive,
+            inputName: KnownInput.Start,
         },
     ],
 };
