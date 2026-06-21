@@ -8,7 +8,11 @@ import {
 } from '@augment-vir/common';
 import {type FindPortOptions} from '@rest-vir/api';
 import {type AnyDuration, convertDuration} from 'date-vir';
-import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
+import {
+    defineTypedCustomEvent,
+    ListenTarget,
+    type RemoveListenerCallback,
+} from 'typed-event-target';
 import {type ClientId, type RoomId} from '../multiplayer-id.js';
 import {
     type MultiplayerConnectionUpdate,
@@ -358,13 +362,24 @@ export class MultiplayerRoomController<
      *
      * If a callback is provided, it is called each time the room list is updated.
      */
-    public startRoomUpdates(callback?: ControllerRoomListListener | undefined) {
+    public startRoomUpdates(callback: ControllerRoomListListener): RemoveListenerCallback;
+    public startRoomUpdates(callback?: undefined): undefined;
+    public startRoomUpdates(
+        callback?: ControllerRoomListListener | undefined,
+    ): RemoveListenerCallback | undefined;
+    public startRoomUpdates(
+        callback?: ControllerRoomListListener | undefined,
+    ): RemoveListenerCallback | undefined {
         this.isListeningToRoomUpdates = true;
         this.startRoomInterval();
 
-        return this.listen(ControllerRoomListEvent, async (event) => {
-            await callback?.(event.detail);
-        });
+        if (callback) {
+            return this.listen(ControllerRoomListEvent, async (event) => {
+                await callback(event.detail);
+            });
+        } else {
+            return undefined;
+        }
     }
 
     /** Turn off room list updates and remove callbacks added via `startRoomUpdates`. */

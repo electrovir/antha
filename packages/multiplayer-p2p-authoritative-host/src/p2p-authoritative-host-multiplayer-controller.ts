@@ -20,7 +20,12 @@ import {
     type MaybePromise,
     type PartialWithUndefined,
 } from '@augment-vir/common';
-import {defineTypedCustomEvent, ListenTarget, type TypedCustomEventInit} from 'typed-event-target';
+import {
+    defineTypedCustomEvent,
+    ListenTarget,
+    type RemoveListenerCallback,
+    type TypedCustomEventInit,
+} from 'typed-event-target';
 
 /**
  * Message type for {@link P2pAuthoritativeHostMessage}.
@@ -236,7 +241,14 @@ export class P2pAuthoritativeHostMultiplayerController<
      *
      * If a callback is provided, it is called each time the room list is updated.
      */
-    public startRoomUpdates(callback?: ControllerRoomListListener | undefined) {
+    public startRoomUpdates(callback: ControllerRoomListListener): RemoveListenerCallback;
+    public startRoomUpdates(callback?: undefined): undefined;
+    public startRoomUpdates(
+        callback?: ControllerRoomListListener | undefined,
+    ): RemoveListenerCallback | undefined;
+    public startRoomUpdates(
+        callback?: ControllerRoomListListener | undefined,
+    ): RemoveListenerCallback | undefined {
         return this.roomController.startRoomUpdates(callback);
     }
 
