@@ -9,8 +9,8 @@ import {
     createAnthaReadRawInputMod,
     defaultMenuNavBindings,
     InputDirection,
+    KnownInput,
     type PlayersBindingAssignments,
-    PredefinedGamepadBrand,
 } from '@antha/input';
 import {type GameInputAction, PlayerAction} from './game-action.js';
 import {exampleGameEntityMod} from './mods/example-entity.mod.js';
@@ -26,7 +26,7 @@ const defaultBindings: Readonly<PlayersBindingAssignments<GameInputAction>> = {
             {
                 deviceKey: AnyGamepad,
                 direction: InputDirection.Positive,
-                inputName: 'd-pad-left',
+                inputName: KnownInput.DPadLeft,
             },
             {
                 deviceKey: 'keyboard',
@@ -48,7 +48,7 @@ const defaultBindings: Readonly<PlayersBindingAssignments<GameInputAction>> = {
             {
                 deviceKey: AnyGamepad,
                 direction: InputDirection.Positive,
-                inputName: 'd-pad-right',
+                inputName: KnownInput.DPadRight,
             },
             {
                 deviceKey: 'keyboard',
@@ -70,7 +70,7 @@ const defaultBindings: Readonly<PlayersBindingAssignments<GameInputAction>> = {
             {
                 deviceKey: AnyGamepad,
                 direction: InputDirection.Positive,
-                inputName: 'd-pad-up',
+                inputName: KnownInput.DPadUp,
             },
             {
                 deviceKey: 'keyboard',
@@ -92,7 +92,7 @@ const defaultBindings: Readonly<PlayersBindingAssignments<GameInputAction>> = {
             {
                 deviceKey: AnyGamepad,
                 direction: InputDirection.Positive,
-                inputName: 'd-pad-down',
+                inputName: KnownInput.DPadDown,
             },
             {
                 deviceKey: 'keyboard',
@@ -119,13 +119,7 @@ const defaultBindings: Readonly<PlayersBindingAssignments<GameInputAction>> = {
             {
                 deviceKey: AnyGamepad,
                 direction: InputDirection.Positive,
-                gamepadBrand: PredefinedGamepadBrand.Sony,
-                inputName: 'X',
-            },
-            {
-                deviceKey: AnyGamepad,
-                direction: InputDirection.Positive,
-                inputName: 'A',
+                inputName: KnownInput.FaceAccept,
             },
         ],
 

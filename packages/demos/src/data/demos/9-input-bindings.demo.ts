@@ -6,8 +6,8 @@ import {
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
     InputDirection,
+    KnownInput,
     type PlayersBindingAssignments,
-    PredefinedGamepadBrand,
 } from '@antha/input';
 import {createUtcFullDate} from 'date-vir';
 import {type AnthaDemo} from '../demo.js';
@@ -46,20 +46,14 @@ const defaultBindings: Readonly<PlayersBindingAssignments> = {
             {
                 deviceKey: AnyGamepad,
                 direction: InputDirection.Positive,
-                gamepadBrand: PredefinedGamepadBrand.Sony,
-                inputName: 'X',
-            },
-            {
-                deviceKey: AnyGamepad,
-                direction: InputDirection.Positive,
-                inputName: 'A',
+                inputName: KnownInput.FaceAccept,
             },
         ],
         left: [
             {
                 deviceKey: AnyGamepad,
                 direction: InputDirection.Positive,
-                inputName: 'd-pad-left',
+                inputName: KnownInput.DPadLeft,
             },
             {
                 deviceKey: 'keyboard',
@@ -81,7 +75,7 @@ const defaultBindings: Readonly<PlayersBindingAssignments> = {
             {
                 deviceKey: AnyGamepad,
                 direction: InputDirection.Positive,
-                inputName: 'd-pad-right',
+                inputName: KnownInput.DPadRight,
             },
             {
                 deviceKey: 'keyboard',
