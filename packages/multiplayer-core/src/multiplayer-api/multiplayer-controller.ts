@@ -463,6 +463,7 @@ export class MultiplayerRoomController<
 
         if (connectionResult.connected) {
             makeWritable(this).roomId = room.roomId;
+            this.stopRoomUpdates();
             this.updateConnectionState({
                 room: MultiplayerConnectionState.Connected,
             });

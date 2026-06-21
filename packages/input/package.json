@@ -1,6 +1,6 @@
 {
     "name": "@antha/input",
-    "version": "0.0.2",
+    "version": "0.0.3",
     "description": "An Antha mod for handling inputs.",
     "keywords": [
         "vir",
@@ -52,7 +52,7 @@
         "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.0.2",
+        "@antha/engine": "^0.0.3",
         "element-vir": ">=26"
     },
     "engines": {

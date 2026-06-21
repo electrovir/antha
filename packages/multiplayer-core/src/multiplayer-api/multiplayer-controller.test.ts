@@ -478,85 +478,90 @@ describe(MultiplayerRoomController.name, () => {
     });
 
     it('joins rooms and relays connection events', async () => {
-        await withMockPeerConnection(async () => {
-            const room = createNewRoom({
-                roomName: 'Joined Room',
-            });
-            const clientEvents: unknown[] = [];
-            const messages: unknown[] = [];
-            const controller = new MultiplayerRoomController<TestMessage>({
-                gameId: 'some id',
-            });
-
-            controller.listen(ControllerClientEvent, ({detail}) => {
-                clientEvents.push(detail);
-            });
-            controller.listen(ControllerMessageEvent, ({sourceClientId, detail}) => {
-                messages.push({
-                    sourceClientId,
-                    detail,
+        await withCapturedInterval(async ({getActiveIntervalCount}) => {
+            await withMockPeerConnection(async () => {
+                const room = createNewRoom({
+                    roomName: 'Joined Room',
                 });
-            });
-            await controller.initMultiplayer({
-                backendOrigin: 'http://mock.example',
-                multiplayerApiClient: createMockRoomHandlerServerApiClient(),
-            });
-            await controller.joinOrCreateRoom(room);
+                const clientEvents: unknown[] = [];
+                const messages: unknown[] = [];
+                const controller = new MultiplayerRoomController<TestMessage>({
+                    gameId: 'some id',
+                });
 
-            const actualConnection = controller.currentConnection satisfies
-                | MultiplayerRoomConnection<TestMessage>
-                | undefined;
-            assert.isDefined(actualConnection);
-            const sourceClientId = createMultiplayerId.client();
+                controller.listen(ControllerClientEvent, ({detail}) => {
+                    clientEvents.push(detail);
+                });
+                controller.listen(ControllerMessageEvent, ({sourceClientId, detail}) => {
+                    messages.push({
+                        sourceClientId,
+                        detail,
+                    });
+                });
+                await controller.initMultiplayer({
+                    backendOrigin: 'http://mock.example',
+                    multiplayerApiClient: createMockRoomHandlerServerApiClient(),
+                });
+                controller.startRoomUpdates();
+                assert.strictEquals(getActiveIntervalCount(), 1);
+                await controller.joinOrCreateRoom(room);
 
-            (
-                actualConnection satisfies MultiplayerRoomConnection<TestMessage> as WebrtcMultiplayerController<TestMessage>
-            ).dispatch(
-                new WebrtcMultiplayerMessageEvent(sourceClientId, {
-                    value: 'from peer',
-                }),
-            );
+                const actualConnection = controller.currentConnection satisfies
+                    | MultiplayerRoomConnection<TestMessage>
+                    | undefined;
+                assert.isDefined(actualConnection);
+                const sourceClientId = createMultiplayerId.client();
 
-            assert.deepEquals(
-                {
-                    isConnected: controller.isConnected(),
-                    isHost: controller.isHost(),
-                    knownErrors: controller.knownErrors,
-                    roomId: controller.roomId,
-                    staticEvents: Object.keys(MultiplayerRoomController.events).toSorted(),
-                    staticKnownErrors: MultiplayerRoomController.knownErrors,
-                    clientEvents,
-                    messages,
-                },
-                {
-                    isConnected: true,
-                    isHost: true,
-                    knownErrors: MultiplayerRoomController.knownErrors,
-                    roomId: room.roomId,
-                    staticEvents: [
-                        'ControllerClientEvent',
-                        'ControllerConnectionEvent',
-                        'ControllerMessageEvent',
-                        'ControllerRoomListEvent',
-                    ],
-                    staticKnownErrors: controller.knownErrors,
-                    clientEvents: [
-                        {
-                            newHost: controller.getClientId(),
-                        },
-                    ],
-                    messages: [
-                        {
-                            sourceClientId,
-                            detail: {
-                                value: 'from peer',
+                (
+                    actualConnection satisfies MultiplayerRoomConnection<TestMessage> as WebrtcMultiplayerController<TestMessage>
+                ).dispatch(
+                    new WebrtcMultiplayerMessageEvent(sourceClientId, {
+                        value: 'from peer',
+                    }),
+                );
+
+                assert.deepEquals(
+                    {
+                        isConnected: controller.isConnected(),
+                        isHost: controller.isHost(),
+                        knownErrors: controller.knownErrors,
+                        roomId: controller.roomId,
+                        staticEvents: Object.keys(MultiplayerRoomController.events).toSorted(),
+                        staticKnownErrors: MultiplayerRoomController.knownErrors,
+                        clientEvents,
+                        messages,
+                    },
+                    {
+                        isConnected: true,
+                        isHost: true,
+                        knownErrors: MultiplayerRoomController.knownErrors,
+                        roomId: room.roomId,
+                        staticEvents: [
+                            'ControllerClientEvent',
+                            'ControllerConnectionEvent',
+                            'ControllerMessageEvent',
+                            'ControllerRoomListEvent',
+                        ],
+                        staticKnownErrors: controller.knownErrors,
+                        clientEvents: [
+                            {
+                                newHost: controller.getClientId(),
                             },
-                        },
-                    ],
-                },
-            );
+                        ],
+                        messages: [
+                            {
+                                sourceClientId,
+                                detail: {
+                                    value: 'from peer',
+                                },
+                            },
+                        ],
+                    },
+                );
 
-            controller.destroy();
+                assert.strictEquals(getActiveIntervalCount(), 0);
+                controller.destroy();
+            });
         });
     });
 
