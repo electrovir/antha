@@ -1,6 +1,6 @@
 {
     "name": "antha",
-    "version": "0.0.7",
+    "version": "0.0.8",
     "description": "A simple-to-use all-in-one Antha engine variant with default mods.",
     "keywords": [
         "vir",
@@ -50,13 +50,13 @@
         "web-test-runner-plugin-pixi": "^0.0.2"
     },
     "peerDependencies": {
-        "@antha/asset": "^0.0.7",
-        "@antha/audio": "^0.0.7",
-        "@antha/engine": "^0.0.7",
-        "@antha/entity-2d": "^0.0.7",
-        "@antha/fps": "^0.0.7",
-        "@antha/graphics-2d": "^0.0.7",
-        "@antha/input": "^0.0.7"
+        "@antha/asset": "^0.0.8",
+        "@antha/audio": "^0.0.8",
+        "@antha/engine": "^0.0.8",
+        "@antha/entity-2d": "^0.0.8",
+        "@antha/fps": "^0.0.8",
+        "@antha/graphics-2d": "^0.0.8",
+        "@antha/input": "^0.0.8"
     },
     "engines": {
         "node": ">=22"

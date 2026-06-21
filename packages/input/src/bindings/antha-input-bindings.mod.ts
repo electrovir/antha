@@ -207,7 +207,7 @@ function readPlayerBindings<BindingNames extends string>({
 
             if (matchingInputs.length) {
                 const value = matchingInputs.reduce((accum, matchingInput) => {
-                    return accum + matchingInput.inputValue;
+                    return accum + Math.abs(matchingInput.inputValue);
                 }, 0);
 
                 const previousActiveBinding = (

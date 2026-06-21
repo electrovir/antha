@@ -268,6 +268,76 @@ describe(createAnthaInputBindingsMod.name, () => {
         );
     });
 
+    it('normalizes negative input values before combining matching bindings', async () => {
+        const mod = createAnthaInputBindingsMod<'moveLeft'>();
+
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'moveLeft'>>({
+            mods: [
+                mod,
+            ],
+        });
+
+        engine.state.rawInputs = {
+            [GamepadInputDeviceKey.Gamepad1]: {
+                'd-pad-left': {
+                    inputName: 'd-pad-left',
+                    inputValue: 1,
+                    direction: InputDirection.Positive,
+                    duration: {
+                        milliseconds: 0,
+                    },
+                    deviceKey: GamepadInputDeviceKey.Gamepad1,
+                    deviceName: 'Gamepad',
+                    deviceType: InputDeviceType.Gamepad,
+                    mapped: {
+                        deviceName: 'Gamepad',
+                        inputName: 'd-pad-left',
+                        gamepadBrand: undefined,
+                    },
+                },
+                'left-stick-x': {
+                    inputName: 'left-stick-x',
+                    inputValue: -1,
+                    direction: InputDirection.Negative,
+                    duration: {
+                        milliseconds: 0,
+                    },
+                    deviceKey: GamepadInputDeviceKey.Gamepad1,
+                    deviceName: 'Gamepad',
+                    deviceType: InputDeviceType.Gamepad,
+                    mapped: {
+                        deviceName: 'Gamepad',
+                        inputName: 'left-stick-x',
+                        gamepadBrand: undefined,
+                    },
+                },
+            },
+        };
+        engine.state.bindingAssignments = {
+            [GamepadInputDeviceKey.Gamepad2]: {
+                moveLeft: [
+                    {
+                        deviceKey: AnyGamepad,
+                        inputName: 'd-pad-left',
+                        direction: InputDirection.Positive,
+                    },
+                    {
+                        deviceKey: AnyGamepad,
+                        inputName: 'left-stick-x',
+                        direction: InputDirection.Negative,
+                    },
+                ],
+            },
+        };
+
+        await engine.runSingleTick();
+
+        assert.strictEquals(
+            engine.state.activeBindings?.[GamepadInputDeviceKey.Gamepad2]?.moveLeft?.value,
+            2,
+        );
+    });
+
     it('supports gamepadKeyMap remapping', async () => {
         const mod = createAnthaInputBindingsMod<'fire'>();
 
