@@ -341,7 +341,6 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 clientId: controller.getClientId(),
                 connectedClientIds: controller.getConnectedClientIds(),
                 currentConnection: controller.currentConnection,
-                enableRoomUpdates: controller.enableRoomUpdates,
                 fps: controller.getFps(),
                 isConnected: controller.isConnected(),
                 isHost: controller.isHost(),
@@ -358,7 +357,6 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 clientId: undefined,
                 connectedClientIds: [],
                 currentConnection: undefined,
-                enableRoomUpdates: true,
                 fps: 0,
                 isConnected: false,
                 isHost: false,
@@ -373,9 +371,9 @@ describe(P2pLockStepMultiplayerController.name, () => {
             },
         );
 
-        controller.enableRoomUpdates = false;
+        controller.startRoomUpdates();
+        controller.stopRoomUpdates();
 
-        assert.isFalse(controller.enableRoomUpdates);
         assert.throws(() => controller.act('before-connect'));
         assert.throws(() => controller.runFrame());
 

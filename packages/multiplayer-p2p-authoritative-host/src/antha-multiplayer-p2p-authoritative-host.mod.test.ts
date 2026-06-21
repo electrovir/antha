@@ -4,6 +4,7 @@ import {
     ControllerRoomListEvent,
     createNewRoom,
     MultiplayerConnectionState,
+    type MultiplayerClientRooms,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
@@ -58,10 +59,15 @@ describe(createAnthaMultiplayerP2pAuthoritativeHostMod.name, () => {
         const room = createNewRoom({
             roomName: 'Room Name',
         });
+        let availableRooms: Readonly<MultiplayerClientRooms> = {};
 
         assert.strictEquals(mod.modName, 'antha-multiplayer-p2p-authoritative-host');
         const initialCount: number = multiplayerState.currentState.count;
         assert.strictEquals(initialCount, 0);
+
+        multiplayerState.multiplayerController.listen(ControllerRoomListEvent, ({detail}) => {
+            availableRooms = detail;
+        });
 
         multiplayerState.multiplayerController.startSingleplayer();
         multiplayerState.multiplayerController.act(2);
@@ -83,7 +89,7 @@ describe(createAnthaMultiplayerP2pAuthoritativeHostMod.name, () => {
 
         assert.deepEquals(
             {
-                availableRooms: multiplayerState.availableRooms,
+                availableRooms,
                 connectionState: multiplayerState.connectionState,
                 currentState: multiplayerState.currentState,
             },

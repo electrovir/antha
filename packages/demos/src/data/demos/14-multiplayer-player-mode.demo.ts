@@ -2,7 +2,6 @@ import {AnthaEngine, AnthaUi, defineAnthaMod, type AnthaMod} from '@antha/engine
 import {
     ControllerClientEvent,
     ControllerConnectionEvent,
-    ControllerRoomListEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
     type ApiAndRoomConnectionState,
@@ -149,12 +148,14 @@ const DemoModeRoomLobby = defineElement<{
                     updateConnectedClientCount();
                 },
             ),
-            inputs.gameState.multiplayerP2pLockStep.multiplayerController.listen(
-                ControllerRoomListEvent,
-                (event) => {
-                    if (check.notDeepEquals(event.detail, state.availableRooms)) {
+            () => {
+                inputs.gameState.multiplayerP2pLockStep.multiplayerController.stopRoomUpdates();
+            },
+            inputs.gameState.multiplayerP2pLockStep.multiplayerController.startRoomUpdates(
+                (rooms) => {
+                    if (check.notDeepEquals(rooms, state.availableRooms)) {
                         updateState({
-                            availableRooms: event.detail,
+                            availableRooms: rooms,
                         });
                     }
                 },
@@ -246,9 +247,7 @@ const DemoModeRoomLobby = defineElement<{
                     : nothing}
             `;
         } else {
-            const roomTemplates = getObjectTypedValues(
-                inputs.gameState.multiplayerP2pLockStep.availableRooms,
-            ).map((room) => {
+            const roomTemplates = getObjectTypedValues(state.availableRooms).map((room) => {
                 return html`
                     <tr>
                         <th>${room.roomName}</th>

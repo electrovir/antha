@@ -2,7 +2,6 @@ import {AnthaEngine, AnthaUi, defineAnthaMod, type AnthaMod} from '@antha/engine
 import {
     ControllerClientEvent,
     ControllerConnectionEvent,
-    ControllerRoomListEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
     type ApiAndRoomConnectionState,
@@ -207,16 +206,16 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
                     updateConnectedClientCount();
                 },
             ),
-            inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-                ControllerRoomListEvent,
-                (event) => {
-                    if (check.notDeepEquals(event.detail, state.availableRooms)) {
-                        updateState({
-                            availableRooms: event.detail,
-                        });
-                    }
-                },
-            ),
+            () => {
+                inputs.authoritativeHostMultiplayer.multiplayerController.stopRoomUpdates();
+            },
+            inputs.authoritativeHostMultiplayer.multiplayerController.startRoomUpdates((rooms) => {
+                if (check.notDeepEquals(rooms, state.availableRooms)) {
+                    updateState({
+                        availableRooms: rooms,
+                    });
+                }
+            }),
         ];
 
         updateState({
@@ -302,9 +301,7 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
                     : nothing}
             `;
         } else {
-            const roomTemplates = getObjectTypedValues(
-                inputs.authoritativeHostMultiplayer.availableRooms,
-            ).map((room) => {
+            const roomTemplates = getObjectTypedValues(state.availableRooms).map((room) => {
                 return html`
                     <tr>
                         <th>${room.roomName}</th>

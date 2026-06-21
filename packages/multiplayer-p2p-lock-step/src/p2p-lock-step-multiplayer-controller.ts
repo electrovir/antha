@@ -5,6 +5,7 @@ import {
     ControllerConnectionEvent,
     ControllerMessageEvent,
     ControllerRoomListEvent,
+    type ControllerRoomListListener,
     createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
@@ -215,16 +216,17 @@ export class P2pLockStepMultiplayerController<
     }
 
     /**
-     * Set to `false` to disable room updates, even when still not connected to a room in
-     * multiplayer mode.
+     * Listen for room list updates, including while connected to a room.
+     *
+     * If a callback is provided, it is called each time the room list is updated.
      */
-    public get enableRoomUpdates(): boolean {
-        return this.roomController.enableRoomUpdates;
+    public startRoomUpdates(callback?: ControllerRoomListListener | undefined) {
+        return this.roomController.startRoomUpdates(callback);
     }
 
-    /** Update whether room list polling is enabled while not connected to a room. */
-    public set enableRoomUpdates(value: boolean) {
-        this.roomController.enableRoomUpdates = value;
+    /** Turn off room list updates and remove callbacks added via `startRoomUpdates`. */
+    public stopRoomUpdates() {
+        this.roomController.stopRoomUpdates();
     }
 
     /** Currently joined room id. If a room has not been joined yet, this will be empty. */

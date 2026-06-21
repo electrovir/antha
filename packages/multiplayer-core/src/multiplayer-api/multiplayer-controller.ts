@@ -175,14 +175,24 @@ export class ControllerMessageEvent<
 }
 
 /**
- * This is called whenever the room list updates, even if there were no changes to the room list.
- * Note that room list updates are paused while the controller is connected to an actual room.
+ * This is called whenever the room list updates, even if there were no changes to the room list. By
+ * default, room list updates are off. Use `MultiplayerRoomController.startRoomUpdates` to start
+ * room list updates.
  *
  * @category Events
  */
 export class ControllerRoomListEvent extends defineTypedCustomEvent<
     Readonly<MultiplayerClientRooms>
 >()('controller-room-list') {}
+
+/**
+ * Callback fired whenever the room list is fetched from the multiplayer API.
+ *
+ * @category Internal
+ */
+export type ControllerRoomListListener = (
+    rooms: Readonly<MultiplayerClientRooms>,
+) => MaybePromise<void>;
 
 /**
  * This is fired in the following situations:
@@ -241,11 +251,7 @@ export class MultiplayerRoomController<
         RoomRejectionError,
     };
     public readonly knownErrors = MultiplayerRoomController.knownErrors;
-    /**
-     * Set to `false` to disable room updates, even when still not connected to a room in
-     * multiplayer mode.
-     */
-    public enableRoomUpdates = true;
+    protected isListeningToRoomUpdates = false;
 
     /** Currently joined room id. If a room has not been joined yet, this will be empty. */
     public readonly roomId: RoomId | undefined;
@@ -268,11 +274,7 @@ export class MultiplayerRoomController<
      * playing in single player.
      */
     public multiplayerApiClient: Readonly<MultiplayerApiClient> | undefined;
-    /**
-     * Used to keep track of the room update interval. This will be set when the controller is
-     * constructed in multiplayer mode or when a room is left. This will be cleared when a room is
-     * joined or if the controller is destroyed.
-     */
+    /** Used to keep track of the room update interval. */
     protected roomUpdateIntervalId: ReturnType<typeof globalThis.setInterval> | undefined;
     /** This is populated when `.initMultiplayer` is called. */
     protected multiplayerParams: Readonly<MultiplayerInitParams> | undefined;
@@ -313,8 +315,7 @@ export class MultiplayerRoomController<
 
     /**
      * Start multiplayer mode. This initializes
-     * {@link MultiplayerRoomController.multiplayerApiClient} and
-     * {@link MultiplayerRoomController.roomUpdateIntervalId}.
+     * {@link MultiplayerRoomController.multiplayerApiClient}.
      */
     public async initMultiplayer(params: Readonly<MultiplayerInitParams>) {
         if (this.currentConnection) {
@@ -350,8 +351,26 @@ export class MultiplayerRoomController<
             });
             throw error;
         }
+    }
 
+    /**
+     * Listen for room list updates, including while connected to a room.
+     *
+     * If a callback is provided, it is called each time the room list is updated.
+     */
+    public startRoomUpdates(callback?: ControllerRoomListListener | undefined) {
+        this.isListeningToRoomUpdates = true;
         this.startRoomInterval();
+
+        return this.listen(ControllerRoomListEvent, async (event) => {
+            await callback?.(event.detail);
+        });
+    }
+
+    /** Turn off room list updates and remove callbacks added via `startRoomUpdates`. */
+    public stopRoomUpdates() {
+        this.isListeningToRoomUpdates = false;
+        this.stopRoomInterval();
     }
 
     /** Send a generic message to the current room. */
@@ -381,7 +400,7 @@ export class MultiplayerRoomController<
             api: MultiplayerConnectionState.Disconnected,
         });
         this.currentConnection?.destroy();
-        globalThis.clearInterval(this.roomUpdateIntervalId);
+        this.stopRoomUpdates();
     }
 
     /**
@@ -444,7 +463,6 @@ export class MultiplayerRoomController<
 
         if (connectionResult.connected) {
             makeWritable(this).roomId = room.roomId;
-            globalThis.clearInterval(this.roomUpdateIntervalId);
             this.updateConnectionState({
                 room: MultiplayerConnectionState.Connected,
             });
@@ -470,7 +488,6 @@ export class MultiplayerRoomController<
         makeWritable(this).roomId = undefined;
         this.currentConnection.destroy();
         this.currentConnection = undefined;
-        this.startRoomInterval();
         this.updateConnectionState({
             room: MultiplayerConnectionState.Disconnected,
         });
@@ -494,9 +511,17 @@ export class MultiplayerRoomController<
         );
     }
 
+    /** Stop polling the multiplayer server for room updates. */
+    protected stopRoomInterval() {
+        globalThis.clearInterval(this.roomUpdateIntervalId);
+        this.roomUpdateIntervalId = undefined;
+    }
+
     /** Starts polling the multiplayer server for room updates and fires listeners. */
     protected startRoomInterval() {
-        if (this.multiplayerApiClient) {
+        this.stopRoomInterval();
+
+        if (this.isListeningToRoomUpdates && this.multiplayerApiClient) {
             const roomUpdateMs: number = this.multiplayerParams?.roomUpdateInterval
                 ? convertDuration(this.multiplayerParams.roomUpdateInterval, {
                       milliseconds: true,
@@ -504,11 +529,7 @@ export class MultiplayerRoomController<
                 : 10_000;
 
             this.roomUpdateIntervalId = globalThis.setInterval(async () => {
-                if (
-                    this.currentConnection ||
-                    !this.multiplayerApiClient ||
-                    !this.enableRoomUpdates
-                ) {
+                if (!this.isListeningToRoomUpdates || !this.multiplayerApiClient) {
                     return;
                 }
                 const output = await this.multiplayerApiClient.fetch(multiplayerRoomsEndpoint).GET({

@@ -4,6 +4,7 @@ import {
     ControllerRoomListEvent,
     createNewRoom,
     MultiplayerConnectionState,
+    type MultiplayerClientRooms,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
@@ -36,8 +37,13 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         await engine.runSingleTick();
 
         const multiplayerState = assertWrap.isDefined(engine.state.multiplayerP2pLockStep);
+        let availableRooms: Readonly<MultiplayerClientRooms> = {};
 
         assert.strictEquals(mod.modName, 'antha-multiplayer-p2p-lock-step');
+
+        multiplayerState.multiplayerController.listen(ControllerRoomListEvent, ({detail}) => {
+            availableRooms = detail;
+        });
 
         multiplayerState.multiplayerController.startSingleplayer();
         multiplayerState.multiplayerController.dispatch(
@@ -55,7 +61,7 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
 
         assert.deepEquals(
             {
-                availableRooms: multiplayerState.availableRooms,
+                availableRooms,
                 connectionState: multiplayerState.connectionState,
             },
             {

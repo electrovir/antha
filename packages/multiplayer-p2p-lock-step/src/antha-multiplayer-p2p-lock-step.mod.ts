@@ -2,9 +2,7 @@ import {defineAnthaMod} from '@antha/engine';
 import {
     type ApiAndRoomConnectionState,
     ControllerConnectionEvent,
-    ControllerRoomListEvent,
     emptyApiAndRoomConnectionState,
-    type MultiplayerClientRooms,
 } from '@antha/multiplayer-core';
 import {
     type JsonCompatibleValue,
@@ -32,8 +30,6 @@ export type AnthaMultiplayerP2pLockStepState<MultiplayerPacket extends JsonCompa
             multiplayerController: P2pLockStepMultiplayerController<MultiplayerPacket>;
             /** Current backend API and room connection state. */
             connectionState: ApiAndRoomConnectionState;
-            /** Rooms currently available for joining. */
-            availableRooms: MultiplayerClientRooms;
         };
     };
 
@@ -83,7 +79,6 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         frameDuration: undefined,
                     }),
                     connectionState: emptyApiAndRoomConnectionState,
-                    availableRooms: {},
                 };
 
                 state.multiplayerP2pLockStep.multiplayerController.listen(
@@ -98,17 +93,6 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         );
 
                         state.multiplayerP2pLockStep.connectionState = newConnectionState;
-                    },
-                );
-
-                state.multiplayerP2pLockStep.multiplayerController.listen(
-                    ControllerRoomListEvent,
-                    ({detail: rooms}) => {
-                        if (!state.multiplayerP2pLockStep) {
-                            return;
-                        }
-
-                        state.multiplayerP2pLockStep.availableRooms = rooms;
                     },
                 );
             }

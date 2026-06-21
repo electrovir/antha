@@ -8,6 +8,7 @@ import {
     WebrtcMultiplayerMessageEvent,
     type WebrtcMultiplayerController,
 } from '../webrtc/webrtc-multiplayer-controller.js';
+import {type MultiplayerClientRooms} from './multiplayer-api.js';
 import {createMultiplayerApiClient, type MultiplayerApiClient} from './multiplayer-client.js';
 import {
     ControllerClientEvent,
@@ -138,16 +139,24 @@ async function withMockPeerConnection(callback: () => MaybePromise<void>) {
 }
 
 async function withCapturedInterval(
-    callback: (params: Readonly<{runIntervalCallback(): Promise<void>}>) => MaybePromise<void>,
+    callback: (
+        params: Readonly<{
+            getActiveIntervalCount(): number;
+            runClearedIntervalCallback(): Promise<void>;
+            runIntervalCallback(): Promise<void>;
+        }>,
+    ) => MaybePromise<void>,
 ) {
     const originalSetInterval = globalThis.setInterval;
     const originalClearInterval = globalThis.clearInterval;
-    const intervalCallbacks: (() => MaybePromise<void>)[] = [];
+    const intervalCallbacks: (undefined | (() => MaybePromise<void>))[] = [];
+    const allIntervalCallbacks: (() => MaybePromise<void>)[] = [];
 
     Object.defineProperty(globalThis, 'setInterval', {
         configurable: true,
         value(intervalCallback: () => MaybePromise<void>) {
             intervalCallbacks.push(intervalCallback);
+            allIntervalCallbacks.push(intervalCallback);
 
             return intervalCallbacks.length;
         },
@@ -155,14 +164,30 @@ async function withCapturedInterval(
     });
     Object.defineProperty(globalThis, 'clearInterval', {
         configurable: true,
-        value() {},
+        value(intervalId: number | undefined) {
+            if (intervalId != undefined) {
+                intervalCallbacks[intervalId - 1] = undefined;
+            }
+        },
         writable: true,
     });
 
     try {
         await callback({
+            getActiveIntervalCount() {
+                return intervalCallbacks.filter((intervalCallback) => {
+                    return !!intervalCallback;
+                }).length;
+            },
+            async runClearedIntervalCallback() {
+                const intervalCallback = allIntervalCallbacks.toReversed().at(0);
+                assert.isDefined(intervalCallback);
+                await intervalCallback();
+            },
             async runIntervalCallback() {
-                const intervalCallback = intervalCallbacks[0];
+                const intervalCallback = intervalCallbacks.toReversed().find((callback) => {
+                    return !!callback;
+                });
                 assert.isDefined(intervalCallback);
                 await intervalCallback();
             },
@@ -232,7 +257,7 @@ function createFakeConnection({
 
 describe(MultiplayerRoomController.name, () => {
     it('exposes connection state, room polling, sending, leaving, and destroying', async () => {
-        await withCapturedInterval(async ({runIntervalCallback}) => {
+        await withCapturedInterval(async ({getActiveIntervalCount, runIntervalCallback}) => {
             const room = createNewRoom({
                 roomName: 'Listed Room',
             });
@@ -287,9 +312,14 @@ describe(MultiplayerRoomController.name, () => {
                     milliseconds: 1,
                 },
             });
+
+            assert.strictEquals(getActiveIntervalCount(), 0);
+
+            controller.startRoomUpdates();
             await runIntervalCallback();
-            controller.enableRoomUpdates = false;
-            await runIntervalCallback();
+            controller.stopRoomUpdates();
+
+            assert.strictEquals(getActiveIntervalCount(), 0);
 
             const fakeConnection = createFakeConnection();
             controller.currentConnection = fakeConnection;
@@ -368,6 +398,83 @@ describe(MultiplayerRoomController.name, () => {
                 },
             );
         });
+    });
+
+    it('listens to room updates while connected and turns room updates off', async () => {
+        await withCapturedInterval(
+            async ({getActiveIntervalCount, runClearedIntervalCallback, runIntervalCallback}) => {
+                const room = createNewRoom({
+                    roomName: 'Connected Listed Room',
+                });
+                const apiClient = createMockRoomHandlerServerApiClient({
+                    rooms: {
+                        [room.roomId]: {
+                            roomId: room.roomId,
+                            roomName: room.roomName,
+                            clientCount: 2,
+                            hasRoomPassword: true,
+                        },
+                    },
+                });
+                const callbackRoomLists: MultiplayerClientRooms[] = [];
+                const eventRoomLists: MultiplayerClientRooms[] = [];
+                const controller = new MultiplayerRoomController<TestMessage>({
+                    gameId: 'some id',
+                });
+
+                controller.listen(ControllerRoomListEvent, ({detail}) => {
+                    eventRoomLists.push(detail);
+                });
+
+                await controller.initMultiplayer({
+                    backendOrigin: 'http://mock.example',
+                    multiplayerApiClient: apiClient,
+                });
+
+                assert.strictEquals(getActiveIntervalCount(), 0);
+
+                controller.currentConnection = createFakeConnection();
+
+                controller.startRoomUpdates((rooms) => {
+                    callbackRoomLists.push(rooms);
+                });
+                await runIntervalCallback();
+
+                controller.stopRoomUpdates();
+                await runClearedIntervalCallback();
+
+                assert.deepEquals(
+                    {
+                        activeIntervalCount: getActiveIntervalCount(),
+                        callbackRoomLists,
+                        eventRoomLists,
+                    },
+                    {
+                        activeIntervalCount: 0,
+                        callbackRoomLists: [
+                            {
+                                [room.roomId]: {
+                                    roomId: room.roomId,
+                                    roomName: room.roomName,
+                                    clientCount: 2,
+                                    hasRoomPassword: true,
+                                },
+                            },
+                        ],
+                        eventRoomLists: [
+                            {
+                                [room.roomId]: {
+                                    roomId: room.roomId,
+                                    roomName: room.roomName,
+                                    clientCount: 2,
+                                    hasRoomPassword: true,
+                                },
+                            },
+                        ],
+                    },
+                );
+            },
+        );
     });
 
     it('joins rooms and relays connection events', async () => {

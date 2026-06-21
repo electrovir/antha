@@ -2,9 +2,7 @@ import {defineAnthaMod} from '@antha/engine';
 import {
     type ApiAndRoomConnectionState,
     ControllerConnectionEvent,
-    ControllerRoomListEvent,
     emptyApiAndRoomConnectionState,
-    type MultiplayerClientRooms,
 } from '@antha/multiplayer-core';
 import {
     type JsonCompatibleValue,
@@ -32,8 +30,6 @@ export type AnthaMultiplayerP2pAuthoritativeHostState<
         multiplayerController: P2pAuthoritativeHostMultiplayerController<Input, State>;
         /** Current backend API and room connection state. */
         connectionState: ApiAndRoomConnectionState;
-        /** Rooms currently available for joining. */
-        availableRooms: MultiplayerClientRooms;
         /** Latest state emitted by the multiplayer controller. */
         currentState: State;
     };
@@ -93,17 +89,6 @@ export function createAnthaMultiplayerP2pAuthoritativeHostMod<
                 );
 
                 state.multiplayerP2pAuthoritativeHost.multiplayerController.listen(
-                    ControllerRoomListEvent,
-                    ({detail: rooms}) => {
-                        if (!state.multiplayerP2pAuthoritativeHost) {
-                            return;
-                        }
-
-                        state.multiplayerP2pAuthoritativeHost.availableRooms = rooms;
-                    },
-                );
-
-                state.multiplayerP2pAuthoritativeHost.multiplayerController.listen(
                     ControllerStateEvent<State, Input>,
                     ({detail}) => {
                         if (!state.multiplayerP2pAuthoritativeHost) {
@@ -145,7 +130,6 @@ function createP2pAuthoritativeHostState<
     return {
         multiplayerController,
         connectionState: emptyApiAndRoomConnectionState,
-        availableRooms: {},
         currentState: multiplayerController.getState(),
     };
 }

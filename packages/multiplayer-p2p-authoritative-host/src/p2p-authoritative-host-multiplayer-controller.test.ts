@@ -336,7 +336,6 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
                 clientId: controller.getClientId(),
                 connectedClientIds: controller.getConnectedClientIds(),
                 currentConnection: controller.currentConnection,
-                enableRoomUpdates: controller.enableRoomUpdates,
                 isConnected: controller.isConnected(),
                 isHost: controller.isHost(),
                 knownErrors: controller.knownErrors,
@@ -354,7 +353,6 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
                 clientId: undefined,
                 connectedClientIds: [],
                 currentConnection: undefined,
-                enableRoomUpdates: true,
                 isConnected: false,
                 isHost: false,
                 knownErrors: P2pAuthoritativeHostMultiplayerController.knownErrors,
@@ -368,9 +366,9 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             },
         );
 
-        controller.enableRoomUpdates = false;
+        controller.startRoomUpdates();
+        controller.stopRoomUpdates();
 
-        assert.isFalse(controller.enableRoomUpdates);
         assert.throws(() => controller.act(1));
 
         controller.startSingleplayer();
