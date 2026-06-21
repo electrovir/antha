@@ -3,7 +3,7 @@ import {check} from '@augment-vir/assert';
 import {getObjectTypedEntries, getObjectTypedValues} from '@augment-vir/common';
 import {type AnyDuration, convertDuration} from 'date-vir';
 import {NavController, type NavControllerOptions, NavDirection, NavValue} from 'device-navigation';
-import {PredefinedGamepadBrand} from 'gamepad-type';
+import {KnownInput} from 'gamepad-type';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
     AnyGamepad,
@@ -57,7 +57,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
-            inputName: 'd-pad-left',
+            inputName: KnownInput.DPadLeft,
         },
         {
             deviceKey: 'keyboard',
@@ -79,7 +79,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
-            inputName: 'd-pad-right',
+            inputName: KnownInput.DPadRight,
         },
         {
             deviceKey: 'keyboard',
@@ -101,7 +101,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
-            inputName: 'd-pad-up',
+            inputName: KnownInput.DPadUp,
         },
         {
             deviceKey: 'keyboard',
@@ -123,7 +123,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
-            inputName: 'd-pad-down',
+            inputName: KnownInput.DPadDown,
         },
         {
             deviceKey: 'keyboard',
@@ -160,13 +160,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
-            gamepadBrand: PredefinedGamepadBrand.Sony,
-            inputName: 'X',
-        },
-        {
-            deviceKey: AnyGamepad,
-            direction: InputDirection.Positive,
-            inputName: 'A',
+            inputName: KnownInput.FaceAccept,
         },
     ],
     [MenuNavBinding.MenuExit]: [
@@ -178,13 +172,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
-            gamepadBrand: PredefinedGamepadBrand.Sony,
-            inputName: 'O',
-        },
-        {
-            deviceKey: AnyGamepad,
-            direction: InputDirection.Positive,
-            inputName: 'B',
+            inputName: KnownInput.FaceCancel,
         },
     ],
     [MenuNavBinding.MenuSectionNext]: [
@@ -201,7 +189,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
-            inputName: 'R1',
+            inputName: KnownInput.R1,
         },
     ],
     [MenuNavBinding.MenuSectionPrevious]: [
@@ -218,7 +206,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: AnyGamepad,
             direction: InputDirection.Positive,
-            inputName: 'L1',
+            inputName: KnownInput.L1,
         },
     ],
 };

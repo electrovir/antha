@@ -1,6 +1,7 @@
 import {AnthaEngine} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
+import {KnownInput, PredefinedGamepadModel} from 'gamepad-type';
 import {
     DeviceInputType,
     GamepadInputDeviceKey,
@@ -460,5 +461,88 @@ describe(readRawInputs.name, () => {
         /** The original input name entry always exists. */
         assert.isDefined(gamepad['button-0']);
         assert.strictEquals(gamepad['button-0'].mapped.inputName, 'A');
+    });
+
+    it('maps model-specific input name overrides', () => {
+        const deviceName = 'Test Xbox Wireless Controller';
+
+        const mockDevices: AllDevices = {
+            [GamepadInputDeviceKey.Gamepad1]: {
+                deviceKey: GamepadInputDeviceKey.Gamepad1,
+                deviceName,
+                deviceType: InputDeviceType.Gamepad,
+                deviceDetails: mockSerializedGamepad,
+                currentInputs: {
+                    'button-5': {
+                        inputName: 'button-5',
+                        inputValue: 1,
+                        details: {
+                            inputName: 'button-5',
+                            inputType: DeviceInputType.Button,
+                            value: 1,
+                        },
+                        deviceKey: GamepadInputDeviceKey.Gamepad1,
+                        deviceName,
+                        deviceType: InputDeviceType.Gamepad,
+                    },
+                    'button-16': {
+                        inputName: 'button-16',
+                        inputValue: 1,
+                        details: {
+                            inputName: 'button-16',
+                            inputType: DeviceInputType.Button,
+                            value: 1,
+                        },
+                        deviceKey: GamepadInputDeviceKey.Gamepad1,
+                        deviceName,
+                        deviceType: InputDeviceType.Gamepad,
+                    },
+                },
+            },
+        };
+
+        const result = readRawInputs(
+            {
+                deviceHandler: createMockDeviceHandler(mockDevices),
+                gamepadLayouts: [
+                    {
+                        gamepadModels: [
+                            PredefinedGamepadModel.XboxWireless,
+                        ],
+                        inputMappings: {
+                            'button-5': KnownInput.R1,
+                            'button-16': KnownInput.Logo,
+                        },
+                        systemVersions: [],
+                    },
+                ],
+                gamepadModelMap: {
+                    [deviceName]: PredefinedGamepadModel.XboxWireless,
+                },
+            },
+            {
+                msSinceLastExecute: 16,
+            },
+        );
+
+        const gamepad = result.rawInputs['0'];
+
+        assert.isDefined(gamepad);
+        assert.deepEquals(
+            {
+                mappedInputName: gamepad[KnownInput.R1]?.mapped.inputName,
+                modelInputName: gamepad.RB?.mapped.inputName,
+                mappedInputWithoutModelOverride: gamepad[KnownInput.Logo]?.mapped.inputName,
+                rawInputName: gamepad['button-5']?.mapped.inputName,
+                rawInputNameWithoutModelOverride: gamepad['button-16']?.mapped.inputName,
+            },
+            {
+                mappedInputName: KnownInput.R1,
+                modelInputName: KnownInput.R1,
+                mappedInputWithoutModelOverride: KnownInput.Logo,
+                rawInputName: KnownInput.R1,
+                rawInputNameWithoutModelOverride: KnownInput.Logo,
+            },
+        );
     });
 });

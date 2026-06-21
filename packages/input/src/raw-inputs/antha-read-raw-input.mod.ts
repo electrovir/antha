@@ -1,4 +1,5 @@
 import {defineAnthaMod} from '@antha/engine';
+import {check} from '@augment-vir/assert';
 import {
     mapObject,
     type PartialWithUndefined,
@@ -12,6 +13,7 @@ import {
     defaultGamepadModelMap,
     findMatchingGamepadLayout,
     findMatchingGamepadModel,
+    modelInputNameOverrides,
     type GamepadBrandMap,
     type GamepadLayout,
     type GamepadModelMap,
@@ -206,6 +208,10 @@ export function readRawInputs(
 
             const mappedInputName: string | undefined =
                 layout?.inputMappings[currentInput.inputName];
+            const modelInputName = getModelInputNameOverride({
+                mappedInputName,
+                gamepadModel: model?.gamepadModel,
+            });
 
             const rawInput: RawInput = {
                 mapped: {
@@ -225,6 +231,9 @@ export function readRawInputs(
             if (mappedInputName) {
                 deviceInputs[mappedInputName] = rawInput;
             }
+            if (modelInputName) {
+                deviceInputs[modelInputName] = rawInput;
+            }
 
             deviceInputs[currentInput.inputName] = rawInput;
         });
@@ -239,4 +248,26 @@ export function readRawInputs(
         rawInputs,
         currentDevices: mapToSimpleDevicesMap(currentDevices),
     };
+}
+
+function getModelInputNameOverride({
+    mappedInputName,
+    gamepadModel,
+}: Readonly<{
+    mappedInputName: string | undefined;
+    gamepadModel: string | undefined;
+}>): string | undefined {
+    if (
+        !mappedInputName ||
+        !gamepadModel ||
+        !check.isKeyOf(gamepadModel, modelInputNameOverrides)
+    ) {
+        return undefined;
+    }
+
+    const inputNameOverrides = modelInputNameOverrides[gamepadModel];
+
+    return check.isKeyOf(mappedInputName, inputNameOverrides)
+        ? inputNameOverrides[mappedInputName]
+        : undefined;
 }
