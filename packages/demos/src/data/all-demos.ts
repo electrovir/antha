@@ -8,6 +8,8 @@ import {multiplayerRoomSelectionDemo} from './demos/13-room-selection.demo.js';
 import {multiplayerPlayerModeDemo} from './demos/14-multiplayer-player-mode.demo.js';
 import {multiplayerAuthoritativeHostCounterDemo} from './demos/15-authoritative-host-counter.demo.js';
 import {onScreenKeyboardDemo} from './demos/16-on-screen-keyboard.demo.js';
+import {singleplayerToMultiplayerDemo} from './demos/17-singleplayer-to-multiplayer.demo.js';
+import {multiplayerRoomSwitchingDemo} from './demos/18-multiplayer-room-switching.demo.js';
 import {graphics2dDemo} from './demos/2-graphics-2d.demo.js';
 import {audioEngineDemo} from './demos/3-audio-engine.demo.js';
 import {entitiesDemo} from './demos/4-entities.demo.js';
@@ -34,6 +36,8 @@ export const allDemos: AnthaDemo[] = [
     multiplayerPlayerModeDemo,
     multiplayerAuthoritativeHostCounterDemo,
     onScreenKeyboardDemo,
+    singleplayerToMultiplayerDemo,
+    multiplayerRoomSwitchingDemo,
 ];
 
 export const allDemosByPathKey = arrayToObject(allDemos, (demo) => {

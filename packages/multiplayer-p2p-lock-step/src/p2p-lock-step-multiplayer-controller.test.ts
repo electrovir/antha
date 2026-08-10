@@ -9,6 +9,7 @@ import {
     createNewRoom,
     MultiplayerConnectionState,
     type MultiplayerRoomConnection,
+    multiplayerRoomsEndpoint,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {type MaybePromise, wait} from '@augment-vir/common';
@@ -383,7 +384,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             matchMessage: 'Cannot start singleplayer with a connection already present.',
         });
         await assert.throws(() => controller.joinOrCreateRoom(createNewRoom()), {
-            matchMessage: 'Cannot join room: connection already established.',
+            matchMessage: 'Please start this controller in multiplayer mode',
         });
 
         controller.leaveRoom();
@@ -391,6 +392,101 @@ describe(P2pLockStepMultiplayerController.name, () => {
         controller.destroy();
 
         assert.isFalse(controller.isConnected());
+    });
+
+    it('opens an ongoing singleplayer game to multiplayer', async () => {
+        await withMockPeerConnection(async () => {
+            const room = createNewRoom({
+                roomName: 'Opened Lock Step Room',
+            });
+            const apiClient = createMockRoomHandlerServerApiClient();
+            const controller = createController({
+                gameId: 'opened-lock-step-test',
+            });
+            const state: {
+                frames: ReadonlyArray<ReadonlyArray<FrameEventDetail<string>>>;
+            } = {
+                frames: [],
+            };
+
+            controller.listen(ControllerFrameEvent, ({detail}) => {
+                if (detail.length) {
+                    state.frames = [
+                        ...state.frames,
+                        detail,
+                    ];
+                }
+            });
+
+            controller.startSingleplayer();
+            const singleplayerClientId = assertWrap.isDefined(controller.getClientId());
+            controller.act('before-opening');
+            await wait({
+                milliseconds: 5,
+            });
+
+            const roomsBeforeOpening = await apiClient.fetch(multiplayerRoomsEndpoint).GET({
+                searchParams: {
+                    gameId: ['opened-lock-step-test'],
+                },
+            });
+            assert.isDefined(roomsBeforeOpening.Ok);
+
+            await controller.initMultiplayer({
+                backendOrigin: 'http://mock.example',
+                multiplayerApiClient: apiClient,
+            });
+
+            const roomsBeforeJoining = await apiClient.fetch(multiplayerRoomsEndpoint).GET({
+                searchParams: {
+                    gameId: ['opened-lock-step-test'],
+                },
+            });
+            assert.isDefined(roomsBeforeJoining.Ok);
+            await controller.joinOrCreateRoom(room);
+
+            const roomsAfterOpening = await apiClient.fetch(multiplayerRoomsEndpoint).GET({
+                searchParams: {
+                    gameId: ['opened-lock-step-test'],
+                },
+            });
+            assert.isDefined(roomsAfterOpening.Ok);
+
+            assert.deepEquals(
+                {
+                    clientId: controller.getClientId(),
+                    frames: state.frames,
+                    isHost: controller.isHost(),
+                    roomBeforeOpening: roomsBeforeOpening.Ok.responseData,
+                    roomBeforeJoining: roomsBeforeJoining.Ok.responseData,
+                    roomAfterOpening: roomsAfterOpening.Ok.responseData,
+                },
+                {
+                    clientId: singleplayerClientId,
+                    frames: [
+                        [
+                            {
+                                packet: 'before-opening',
+                                sourceClientId: singleplayerClientId,
+                            },
+                        ],
+                    ],
+                    isHost: true,
+                    roomBeforeOpening: {},
+                    roomBeforeJoining: {},
+                    roomAfterOpening: {
+                        [room.roomId]: {
+                            clientCount: 1,
+                            hasRoomPassword: false,
+                            roomId: room.roomId,
+                            roomName: room.roomName,
+                        },
+                    },
+                },
+            );
+
+            controller.destroy();
+        });
     });
 
     it('forwards room controller events and host actions', () => {

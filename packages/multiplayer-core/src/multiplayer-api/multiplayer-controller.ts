@@ -104,6 +104,15 @@ export type MultiplayerRoomControllerParams<Message extends JsonCompatibleValue>
      */
     gameId: string;
 } & PartialWithUndefined<{
+    /** Reuse an existing local client id when establishing a multiplayer connection. */
+    clientId: ClientId;
+    /**
+     * Prepare a newly connected room before it replaces the current room. Throwing keeps the
+     * current room connected and discards the candidate connection.
+     */
+    prepareConnection: (
+        connection: Readonly<MultiplayerRoomConnection<Message>>,
+    ) => MaybePromise<void>;
     /**
      * This is fired when a WebRTC peer attempts to connect to the host client (this will only be
      * fired if your client is the host). Return `true` to accept the connection. Return `false` to
@@ -318,8 +327,8 @@ export class MultiplayerRoomController<
     }
 
     /**
-     * Start multiplayer mode. This initializes
-     * {@link MultiplayerRoomController.multiplayerApiClient}.
+     * Initialize multiplayer API access. This does not open a room or start host pings; those begin
+     * when {@link MultiplayerRoomController.joinOrCreateRoom} establishes a room connection.
      */
     public async initMultiplayer(params: Readonly<MultiplayerInitParams>) {
         if (this.currentConnection) {
@@ -440,7 +449,7 @@ export class MultiplayerRoomController<
             this.multiplayerApiClient,
             this.multiplayerParams.stunServerUrls || [],
             room,
-            undefined,
+            this.params.clientId,
             this.params.acceptConnection
                 ? (data) => {
                       return this.params.acceptConnection?.(data.connectingClientId, this) ?? true;
@@ -474,6 +483,7 @@ export class MultiplayerRoomController<
             });
 
             if (connectionResult.connected) {
+                await this.params.prepareConnection?.(currentConnection);
                 this.currentConnection = currentConnection;
                 previousConnection?.destroy();
                 makeWritable(this).roomId = room.roomId;

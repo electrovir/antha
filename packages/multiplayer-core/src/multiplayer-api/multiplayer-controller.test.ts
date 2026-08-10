@@ -614,6 +614,57 @@ describe(MultiplayerRoomController.name, () => {
         });
     });
 
+    it('keeps the current room when candidate preparation fails', async () => {
+        await withMockPeerConnection(async () => {
+            const currentRoom = createNewRoom({
+                roomName: 'Prepared Current Room',
+            });
+            const candidateRoom = createNewRoom({
+                roomName: 'Failed Candidate Room',
+            });
+            const controller = new MultiplayerRoomController<TestMessage>({
+                gameId: 'room-preparation-failure-test',
+                prepareConnection() {
+                    if (controller.roomId) {
+                        throw new Error('Candidate preparation failed.');
+                    }
+                },
+            });
+
+            await controller.initMultiplayer({
+                backendOrigin: 'http://mock.example',
+                multiplayerApiClient: createMockRoomHandlerServerApiClient(),
+            });
+            await controller.joinOrCreateRoom(currentRoom);
+
+            const currentConnection = controller.currentConnection;
+            assert.isDefined(currentConnection);
+            const currentWebrtcConnection =
+                currentConnection satisfies MultiplayerRoomConnection<TestMessage> as WebrtcMultiplayerController<TestMessage>;
+
+            await assert.throws(() => controller.joinOrCreateRoom(candidateRoom), {
+                matchMessage: 'Candidate preparation failed.',
+            });
+
+            assert.deepEquals(
+                {
+                    currentConnectionDestroyed: currentWebrtcConnection.isDestroyed,
+                    roomConnectionState: controller.roomConnectionState,
+                    roomId: controller.roomId,
+                    sameConnection: controller.currentConnection === currentConnection,
+                },
+                {
+                    currentConnectionDestroyed: false,
+                    roomConnectionState: MultiplayerConnectionState.Connected,
+                    roomId: currentRoom.roomId,
+                    sameConnection: true,
+                },
+            );
+
+            controller.destroy();
+        });
+    });
+
     it('keeps the current room when joining another room fails', async () => {
         await withMockPeerConnection(async () => {
             const currentRoom = createNewRoom({

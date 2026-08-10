@@ -352,19 +352,38 @@ function processQueueItem(
         }
         // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition
     } else if (message.type === MultiplayerWebSocketMessageType.HostPing) {
-        if (room && room.hostClient.clientSecret === message.clientSecret) {
-            room.clientCount = message.clientCount;
-            room.roomName = message.roomName;
-            room.roomPassword = message.roomPassword;
-            room.lastHostPingTimestamp = Date.now();
+        const existingRoom = state.rooms[gameId]?.[message.roomId];
 
-            updateRoomsForFetching(gameId, state);
-        } else {
+        if (existingRoom && existingRoom.hostClient.clientSecret !== message.clientSecret) {
+            /** A client that isn't the room's host is trying to ping it. */
             transport.send({
                 messageId: message.messageId,
                 type: MultiplayerWebSocketMessageType.Error,
                 errorMessage: 'Invalid room to ping.',
             });
+        } else {
+            /** Refresh the room, re-establishing it if needed. */
+            const pingedRoom: RoomHandlerRoom = existingRoom ?? {
+                clientsAwaitingAnswer: {},
+                hostClient: currentClient,
+                roomId: message.roomId,
+                roomName: message.roomName,
+                roomPassword: message.roomPassword,
+                clientCount: message.clientCount,
+                lastHostPingTimestamp: Date.now(),
+            };
+
+            pingedRoom.hostClient = currentClient;
+            pingedRoom.clientCount = message.clientCount;
+            pingedRoom.roomName = message.roomName;
+            pingedRoom.roomPassword = message.roomPassword;
+            pingedRoom.lastHostPingTimestamp = Date.now();
+
+            getOrSet(state.rooms, gameId, () => {
+                return {};
+            })[pingedRoom.roomId] = pingedRoom;
+
+            updateRoomsForFetching(gameId, state);
         }
     } else {
         transport.send({

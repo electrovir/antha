@@ -553,4 +553,54 @@ describe(createMultiplayerRoomHandler.name, () => {
             },
         );
     });
+
+    it('re-establishes a room when the host pings one that was reaped', () => {
+        const errors: Error[] = [];
+        const logger: RoomHandlerLogger = {
+            info() {},
+            error(error) {
+                errors.push(error);
+            },
+        };
+        const handler = createMultiplayerRoomHandler({
+            disablePeriodicCleanup: true,
+            logger,
+        });
+        const roomId = createMultiplayerId.room();
+        const hostClientId = createMultiplayerId.client();
+        const hostTransport = createFakeTransport();
+
+        /** Ping a room that was never created (or was already reaped): it should be re-established. */
+        enqueueAndProcess({
+            handler,
+            message: createHostPingMessage({
+                clientId: hostClientId,
+                clientSecret: 'host-secret',
+                clientCount: 1,
+                roomId,
+                roomName: 'Revived Room',
+            }),
+            transport: hostTransport,
+        });
+
+        assert.deepEquals(
+            {
+                errors: errors.map((error) => error.message),
+                sentMessages: hostTransport.sentMessages,
+                roomsForFetching: handler.getRoomsForFetching('test-game'),
+            },
+            {
+                errors: [],
+                sentMessages: [],
+                roomsForFetching: {
+                    [roomId]: {
+                        clientCount: 1,
+                        hasRoomPassword: false,
+                        roomId,
+                        roomName: 'Revived Room',
+                    },
+                },
+            },
+        );
+    });
 });

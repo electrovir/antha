@@ -7,6 +7,7 @@ import {
     createMultiplayerId,
     createNewRoom,
     MultiplayerConnectionState,
+    multiplayerRoomsEndpoint,
     type MultiplayerRoomConnection,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
@@ -14,9 +15,9 @@ import {type MaybePromise} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {
     ControllerStateEvent,
-    type P2pAuthoritativeHostMessage,
     P2pAuthoritativeHostMessageType,
     P2pAuthoritativeHostMultiplayerController,
+    type P2pAuthoritativeHostMessage,
     type P2pAuthoritativeHostMultiplayerControllerParams,
     type StateEventDetail,
 } from './p2p-authoritative-host-multiplayer-controller.js';
@@ -43,11 +44,24 @@ class InspectableP2pAuthoritativeHostMultiplayerController extends P2pAuthoritat
 }
 
 class FakeDataChannel extends EventTarget {
+    public static readonly instances: FakeDataChannel[] = [];
+
     public readonly sentMessages: string[] = [];
     public isClosed = false;
+    public peer: FakeDataChannel | undefined;
+
+    constructor() {
+        super();
+        FakeDataChannel.instances.push(this);
+    }
 
     public send(message: string) {
         this.sentMessages.push(message);
+        this.peer?.dispatchEvent(
+            new MessageEvent('message', {
+                data: message,
+            }),
+        );
     }
 
     public close() {
@@ -118,6 +132,12 @@ class FakePeerConnection extends EventTarget {
         if (description.type === 'offer') {
             const dataChannel = new FakeDataChannel();
             this.createdDataChannels.push(dataChannel);
+            const offerDataChannel = FakeDataChannel.instances.find((candidate) => {
+                return candidate !== dataChannel && !candidate.isClosed && !candidate.peer;
+            });
+            assert.isDefined(offerDataChannel);
+            dataChannel.peer = offerDataChannel;
+            offerDataChannel.peer = dataChannel;
             this.dispatchEvent(
                 Object.assign(new Event('datachannel'), {
                     channel: dataChannel,
@@ -139,6 +159,7 @@ class FakePeerConnection extends EventTarget {
 async function withMockPeerConnection(callback: () => MaybePromise<void>) {
     const originalPeerConnection = globalThis.RTCPeerConnection;
     FakePeerConnection.instances = [];
+    FakeDataChannel.instances.length = 0;
 
     Object.defineProperty(globalThis, 'RTCPeerConnection', {
         configurable: true,
@@ -377,7 +398,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             matchMessage: 'Cannot start singleplayer with a connection already present.',
         });
         await assert.throws(() => controller.joinOrCreateRoom(createNewRoom()), {
-            matchMessage: 'Cannot join room: connection already established.',
+            matchMessage: 'Please start this controller in multiplayer mode',
         });
 
         controller.leaveRoom();
@@ -386,6 +407,79 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
         controller.destroy();
 
         assert.isFalse(controller.isConnected());
+    });
+
+    it('opens an ongoing singleplayer game to multiplayer', async () => {
+        await withMockPeerConnection(async () => {
+            const room = createNewRoom({
+                roomName: 'Opened Authoritative Room',
+            });
+            const apiClient = createMockRoomHandlerServerApiClient();
+            const controller = createController({
+                gameId: 'opened-authoritative-host-test',
+            });
+
+            controller.startSingleplayer();
+            const singleplayerClientId = assertWrap.isDefined(controller.getClientId());
+            controller.act(7);
+
+            const roomsBeforeOpening = await apiClient.fetch(multiplayerRoomsEndpoint).GET({
+                searchParams: {
+                    gameId: ['opened-authoritative-host-test'],
+                },
+            });
+            assert.isDefined(roomsBeforeOpening.Ok);
+
+            await controller.initMultiplayer({
+                backendOrigin: 'http://mock.example',
+                multiplayerApiClient: apiClient,
+            });
+
+            const roomsBeforeJoining = await apiClient.fetch(multiplayerRoomsEndpoint).GET({
+                searchParams: {
+                    gameId: ['opened-authoritative-host-test'],
+                },
+            });
+            assert.isDefined(roomsBeforeJoining.Ok);
+            await controller.joinOrCreateRoom(room);
+
+            const roomsAfterOpening = await apiClient.fetch(multiplayerRoomsEndpoint).GET({
+                searchParams: {
+                    gameId: ['opened-authoritative-host-test'],
+                },
+            });
+            assert.isDefined(roomsAfterOpening.Ok);
+
+            assert.deepEquals(
+                {
+                    clientId: controller.getClientId(),
+                    gameState: controller.getState(),
+                    isHost: controller.isHost(),
+                    roomBeforeOpening: roomsBeforeOpening.Ok.responseData,
+                    roomBeforeJoining: roomsBeforeJoining.Ok.responseData,
+                    roomAfterOpening: roomsAfterOpening.Ok.responseData,
+                },
+                {
+                    clientId: singleplayerClientId,
+                    gameState: {
+                        count: 7,
+                    },
+                    isHost: true,
+                    roomBeforeOpening: {},
+                    roomBeforeJoining: {},
+                    roomAfterOpening: {
+                        [room.roomId]: {
+                            clientCount: 1,
+                            hasRoomPassword: false,
+                            roomId: room.roomId,
+                            roomName: room.roomName,
+                        },
+                    },
+                },
+            );
+
+            controller.destroy();
+        });
     });
 
     it('rejects inputs when the game definition does not accept them', () => {
@@ -435,6 +529,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
         const controller = createController();
         const fakeConnection = createFakeConnection();
         const clientId = createMultiplayerId.client();
+        const stateSyncId = createMultiplayerId.socketMessage();
         const state: {
             clientEvents: unknown[];
             connectionEvents: unknown[];
@@ -486,6 +581,15 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
                     newMember: clientId,
                 },
             }),
+        );
+        controller.roomController.dispatch(
+            new ControllerMessageEvent<P2pAuthoritativeHostMessage<number, CounterState>>(
+                clientId,
+                {
+                    type: P2pAuthoritativeHostMessageType.StateRequest,
+                    stateSyncId,
+                },
+            ),
         );
         controller.roomController.dispatch(
             new ControllerMessageEvent(clientId, createInputMessage(4)),
@@ -543,6 +647,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
                         clientId,
                         message: {
                             sequence: 0,
+                            stateSyncId,
                             state: {
                                 count: 0,
                             },
@@ -727,6 +832,82 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
 
             host.destroy();
             member.destroy();
+        });
+    });
+
+    it('switches between existing rooms while preserving the client identity', async () => {
+        await withMockPeerConnection(async () => {
+            const firstRoom = createNewRoom({
+                roomName: 'First Existing Room',
+            });
+            const secondRoom = createNewRoom({
+                roomName: 'Second Existing Room',
+            });
+            const apiClient = createMockRoomHandlerServerApiClient();
+            const firstHost = createController({
+                gameId: 'authoritative-room-switch-test',
+                createInitialState() {
+                    return {
+                        count: 100,
+                    };
+                },
+            });
+            const secondHost = createController({
+                gameId: 'authoritative-room-switch-test',
+                createInitialState() {
+                    return {
+                        count: 200,
+                    };
+                },
+            });
+            const traveler = createController({
+                gameId: 'authoritative-room-switch-test',
+            });
+
+            await Promise.all(
+                [
+                    firstHost,
+                    secondHost,
+                    traveler,
+                ].map(async (controller) => {
+                    await controller.initMultiplayer({
+                        backendOrigin: 'http://mock.example',
+                        multiplayerApiClient: apiClient,
+                    });
+                }),
+            );
+            await Promise.all([
+                firstHost.joinOrCreateRoom(firstRoom),
+                secondHost.joinOrCreateRoom(secondRoom),
+            ]);
+            firstHost.act(1);
+
+            await traveler.joinOrCreateRoom(firstRoom);
+            const clientId = traveler.getClientId();
+            assert.deepEquals(traveler.getState(), {
+                count: 101,
+            });
+
+            await traveler.joinOrCreateRoom(secondRoom);
+
+            assert.deepEquals(
+                {
+                    clientId: traveler.getClientId(),
+                    roomId: traveler.roomId,
+                    state: traveler.getState(),
+                },
+                {
+                    clientId,
+                    roomId: secondRoom.roomId,
+                    state: {
+                        count: 200,
+                    },
+                },
+            );
+
+            firstHost.destroy();
+            secondHost.destroy();
+            traveler.destroy();
         });
     });
 

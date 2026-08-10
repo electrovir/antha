@@ -202,6 +202,7 @@ export class P2pLockStepMultiplayerController<
         }).milliseconds;
         this.roomController = new MultiplayerRoomController<P2pLockStepMessage<MultiplayerPacket>>({
             gameId: params.gameId,
+            clientId: this.localClientId,
             acceptConnection: params.acceptConnection
                 ? (connectingClientId) => {
                       this.debugLog(`checking incoming connection from ${connectingClientId}`);
@@ -303,14 +304,14 @@ export class P2pLockStepMultiplayerController<
         return this.roomConnection?.getAllClientIds() || [];
     }
 
-    /** Start multiplayer mode. This delegates API connectivity and room polling to multiplayer core. */
+    /** Initialize multiplayer API access without opening a room or starting host pings. */
     public async initMultiplayer(params: Readonly<MultiplayerInitParams>) {
         this.debugLog(`initializing multiplayer with backend ${params.backendOrigin}`);
         await this.roomController.initMultiplayer(params);
         this.debugLog('multiplayer API initialized');
     }
 
-    /** Start singleplayer mode. */
+    /** Start local play without contacting the multiplayer API. This can later open into a room. */
     public startSingleplayer() {
         if (this.currentConnection) {
             throw new Error('Cannot start singleplayer with a connection already present.');
@@ -399,11 +400,8 @@ export class P2pLockStepMultiplayerController<
 
     /** Join or create a room. */
     public async joinOrCreateRoom(room: Readonly<RoomInput>) {
-        if (this.singleplayer) {
-            throw new Error('Cannot join room: connection already established.');
-        }
-
         const previousRoomConnection = this.roomConnection;
+        const wasSingleplayer = this.singleplayer;
 
         this.debugLog(`joining or creating room '${room.roomName}' (${room.roomId})`);
 
@@ -417,7 +415,11 @@ export class P2pLockStepMultiplayerController<
             this.clientsResponded = {};
             this.frameActions = [];
             this.frameTickReady = true;
+        } else if (wasSingleplayer) {
+            globalThis.clearTimeout(this.timeoutId);
+            this.frameTickReady = true;
         }
+        this.singleplayer = false;
         this.attachMultiplayerRoomConnection(roomConnection);
         this.debugLog(
             `attached p2p-lock-step connection; client=${this.getClientId() || 'unknown'} host=${this.isHost()} connected=${this.isConnected()}`,
