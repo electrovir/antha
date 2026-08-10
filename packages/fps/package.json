@@ -33,17 +33,17 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^31.73.1",
-        "@augment-vir/common": "^31.73.1",
-        "@electrovir/color": "^1.7.10",
-        "vira": "^31.24.1"
+        "@augment-vir/assert": "^32.2.1",
+        "@augment-vir/common": "^32.2.1",
+        "@electrovir/color": "^1.7.11",
+        "vira": "^31.29.0"
     },
     "devDependencies": {
-        "@augment-vir/test": "^31.73.1",
-        "@web/dev-server-esbuild": "^1.0.5",
-        "@web/test-runner": "^0.20.2",
-        "@web/test-runner-playwright": "^0.11.1",
-        "element-vir": "^26.17.0",
+        "@augment-vir/test": "^32.2.1",
+        "@web/dev-server-esbuild": "^2.0.0",
+        "@web/test-runner": "^1.0.0",
+        "@web/test-runner-playwright": "^1.0.0",
+        "element-vir": "^26.17.3",
         "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
