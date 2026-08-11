@@ -7,10 +7,6 @@ module.exports = {
     ],
     words: [
         ...baseConfig.words,
-        'antha',
-        'inspectable',
         'lerp',
-        'paralleldrive',
-        'spritesheet',
     ],
 };

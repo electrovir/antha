@@ -1,0 +1,67 @@
+{
+    "name": "@antha/gamepad-type",
+    "version": "0.0.8",
+    "description": "Gamepad type detection and gamepad helper elements for the web.",
+    "keywords": [
+        "gamepad",
+        "controller",
+        "antha"
+    ],
+    "homepage": "https://github.com/electrovir/antha",
+    "bugs": {
+        "url": "https://github.com/electrovir/antha/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/electrovir/antha.git"
+    },
+    "license": "(MIT OR CC0-1.0)",
+    "author": {
+        "name": "electrovir",
+        "url": "https://github.com/electrovir"
+    },
+    "sideEffects": false,
+    "type": "module",
+    "main": "src/index.ts",
+    "module": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "build": "virmator frontend build",
+        "compile": "virmator compile",
+        "docs": "virmator docs",
+        "start": "virmator frontend",
+        "test": "virmator test web",
+        "test:coverage": "npm run test coverage",
+        "test:docs": "virmator docs check"
+    },
+    "dependencies": {
+        "@augment-vir/assert": "^32.2.1",
+        "@augment-vir/common": "^32.2.1",
+        "bowser": "^2.14.1",
+        "input-device-handler": "^9.0.3"
+    },
+    "devDependencies": {
+        "@augment-vir/test": "^32.2.1",
+        "@augment-vir/web": "^32.2.1",
+        "@web/dev-server-esbuild": "^2.0.0",
+        "@web/test-runner": "^1.0.0",
+        "@web/test-runner-commands": "^1.0.1",
+        "@web/test-runner-playwright": "^1.0.0",
+        "@web/test-runner-visual-regression": "^1.0.1",
+        "element-vir": "^26.17.3",
+        "indexed-vir": "^1.0.2",
+        "istanbul-smart-text-reporter": "^1.1.5",
+        "markdown-code-example-inserter": "^3.0.6",
+        "sentry-vir": "^4.5.1",
+        "typedoc": "^0.28.20",
+        "typescript": "^6.0.3",
+        "vira": "^31.29.0",
+        "vite": "^8.2.1"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}

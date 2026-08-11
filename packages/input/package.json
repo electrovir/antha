@@ -33,11 +33,11 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
+        "@antha/gamepad-type": "^0.0.8",
         "@augment-vir/assert": "^32.2.1",
         "@augment-vir/common": "^32.2.1",
         "date-vir": "^8.6.2",
         "device-navigation": "^4.7.3",
-        "gamepad-type": "^2.1.0",
         "input-device-handler": "^9.0.3",
         "object-shape-tester": "^6.14.1",
         "vira": "^31.29.0"

@@ -26,7 +26,7 @@ type CounterState = {
     count: number;
 };
 
-class InspectableP2pAuthoritativeHostMultiplayerController extends P2pAuthoritativeHostMultiplayerController<
+class MockP2pAuthoritativeHostMultiplayerController extends P2pAuthoritativeHostMultiplayerController<
     number,
     CounterState
 > {
@@ -183,7 +183,7 @@ function createController(
         Partial<P2pAuthoritativeHostMultiplayerControllerParams<number, CounterState>>
     > = {},
 ) {
-    return new InspectableP2pAuthoritativeHostMultiplayerController({
+    return new MockP2pAuthoritativeHostMultiplayerController({
         gameId: params.gameId || 'authoritative-host-test',
         createInitialState:
             params.createInitialState ||

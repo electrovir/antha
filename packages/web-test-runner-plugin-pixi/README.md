@@ -5,7 +5,7 @@ A plugin for [web-test-runner](https://modern-web.dev/docs/test-runner/overview/
 ## Install
 
 ```sh
-npm i -D web-test-runner-plugin-pixi
+npm i -D @antha/web-test-runner-plugin-pixi
 ```
 
 ## Usage
@@ -15,7 +15,7 @@ Make sure all your `pixi.js` imports are directly from `pixi.js` (like `import {
 Add the following to your web-test-runner config:
 
 ```ts
-import {pixiPlugin} from 'web-test-runner-plugin-pixi';
+import {pixiPlugin} from '@antha/web-test-runner-plugin-pixi';
 
 export default {
     plugins: [

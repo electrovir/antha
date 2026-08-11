@@ -7,3 +7,5 @@
 -   add `<input>` and `<textarea>` element wrappers that allow cursor navigation with the on-screen keyboard
 -   press shift to transition the arrow keys to vertical arrow keys
 -   add shortcuts to the special keys on the on-screen keyboard (like R2 hits enter, x hits backspace, etc.)
+-   archive the web-test-runner-plugin-pixi repo and deprecate its npm package, pointing it to the antha equivalent instead.
+    -   do the same for the gamepad-type package

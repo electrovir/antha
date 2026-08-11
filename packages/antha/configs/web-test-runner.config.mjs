@@ -1,7 +1,7 @@
+import {pixiPlugin} from '@antha/web-test-runner-plugin-pixi';
 import {defineConfig} from '@virmator/test/configs/web-test-runner.config.base.mjs';
 import {dirname} from 'path';
 import {fileURLToPath, pathToFileURL} from 'url';
-import {pixiPlugin} from 'web-test-runner-plugin-pixi';
 
 const baseConfig = defineConfig({
     coveragePercent: 100,

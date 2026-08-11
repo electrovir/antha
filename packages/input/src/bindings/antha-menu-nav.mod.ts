@@ -1,9 +1,9 @@
 import {defineAnthaMod} from '@antha/engine';
+import {KnownInput} from '@antha/gamepad-type';
 import {check} from '@augment-vir/assert';
 import {getObjectTypedEntries, getObjectTypedValues} from '@augment-vir/common';
 import {type AnyDuration, convertDuration} from 'date-vir';
 import {NavController, type NavControllerOptions, NavDirection, NavValue} from 'device-navigation';
-import {KnownInput} from 'gamepad-type';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
     AnyGamepad,

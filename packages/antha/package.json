@@ -39,14 +39,14 @@
         "@augment-vir/common": "^32.2.1"
     },
     "devDependencies": {
+        "@antha/web-test-runner-plugin-pixi": "^0.0.8",
         "@augment-vir/test": "^32.2.1",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
         "typescript": "^6.0.3",
-        "vite": "^8.2.0",
-        "web-test-runner-plugin-pixi": "^0.0.2"
+        "vite": "^8.2.1"
     },
     "peerDependencies": {
         "@antha/asset": "^0.0.8",

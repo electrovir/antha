@@ -41,6 +41,7 @@
     },
     "devDependencies": {
         "@antha/engine": "^0.0.8",
+        "@antha/web-test-runner-plugin-pixi": "^0.0.8",
         "@augment-vir/test": "^32.2.1",
         "@electrovir/color": "^1.7.11",
         "@web/dev-server-esbuild": "^2.0.0",
@@ -48,8 +49,7 @@
         "@web/test-runner-playwright": "^1.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
         "pixi.js": "^8.19.0",
-        "vira": "31.29.0",
-        "web-test-runner-plugin-pixi": "^0.0.2"
+        "vira": "31.29.0"
     },
     "peerDependencies": {
         "@antha/engine": "*",

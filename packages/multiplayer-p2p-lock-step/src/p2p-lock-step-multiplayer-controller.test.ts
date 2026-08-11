@@ -22,7 +22,7 @@ import {
     P2pLockStepMultiplayerController,
 } from './p2p-lock-step-multiplayer-controller.js';
 
-class InspectableP2pLockStepMultiplayerController extends P2pLockStepMultiplayerController<string> {
+class MockP2pLockStepMultiplayerController extends P2pLockStepMultiplayerController<string> {
     public forceUndefinedClientIdForTest = false;
 
     public override getClientId() {
@@ -186,7 +186,7 @@ function createController({
     debugMultiplayer?: boolean | undefined;
     gameId?: string | undefined;
 }> = {}) {
-    return new InspectableP2pLockStepMultiplayerController({
+    return new MockP2pLockStepMultiplayerController({
         gameId,
         debugMultiplayer,
         ...(acceptConnection && {

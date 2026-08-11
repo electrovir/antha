@@ -1,13 +1,4 @@
 import {defineAnthaMod} from '@antha/engine';
-import {check} from '@augment-vir/assert';
-import {
-    mapObject,
-    type PartialWithUndefined,
-    type SelectFrom,
-    type SetRequired,
-    type Values,
-} from '@augment-vir/common';
-import {html} from 'element-vir';
 import {
     defaultGamepadLayouts,
     defaultGamepadModelMap,
@@ -17,7 +8,16 @@ import {
     type GamepadBrandMap,
     type GamepadLayout,
     type GamepadModelMap,
-} from 'gamepad-type';
+} from '@antha/gamepad-type';
+import {check} from '@augment-vir/assert';
+import {
+    mapObject,
+    type PartialWithUndefined,
+    type SelectFrom,
+    type SetRequired,
+    type Values,
+} from '@augment-vir/common';
+import {html} from 'element-vir';
 import {
     InputDeviceHandler,
     isGamepadDeviceKey,

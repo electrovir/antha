@@ -40,6 +40,7 @@
     },
     "devDependencies": {
         "@antha/engine": "^0.0.8",
+        "@antha/web-test-runner-plugin-pixi": "^0.0.8",
         "@augment-vir/test": "^32.2.1",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
@@ -48,8 +49,7 @@
         "istanbul-smart-text-reporter": "^1.1.5",
         "object-shape-tester": "^6.14.1",
         "pixi.js": "^8.19.0",
-        "typed-event-target": "^4.3.3",
-        "web-test-runner-plugin-pixi": "^0.0.2"
+        "typed-event-target": "^4.3.3"
     },
     "peerDependencies": {
         "@antha/asset": "^0.0.8",

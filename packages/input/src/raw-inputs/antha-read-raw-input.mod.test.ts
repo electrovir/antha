@@ -1,7 +1,7 @@
 import {AnthaEngine} from '@antha/engine';
+import {KnownInput, PredefinedGamepadModel} from '@antha/gamepad-type';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {KnownInput, PredefinedGamepadModel} from 'gamepad-type';
 import {
     DeviceInputType,
     GamepadInputDeviceKey,
