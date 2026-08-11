@@ -1,0 +1,62 @@
+{
+    "name": "@antha/web-test-runner-plugin-pixi",
+    "description": "Fixing pixi.js imports for web-test-runner.",
+    "keywords": [
+        "pixi",
+        "pixi.js",
+        "web-test-runner",
+        "plugin",
+        "import"
+    ],
+    "homepage": "https://github.com/electrovir/antha",
+    "bugs": {
+        "url": "https://github.com/electrovir/antha/issues"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/electrovir/antha.git"
+    },
+    "license": "(MIT OR CC0-1.0)",
+    "author": {
+        "name": "electrovir",
+        "url": "https://github.com/electrovir"
+    },
+    "sideEffects": false,
+    "type": "module",
+    "main": "src/index.ts",
+    "module": "src/index.ts",
+    "types": "src/index.ts",
+    "scripts": {
+        "compile": "virmator compile",
+        "docs": "virmator docs",
+        "start": "tsx src/index.ts",
+        "test": "virmator test node",
+        "test:coverage": "npm run test coverage",
+        "test:docs": "virmator docs check"
+    },
+    "dependencies": {
+        "@augment-vir/node": "^32.2.1"
+    },
+    "devDependencies": {
+        "@augment-vir/assert": "^32.2.1",
+        "@augment-vir/common": "^32.2.1",
+        "@augment-vir/test": "^32.2.1",
+        "@types/node": "^26.1.2",
+        "@web/dev-server": "^1.0.0",
+        "@web/dev-server-core": "^1.0.1",
+        "@web/dev-server-esbuild": "^2.0.0",
+        "@web/test-runner-core": "^1.0.0",
+        "@web/test-runner-mocha": "^1.0.0",
+        "@web/test-runner-playwright": "^1.0.0",
+        "c8": "^12.0.0",
+        "istanbul-smart-text-reporter": "^1.1.5",
+        "pixi.js": "^8.19.0",
+        "typescript": "^6.0.3"
+    },
+    "engines": {
+        "node": ">=22"
+    },
+    "publishConfig": {
+        "access": "public"
+    }
+}
