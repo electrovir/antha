@@ -1,7 +1,7 @@
 import {type AnthaEngine, type AnthaUi} from '@antha/engine';
+import {type RequireExactlyOne} from '@augment-vir/common';
 import {type FullDate} from 'date-vir';
 import {type DeclarativeElementDefinition} from 'element-vir';
-import {type RequireExactlyOne} from 'type-fest';
 
 export type AnthaDemo = {
     /** The user-facing name of this demo. Showed in the demo picker. */

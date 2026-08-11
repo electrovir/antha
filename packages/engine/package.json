@@ -40,8 +40,7 @@
         "@paralleldrive/cuid2": "^3.3.0",
         "date-vir": "^8.6.2",
         "observavir": "^2.3.3",
-        "sentry-vir": "^4.5.1",
-        "type-fest": "^5.8.0"
+        "sentry-vir": "^4.5.1"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.1",

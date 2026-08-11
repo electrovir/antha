@@ -36,8 +36,7 @@
     },
     "dependencies": {
         "@augment-vir/assert": "^32.2.1",
-        "@augment-vir/common": "^32.2.1",
-        "type-fest": "^5.8.0"
+        "@augment-vir/common": "^32.2.1"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.1",

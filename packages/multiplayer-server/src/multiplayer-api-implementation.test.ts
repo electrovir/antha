@@ -16,13 +16,13 @@ import {
     extractErrorMessage,
     randomString,
     type ArrayElement,
+    type DistributedOmit,
     type MaybePromise,
     type Values,
 } from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {AnyOrigin, HttpMethod, HttpStatus, type ClientWebSocket} from '@rest-vir/api';
 import {testApi, type FetchTestEndpoint} from '@rest-vir/host';
-import {type DistributedOmit} from 'type-fest';
 import {
     implementMultiplayerApi,
     type ImplementedMultiplayerApi,
@@ -171,17 +171,15 @@ function testMultiplayerApi(
                 ),
             );
 
-            await waitUntil.hasKeys(
-                roomIds,
-                async () =>
-                    await (
-                        await fetchEndpoint(multiplayerRoomsEndpoint, HttpMethod.Get, {
-                            searchParams: {
-                                gameId: ['test'],
-                            },
-                        })
-                    ).json(),
-            );
+            await waitUntil.hasKeys(roomIds, async () => {
+                return await (
+                    await fetchEndpoint(multiplayerRoomsEndpoint, HttpMethod.Get, {
+                        searchParams: {
+                            gameId: ['test'],
+                        },
+                    })
+                ).json();
+            });
 
             return finishedRooms as SetupRoomsOutput<Rooms>;
         }
@@ -424,14 +422,15 @@ describe('multiplayer API', () => {
                         hasRoomPassword: false,
                     },
                 } satisfies MultiplayerClientRooms,
-                async () =>
-                    await (
+                async () => {
+                    return await (
                         await fetchEndpoint(multiplayerRoomsEndpoint, HttpMethod.Get, {
                             searchParams: {
                                 gameId: ['test'],
                             },
                         })
-                    ).json(),
+                    ).json();
+                },
                 {
                     interval: {
                         seconds: 1,
@@ -446,14 +445,15 @@ describe('multiplayer API', () => {
             await closeAllWebSockets();
 
             await waitUntil.isEmpty(
-                async () =>
-                    await (
+                async () => {
+                    return await (
                         await fetchEndpoint(multiplayerRoomsEndpoint, HttpMethod.Get, {
                             searchParams: {
                                 gameId: ['test'],
                             },
                         })
-                    ).json(),
+                    ).json();
+                },
                 {
                     interval: {
                         seconds: 2,

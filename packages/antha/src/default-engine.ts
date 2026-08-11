@@ -20,8 +20,7 @@ import {
     type AnthaReadRawInputModOptions,
     type AnthaReadRawInputModState,
 } from '@antha/input';
-import {type AnyObject} from '@augment-vir/common';
-import {type EmptyObject} from 'type-fest';
+import {type AnyObject, type EmptyObject} from '@augment-vir/common';
 
 /**
  * Options for {@link createDefaultAnthaEngine}, combined from all the default mods.

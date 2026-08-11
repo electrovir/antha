@@ -33,7 +33,6 @@
         "pixi.js": "^8.19.0",
         "spa-router-vir": "^6.6.1",
         "theme-vir": "^28.25.1",
-        "type-fest": "^5.8.0",
         "url-vir": "^2.1.10",
         "vira": "^31.29.0"
     },

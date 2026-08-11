@@ -4,6 +4,7 @@ import {
     type MaybePromise,
     type PartialWithUndefined,
     PromiseQueue,
+    type RequireExactlyOne,
     ensureErrorAndPrependMessage,
     extractErrorMessage,
     filterMap,
@@ -17,7 +18,6 @@ import {
     stringify,
 } from '@augment-vir/common';
 import {type ClientWebSocket} from '@rest-vir/api';
-import {type RequireExactlyOne} from 'type-fest';
 import {ListenTarget, defineTypedCustomEvent} from 'typed-event-target';
 import {
     type MultiplayerConnectClientMessage,

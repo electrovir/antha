@@ -1,10 +1,9 @@
 import {AssetLoader} from '@antha/asset';
 import {createMockPixi} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
-import {SeededRandom, type AnyObject} from '@augment-vir/common';
+import {SeededRandom, type AnyObject, type Constructor} from '@augment-vir/common';
 import {describe, it, itCases} from '@augment-vir/test';
 import {Graphics} from 'pixi.js';
-import {type Constructor} from 'type-fest';
 import {defineEntitySuite2d, reverseParamsMap, type DefineViewEntity2d} from './entity-suite.js';
 import {
     BaseEntity2d,

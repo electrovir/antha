@@ -1,8 +1,8 @@
 import {type AnthaEngine, AnthaUi} from '@antha/engine';
+import {type RequireExactlyOne} from '@augment-vir/common';
 import {colorCss} from '@electrovir/color';
 import {css, type DeclarativeElementDefinition, defineElement, html, nothing} from 'element-vir';
 import {themeDefaultKey} from 'theme-vir';
-import {type RequireExactlyOne} from 'type-fest';
 import {ViraLink, viraTheme} from 'vira';
 import {type DemoRouter} from '../../data/demo-router.js';
 import {type AnthaDemo} from '../../data/demo.js';

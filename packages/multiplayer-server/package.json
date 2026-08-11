@@ -41,8 +41,7 @@
         "@rest-vir/api": "^2.2.1",
         "@rest-vir/host": "^2.2.1",
         "date-vir": "^8.6.2",
-        "object-shape-tester": "^6.14.1",
-        "type-fest": "^5.8.0"
+        "object-shape-tester": "^6.14.1"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.1",

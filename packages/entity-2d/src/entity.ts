@@ -11,11 +11,18 @@ import {
     getObjectTypedEntries,
     makeWritable,
     mapObjectValues,
+    type AbstractConstructor,
     type AnyObject,
+    type Constructor,
     type Coords,
+    type EmptyObject,
     type ExtractKeysWithMatchingValues,
+    type IsEqual,
+    type IsNever,
     type MaybePromise,
     type PartialWithUndefined,
+    type Writable,
+    type WritableKeysOf,
 } from '@augment-vir/common';
 import {
     System as HitboxSystem,
@@ -24,15 +31,6 @@ import {
 } from 'detect-collisions';
 import {assertValidShape, defineShape, type Shape} from 'object-shape-tester';
 import {ParticleContainer, type Container, type ViewContainer} from 'pixi.js';
-import {
-    type AbstractConstructor,
-    type Constructor,
-    type EmptyObject,
-    type IsEqual,
-    type IsNever,
-    type Writable,
-    type WritableKeysOf,
-} from 'type-fest';
 import {defineTypedCustomEvent, GenericListenTarget} from 'typed-event-target';
 import {type StaticEntity2dParts} from './entity-suite.js';
 
@@ -593,7 +591,7 @@ export abstract class BaseEntity2d<
 
     /** If true, this entity should no longer be used or operated upon. */
     public readonly isDestroyed: boolean = false;
-    private readonly abortController = new AbortController();
+    protected readonly abortController = new AbortController();
     /** An `AbortSignal` that triggers when the entity is destroyed. */
     public readonly abortSignal: AbortSignal = this.abortController.signal;
     public hitbox: Hitbox<this> | undefined;
@@ -791,7 +789,7 @@ export abstract class ViewEntity2d<
         super(args);
     }
 
-    private wrapParamsInProxy(): void {
+    protected wrapParamsInProxy(): void {
         const paramsMap = (this.constructor as typeof ViewEntity2d).paramsMap;
         const reverseParamsMap = (this.constructor as typeof ViewEntity2d).reverseParamsMap;
         const params = this.params;

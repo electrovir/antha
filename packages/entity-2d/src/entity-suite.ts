@@ -1,8 +1,13 @@
 import {type Asset} from '@antha/asset';
 import {check} from '@augment-vir/assert';
-import {type AnyObject, getObjectTypedEntries, getOrSet} from '@augment-vir/common';
+import {
+    type AnyObject,
+    type Constructor,
+    getObjectTypedEntries,
+    getOrSet,
+    type IsAny,
+} from '@augment-vir/common';
 import {type Shape} from 'object-shape-tester';
-import {type Constructor, type IsAny} from 'type-fest';
 import {
     BaseEntity2d,
     type BaseEntityAssetDefinitions,

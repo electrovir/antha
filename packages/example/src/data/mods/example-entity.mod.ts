@@ -1,5 +1,5 @@
 import {createAnthaEntityMod2d} from '@antha/entity-2d';
-import {type EmptyObject} from 'type-fest';
+import {type EmptyObject} from '@augment-vir/common';
 
 export const {
     defineEntity,

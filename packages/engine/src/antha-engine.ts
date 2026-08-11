@@ -10,11 +10,11 @@ import {
     type MaybePromise,
     type PartialWithUndefined,
     type RequiredAndNotNull,
+    type RequireExactlyOne,
 } from '@augment-vir/common';
 import {createId} from '@paralleldrive/cuid2';
 import {css, html, type HtmlInterpolation} from 'element-vir';
 import {Observable} from 'observavir';
-import {type RequireExactlyOne} from 'type-fest';
 import {AnthaUi} from './antha-ui.element.js';
 import {type AnthaLogger} from './logger/antha-logger.js';
 import {browserAnthaLogger} from './logger/browser-antha-logger.js';
@@ -388,9 +388,9 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
             await mod.cleanup?.({
                 engine: this,
                 hostElement: this.getEnsuredHostElement(),
-                modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
-                    applyBrand<ModInstanceId>(createId()),
-                ),
+                modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () => {
+                    return applyBrand<ModInstanceId>(createId());
+                }),
                 state: this.state,
                 executeImmediately: mod.executeImmediately || false,
                 frequency: mod.frequency || undefined,
@@ -466,9 +466,9 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
 
                 const rawResult = mod.execute({
                     engine: this,
-                    modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () =>
-                        applyBrand<ModInstanceId>(createId()),
-                    ),
+                    modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () => {
+                        return applyBrand<ModInstanceId>(createId());
+                    }),
                     currentTick: this.currentTick,
                     state: this.state,
                     ticksSinceLastExecute: this.currentTick - (lastExecution?.tick ?? 0),
@@ -537,8 +537,8 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
             const msSinceLastExecution = performance.now() - (lastExecution?.timeMs || 0);
 
             return msSinceLastExecution >= mod.frequency.durationMs;
+        } else {
+            return true;
         }
-
-        return true;
     }
 }

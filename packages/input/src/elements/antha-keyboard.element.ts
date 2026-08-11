@@ -1,5 +1,5 @@
 import {assertWrap} from '@augment-vir/assert';
-import {clamp, type PartialWithUndefined} from '@augment-vir/common';
+import {clamp, type PartialWithUndefined, type RequireExactlyOne} from '@augment-vir/common';
 import {nav, navAttribute, type NavController, NavValue} from 'device-navigation';
 import {
     classMap,
@@ -11,7 +11,6 @@ import {
     nothing,
     onDomCreated,
 } from 'element-vir';
-import {type RequireExactlyOne} from 'type-fest';
 import {
     noNativeSpacing,
     noUserSelect,

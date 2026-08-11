@@ -8,7 +8,12 @@ import {
     type MultiplayerRoomHandler,
 } from '@antha/multiplayer-core';
 import {check} from '@augment-vir/assert';
-import {callAsynchronously, ensureArray, type PartialWithUndefined} from '@augment-vir/common';
+import {
+    callAsynchronously,
+    ensureArray,
+    type PartialWithUndefined,
+    type RequireAtLeastOne,
+} from '@augment-vir/common';
 import {
     AnyOrigin,
     checkOriginRequirement,
@@ -24,7 +29,6 @@ import {
     silentServerLogger,
     type ServerLogger,
 } from '@rest-vir/host';
-import {type RequireAtLeastOne} from 'type-fest';
 
 /**
  * Multiplayer server options.
@@ -159,8 +163,14 @@ export function implementMultiplayerApi(options: MultiplayerServerOptions) {
                     },
                 };
             } else if (
-                !(await checkOriginRequirement(extractOrigin(requestHeaders), originRequirement))
+                await checkOriginRequirement(extractOrigin(requestHeaders), originRequirement)
             ) {
+                return {
+                    context: {
+                        gameId,
+                    },
+                };
+            } else {
                 serverState.logger.error(
                     new TypeError(`Origin check failed for game: '${gameId}'`),
                 );
@@ -170,12 +180,6 @@ export function implementMultiplayerApi(options: MultiplayerServerOptions) {
                     },
                 };
             }
-
-            return {
-                context: {
-                    gameId,
-                },
-            };
         },
         endpoints: [
             implementor.implementEndpoint(multiplayerRootEndpoint, {
