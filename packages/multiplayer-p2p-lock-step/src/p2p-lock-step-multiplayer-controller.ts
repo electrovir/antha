@@ -185,6 +185,7 @@ export class P2pLockStepMultiplayerController<
     protected timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
     protected frameTickReady = true;
     protected frameMs: number | undefined;
+    protected joiningRoom = false;
     protected lastFpsCalculation = {
         timestamp: 0,
         frameCount: 0,
@@ -405,25 +406,30 @@ export class P2pLockStepMultiplayerController<
 
         this.debugLog(`joining or creating room '${room.roomName}' (${room.roomId})`);
 
-        const roomConnection = await this.joinRoom({
-            previousRoomConnection,
-            room,
-        });
+        this.joiningRoom = true;
+        try {
+            const roomConnection = await this.joinRoom({
+                previousRoomConnection,
+                room,
+            });
 
-        if (previousRoomConnection) {
-            globalThis.clearTimeout(this.timeoutId);
-            this.clientsResponded = {};
-            this.frameActions = [];
-            this.frameTickReady = true;
-        } else if (wasSingleplayer) {
-            globalThis.clearTimeout(this.timeoutId);
-            this.frameTickReady = true;
+            if (previousRoomConnection) {
+                globalThis.clearTimeout(this.timeoutId);
+                this.clientsResponded = {};
+                this.frameActions = [];
+                this.frameTickReady = true;
+            } else if (wasSingleplayer) {
+                globalThis.clearTimeout(this.timeoutId);
+                this.frameTickReady = true;
+            }
+            this.singleplayer = false;
+            this.attachMultiplayerRoomConnection(roomConnection);
+            this.debugLog(
+                `attached p2p-lock-step connection; client=${this.getClientId() || 'unknown'} host=${this.isHost()} connected=${this.isConnected()}`,
+            );
+        } finally {
+            this.joiningRoom = false;
         }
-        this.singleplayer = false;
-        this.attachMultiplayerRoomConnection(roomConnection);
-        this.debugLog(
-            `attached p2p-lock-step connection; client=${this.getClientId() || 'unknown'} host=${this.isHost()} connected=${this.isConnected()}`,
-        );
     }
 
     /** Join through the core room controller while preserving the wrapper connection on failure. */
@@ -484,6 +490,8 @@ export class P2pLockStepMultiplayerController<
             this.debugLog(`client event received: ${JSON.stringify(event.detail)}`);
             if ('newMember' in event.detail) {
                 this.syncNewMember(event.detail.newMember);
+            } else if ('newHost' in event.detail) {
+                this.handleNewHost(event.detail.newHost);
             }
             this.dispatch(event);
         });
@@ -516,6 +524,23 @@ export class P2pLockStepMultiplayerController<
                 type: P2pLockStepMessageType.Actions,
             });
         }
+    }
+
+    /** Restart frame production if this client is promoted after losing its previous host. */
+    protected handleNewHost(clientId: ClientId) {
+        if (
+            this.joiningRoom ||
+            clientId !== this.localClientId ||
+            !this.roomConnection ||
+            !this.roomConnection.isHost()
+        ) {
+            return;
+        }
+
+        globalThis.clearTimeout(this.timeoutId);
+        this.clientsResponded = {};
+        this.frameTickReady = true;
+        this.finishFrame();
     }
 
     /** Send an empty frame to a newly connected member so it can join the frame flow. */

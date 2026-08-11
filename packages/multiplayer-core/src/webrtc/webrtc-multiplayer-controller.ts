@@ -13,6 +13,7 @@ import {
     mergeDefinedProperties,
     randomString,
     removeDuplicates,
+    retry,
     stringify,
 } from '@augment-vir/common';
 import {type ClientWebSocket} from '@rest-vir/api';
@@ -129,14 +130,17 @@ export class WebrtcMultiplayerController<
      *
      * A connection with the current client's id is the init connection.
      */
-    private connections: Record<ClientId, WebrtcController<MessageData>> = {};
-    private webSocket: ClientWebSocket<typeof multiplayerConnectWebSocket> | undefined;
-    private readonly clientSecret = randomString(32);
+    protected connections: Record<ClientId, WebrtcController<MessageData>> = {};
+    protected webSocket: ClientWebSocket<typeof multiplayerConnectWebSocket> | undefined;
+    protected readonly clientSecret = randomString(32);
     public readonly isDestroyed = false as boolean;
+    protected hostPingTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    protected reconnectPromise: Promise<void> | undefined;
+    protected isCleaningUpConnection = false;
 
     constructor(
-        private readonly gameId: string,
-        private readonly multiplayerApiClient: Readonly<MultiplayerApiClient>,
+        protected readonly gameId: string,
+        protected readonly multiplayerApiClient: Readonly<MultiplayerApiClient>,
         public readonly stunServerUrls: ReadonlyArray<string>,
         public readonly multiplayerRoom: Readonly<RoomInput>,
         /** The randomized client id for this controller and client. */
@@ -148,7 +152,7 @@ export class WebrtcMultiplayerController<
          *
          * @default accept all connections
          */
-        private readonly shouldAllowConnectionCheck: ShouldAllowConnectionCheck<
+        protected readonly shouldAllowConnectionCheck: ShouldAllowConnectionCheck<
             WebrtcMultiplayerController<MessageData>
         > = () => true,
     ) {
@@ -226,6 +230,8 @@ export class WebrtcMultiplayerController<
     /** Destroy this controller and clean everything up. */
     public override destroy() {
         makeWritable(this).isDestroyed = true;
+        globalThis.clearTimeout(this.hostPingTimeoutId);
+        this.hostPingTimeoutId = undefined;
         Object.values(this.connections).forEach((connection) => connection.destroy());
         void this.webSocket?.close();
         this.connectionQueue.destroy();
@@ -286,38 +292,54 @@ export class WebrtcMultiplayerController<
             return false;
         }
 
-        const newConnection = this.createNewConnection(this.clientId);
-        const newOffer = await newConnection.createOffer(this.stunServerUrls);
+        try {
+            const newConnection = this.createNewConnection(this.clientId);
+            const newOffer = await newConnection.createOffer(this.stunServerUrls);
 
-        const webSocket = await this.setupWebSocket();
-        const reply = await webSocket.sendAndWaitForReply({
-            message: {
-                messageId: createMultiplayerId.socketMessage(),
-                type: MultiplayerWebSocketMessageType.Offer,
-                clientId: this.clientId,
-                clientSecret: this.clientSecret,
-                data: newOffer,
-                ...this.multiplayerRoom,
-            },
-            replyCheck(message) {
-                return message.type === MultiplayerWebSocketMessageType.OfferResult;
-            },
-        });
+            const webSocket = await this.setupWebSocket();
+            const reply = await webSocket.sendAndWaitForReply({
+                message: {
+                    messageId: createMultiplayerId.socketMessage(),
+                    type: MultiplayerWebSocketMessageType.Offer,
+                    clientId: this.clientId,
+                    clientSecret: this.clientSecret,
+                    data: newOffer,
+                    ...this.multiplayerRoom,
+                },
+                replyCheck(message) {
+                    return message.type === MultiplayerWebSocketMessageType.OfferResult;
+                },
+            });
 
-        assert.strictEquals(reply.type, MultiplayerWebSocketMessageType.OfferResult);
+            assert.strictEquals(reply.type, MultiplayerWebSocketMessageType.OfferResult);
 
-        /**
-         * `hostClientId` will be set by the already attached listener. We just need to wait until
-         * it does, because we need to know who the host is before calling `sendHostPing`.
-         */
-        await waitUntil.isDefined(() => this.hostClientId);
+            /**
+             * `hostClientId` will be set by the already attached listener. We just need to wait
+             * until it does, because we need to know who the host is before calling
+             * `sendHostPing`.
+             */
+            await waitUntil.isDefined(() => this.hostClientId);
 
-        this.sendHostPing();
+            this.sendHostPing();
 
-        return true;
+            return true;
+        } catch (error) {
+            this.isCleaningUpConnection = true;
+            try {
+                this.connections[this.clientId]?.destroy();
+                delete this.connections[this.clientId];
+                globalThis.clearTimeout(this.hostPingTimeoutId);
+                this.hostPingTimeoutId = undefined;
+                await this.webSocket?.close();
+                this.webSocket = undefined;
+            } finally {
+                this.isCleaningUpConnection = false;
+            }
+            throw error;
+        }
     }
 
-    private sendHostPing() {
+    protected sendHostPing() {
         if (this.isHost() && this.webSocket) {
             this.webSocket.send({
                 messageId: createMultiplayerId.socketMessage(),
@@ -328,13 +350,37 @@ export class WebrtcMultiplayerController<
                 ...this.multiplayerRoom,
             });
 
-            setTimeout(() => this.sendHostPing(), 1000);
+            this.hostPingTimeoutId = setTimeout(() => this.sendHostPing(), 1000);
         }
     }
 
-    private connectionQueue = new PromiseQueue();
+    protected reconnectAfterHostLoss() {
+        if (this.isDestroyed || this.reconnectPromise || this.isCleaningUpConnection) {
+            return;
+        }
 
-    private async setupWebSocket() {
+        this.reconnectPromise = retry(3, () => this.initConnection(), {
+            interval: {
+                seconds: 1,
+            },
+        })
+            .then(() => undefined)
+            .catch((error: unknown) => {
+                log.warning(
+                    ensureErrorAndPrependMessage(
+                        error,
+                        'Failed to reconnect to the multiplayer room.',
+                    ),
+                );
+            })
+            .finally(() => {
+                this.reconnectPromise = undefined;
+            });
+    }
+
+    protected connectionQueue = new PromiseQueue();
+
+    protected async setupWebSocket() {
         if (
             this.webSocket &&
             (this.webSocket.readyState === WebSocket.OPEN ||
@@ -473,6 +519,8 @@ export class WebrtcMultiplayerController<
                     },
                     close: () => {
                         this.webSocket = undefined;
+                        globalThis.clearTimeout(this.hostPingTimeoutId);
+                        this.hostPingTimeoutId = undefined;
                     },
                 },
             },
@@ -482,7 +530,7 @@ export class WebrtcMultiplayerController<
         return webSocket;
     }
 
-    private createNewConnection(clientId: ClientId): WebrtcController<MessageData> {
+    protected createNewConnection(clientId: ClientId): WebrtcController<MessageData> {
         const newController = new WebrtcController<MessageData>(clientId);
         this.connections[clientId] = newController;
         newController.listen(WebrtcConnectEvent, (event) => {
@@ -521,7 +569,7 @@ export class WebrtcMultiplayerController<
                      * If this member client has lost connection to its host, we've got to get it
                      * back!
                      */
-                    void this.initConnection();
+                    this.reconnectAfterHostLoss();
                 }
             }
         });

@@ -102,11 +102,11 @@ export function createAnthaFpsMod(options?: Readonly<AnthaFpsModOptions> | undef
                                 flex-direction: column;
                             `}
                         >
-                            ${fpsStutters.map(
-                                (stutter) => html`
+                            ${fpsStutters.map((stutter) => {
+                                return html`
                                     <span>${Math.round(stutter)}</span>
-                                `,
-                            )}
+                                `;
+                            })}
                         </div>
                     `,
             ].filter(check.isTruthy);

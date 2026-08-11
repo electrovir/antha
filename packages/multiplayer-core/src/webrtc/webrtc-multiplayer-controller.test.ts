@@ -369,9 +369,13 @@ describe(WebrtcMultiplayerController.name, () => {
             );
             const updates: unknown[] = [];
             const internals = extractInternals(controller);
+            let reconnectCallCount = 0;
 
             makeWritable(controller).hostClientId = hostClientId;
-            makeWritable(controller).initConnection = () => Promise.resolve(false);
+            makeWritable(controller).initConnection = () => {
+                reconnectCallCount++;
+                return Promise.resolve(false);
+            };
             assert.deepEquals(controller.getAllClientIds(), []);
             controller.listen(WebrtcMultiplayerConnectionUpdateEvent, ({detail}) => {
                 updates.push(detail);
@@ -391,11 +395,20 @@ describe(WebrtcMultiplayerController.name, () => {
             );
             dataChannel.close();
 
-            assert.deepEquals(updates, [
+            assert.deepEquals(
                 {
-                    lostHost: localClientId,
+                    reconnectCallCount,
+                    updates,
                 },
-            ]);
+                {
+                    reconnectCallCount: 1,
+                    updates: [
+                        {
+                            lostHost: localClientId,
+                        },
+                    ],
+                },
+            );
         });
     });
 

@@ -4,7 +4,7 @@ import {startApiServer, type RunApiUserOptions, type StartApiServerOutput} from 
 import {
     implementMultiplayerApi,
     type MultiplayerServerOptions,
-} from './implemented-multiplayer-api.js';
+} from './multiplayer-api-implementation.js';
 
 /**
  * Starts the multiplayer server.

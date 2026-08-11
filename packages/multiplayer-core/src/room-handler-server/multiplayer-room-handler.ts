@@ -153,6 +153,7 @@ export function createMultiplayerRoomHandler(options?: Readonly<MultiplayerRoomH
 
         /** Get the client-friendly room listing for a game. */
         getRoomsForFetching(gameId: string): MultiplayerClientRooms {
+            updateRoomsForFetching(gameId, state);
             return state.roomsForFetching[gameId] || {};
         },
 

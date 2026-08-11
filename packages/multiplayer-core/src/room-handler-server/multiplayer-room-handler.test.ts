@@ -554,6 +554,26 @@ describe(createMultiplayerRoomHandler.name, () => {
         );
     });
 
+    it('removes a closed host before returning the room list', () => {
+        const handler = createMultiplayerRoomHandler({
+            disablePeriodicCleanup: true,
+        });
+        const roomId = createMultiplayerId.room();
+        const hostTransport = createFakeTransport();
+
+        enqueueAndProcess({
+            handler,
+            message: createOfferMessage({
+                roomId,
+            }),
+            transport: hostTransport,
+        });
+
+        hostTransport.readyState = CommonWebSocketState.Closed;
+
+        assert.deepEquals(handler.getRoomsForFetching('test-game'), {});
+    });
+
     it('re-establishes a room when the host pings one that was reaped', () => {
         const errors: Error[] = [];
         const logger: RoomHandlerLogger = {

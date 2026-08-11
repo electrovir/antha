@@ -27,7 +27,7 @@ import {
     implementMultiplayerApi,
     type ImplementedMultiplayerApi,
     type MultiplayerServerState,
-} from './implemented-multiplayer-api.js';
+} from './multiplayer-api-implementation.js';
 
 type SetupRoomsOutput<Rooms extends string[][]> = {
     [Key in keyof Rooms]: {

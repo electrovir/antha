@@ -1,2 +1,2 @@
-export * from './implemented-multiplayer-api.js';
+export * from './multiplayer-api-implementation.js';
 export * from './start-server.js';

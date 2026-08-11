@@ -56,6 +56,10 @@ class InspectableP2pLockStepMultiplayerController extends P2pLockStepMultiplayer
     public get roomConnectionForTest() {
         return this.roomConnection;
     }
+
+    public get localClientIdForTest() {
+        return this.localClientId;
+    }
 }
 
 class FakeDataChannel extends EventTarget {
@@ -203,6 +207,7 @@ function createFakeConnection({
     connectedClientIds?: ReadonlyArray<ClientId> | undefined;
     host?: boolean | undefined;
 }> = {}): MultiplayerRoomConnection<P2pLockStepMessage<string>> & {
+    setHost: (isHost: boolean) => void;
     sentMessages: ReadonlyArray<P2pLockStepMessage<string>>;
     onlyOneClientMessages: ReadonlyArray<{
         clientId: ClientId;
@@ -215,9 +220,13 @@ function createFakeConnection({
         clientId: ClientId;
         message: P2pLockStepMessage<string>;
     }[] = [];
+    let isHost = host;
 
     return {
         clientId,
+        setHost(nextIsHost) {
+            isHost = nextIsHost;
+        },
         sentMessages,
         onlyOneClientMessages,
         destroy() {},
@@ -234,7 +243,7 @@ function createFakeConnection({
             return connected;
         },
         isHost() {
-            return host;
+            return isHost;
         },
         sendMessage(message) {
             sentMessages.push(message);
@@ -738,6 +747,32 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 ],
             },
         );
+    });
+
+    it('restarts frame production after becoming the host', () => {
+        const controller = createController();
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        controller.setFrameMsForTest(undefined);
+        controller.setRoomConnectionForTest(fakeConnection);
+        fakeConnection.setHost(true);
+
+        controller.roomController.dispatch(
+            new ControllerClientEvent({
+                detail: {
+                    newHost: controller.localClientIdForTest,
+                },
+            }),
+        );
+
+        assert.deepEquals(fakeConnection.sentMessages, [
+            {
+                actions: [],
+                type: P2pLockStepMessageType.Frame,
+            },
+        ]);
+        controller.destroy();
     });
 
     it('runs manual frames when automatic frame duration is disabled', () => {
