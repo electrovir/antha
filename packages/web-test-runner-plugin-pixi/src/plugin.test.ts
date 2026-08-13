@@ -1,7 +1,7 @@
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {pixiPlugin, PixiPlugin} from './plugin.js';
-import {testFilesDirPath} from './repo-paths.mock.js';
+import {monoRepoDirPath, testFilesDirPath} from './repo-paths.mock.js';
 import {runTests} from './run-tests.mock.js';
 
 describe(PixiPlugin.name, () => {
@@ -24,6 +24,7 @@ describe(PixiPlugin.name, () => {
                 plugins: [
                     pixiPlugin(),
                 ],
+                rootDir: monoRepoDirPath,
             }),
         );
     });

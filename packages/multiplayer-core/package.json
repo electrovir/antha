@@ -36,9 +36,9 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.2.1",
-        "@augment-vir/common": "^32.2.1",
-        "@rest-vir/api": "^2.3.0",
+        "@augment-vir/assert": "^32.2.2",
+        "@augment-vir/common": "^32.2.2",
+        "@rest-vir/api": "^2.3.1",
         "@sinclair/typebox": "^0.34.52",
         "date-vir": "^9.0.0",
         "object-shape-tester": "^6.14.1",
@@ -46,7 +46,7 @@
         "url-vir": "^2.2.1"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.1",
+        "@augment-vir/test": "^32.2.2",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",

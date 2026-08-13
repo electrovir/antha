@@ -33,10 +33,10 @@
         "@antha/multiplayer-core": "^0.1.0",
         "@antha/multiplayer-server": "^0.1.0",
         "@antha/util": "^0.1.0",
-        "@augment-vir/assert": "^32.2.1",
-        "@augment-vir/common": "^32.2.1",
+        "@augment-vir/assert": "^32.2.2",
+        "@augment-vir/common": "^32.2.2",
         "@faker-js/faker": "^10.5.0",
-        "@rest-vir/api": "^2.3.0",
+        "@rest-vir/api": "^2.3.1",
         "device-navigation": "^4.7.3",
         "element-vir": "^26.17.3",
         "indexed-vir": "^1.0.2",
@@ -45,7 +45,7 @@
         "vira": "^31.29.0"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.1",
+        "@augment-vir/test": "^32.2.2",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",

@@ -11,8 +11,8 @@
         "test:coverage": "npm test"
     },
     "dependencies": {
-        "@augment-vir/common": "^32.2.1",
-        "@augment-vir/node": "^32.2.1",
+        "@augment-vir/common": "^32.2.2",
+        "@augment-vir/node": "^32.2.2",
         "element-vir": "^26.17.3"
     },
     "devDependencies": {

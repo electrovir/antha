@@ -27,73 +27,75 @@ export const VirGamepadName = defineElement<{
         gamepadModelOverride: defineElementEvent<string>(),
         createNewModel: defineElementEvent<void>(),
     },
-    styles: ({cssVars}) => css`
-        :host {
-            border-radius: 24px;
-            padding: 32px;
-            gap: 16px;
-            display: flex;
-            flex-direction: column;
-            background-color: ${cssVars['vir-gamepad-name-gamepad-brand-color'].value};
-            border: 2px solid ${cssVars['vir-gamepad-name-gamepad-brand-color'].value};
-            background-image: linear-gradient(
-                hsla(0, 0%, 100%, 0.8),
-                hsla(0, 0%, 100%, 0) 75px,
-                hsla(0, 0%, 0%, 0.01) 75px,
-                hsla(0, 0%, 100%, 0)
-            );
-            text-shadow: 0 2px 4px hsla(0, 0%, 100%, 0.7);
-            box-shadow: inset 0 5px 20px hsla(0, 0%, 100%, 0.9);
-        }
+    styles: ({cssVars}) => {
+        return css`
+            :host {
+                border-radius: 24px;
+                padding: 32px;
+                gap: 16px;
+                display: flex;
+                flex-direction: column;
+                background-color: ${cssVars['vir-gamepad-name-gamepad-brand-color'].value};
+                border: 2px solid ${cssVars['vir-gamepad-name-gamepad-brand-color'].value};
+                background-image: linear-gradient(
+                    hsla(0, 0%, 100%, 0.8),
+                    hsla(0, 0%, 100%, 0) 75px,
+                    hsla(0, 0%, 0%, 0.01) 75px,
+                    hsla(0, 0%, 100%, 0)
+                );
+                text-shadow: 0 2px 4px hsla(0, 0%, 100%, 0.7);
+                box-shadow: inset 0 5px 20px hsla(0, 0%, 100%, 0.9);
+            }
 
-        h2,
-        p {
-            ${noNativeSpacing}
-        }
+            h2,
+            p {
+                ${noNativeSpacing}
+            }
 
-        h2 {
-            font-size: 2em;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+            h2 {
+                font-size: 2em;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
 
-        .subtitle {
-            color: #575757;
-        }
+            .subtitle {
+                color: #575757;
+            }
 
-        .subtitle:hover {
-            color: black;
-        }
+            .subtitle:hover {
+                color: black;
+            }
 
-        button {
-            ${noNativeFormStyles};
-            align-self: center;
-            transition: 100ms;
-            border: 1px solid ${cssVars['vir-gamepad-name-gamepad-brand-color'].value};
-            background-color: white;
-            padding: 4px 8px;
-            font: inherit;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-        }
+            button {
+                ${noNativeFormStyles};
+                align-self: center;
+                transition: 100ms;
+                border: 1px solid ${cssVars['vir-gamepad-name-gamepad-brand-color'].value};
+                background-color: white;
+                padding: 4px 8px;
+                font: inherit;
+                border-radius: 8px;
+                cursor: pointer;
+                font-weight: bold;
+            }
 
-        button:hover,
-        button:active {
-            color: ${cssVars['vir-gamepad-name-gamepad-brand-color'].value};
-            background-color: black;
-        }
+            button:hover,
+            button:active {
+                color: ${cssVars['vir-gamepad-name-gamepad-brand-color'].value};
+                background-color: black;
+            }
 
-        select {
-            ${noNativeFormStyles};
-            flex-grow: 1;
-            padding: 2px 4px;
-            cursor: pointer;
-            width: 0;
-            font: inherit;
-        }
-    `,
+            select {
+                ${noNativeFormStyles};
+                flex-grow: 1;
+                padding: 2px 4px;
+                cursor: pointer;
+                width: 0;
+                font: inherit;
+            }
+        `;
+    },
     render({inputs, host, dispatch, events}) {
         const {gamepadBrand, gamepadModel, gamepadModelDescription} = findMatchingGamepadModel({
             gamepad: inputs.gamepad,
@@ -141,13 +143,13 @@ export const VirGamepadName = defineElement<{
                     }
                 })}
             >
-                ${gamepadModelOptions.map(
-                    (model) => html`
+                ${gamepadModelOptions.map((model) => {
+                    return html`
                         <option ?selected=${gamepadModel === model} value=${model}>
                             ${kebabCaseToNameCase(model)}
                         </option>
-                    `,
-                )}
+                    `;
+                })}
                 <option value=${createNewGamepadModelValue}>&gt; Enter New Gamepad Model</option>
             </select>
         `;

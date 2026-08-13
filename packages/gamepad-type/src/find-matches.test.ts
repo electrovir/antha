@@ -1,8 +1,11 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
-import {describe, itCases} from '@augment-vir/test';
+
+import {assert} from '@augment-vir/assert';
+import {describe, it, itCases} from '@augment-vir/test';
 import {defaultGamepadLayouts} from './default-layouts.js';
-import {findMatchingGamepadLayout} from './find-matches.js';
+import {findMatchingGamepadLayout, findMatchingGamepadModel} from './find-matches.js';
 import {mockLayouts} from './gamepad-layout.mock.js';
+import {PredefinedGamepadBrand, PredefinedGamepadModel} from './gamepad-model.js';
 
 describe(findMatchingGamepadLayout.name, () => {
     itCases(findMatchingGamepadLayout, [
@@ -12,6 +15,13 @@ describe(findMatchingGamepadLayout.name, () => {
                 gamepad: {
                     deviceName: 'hi this is not real',
                 },
+            },
+            expect: undefined,
+        },
+        {
+            it: 'finds nothing when the gamepad is absent',
+            input: {
+                gamepad: undefined,
             },
             expect: undefined,
         },
@@ -36,6 +46,14 @@ describe(findMatchingGamepadLayout.name, () => {
             expect: defaultGamepadLayouts[0],
         },
         {
+            it: 'finds a layout from a string gamepad name',
+            input: {
+                gamepad: 'Pro Controller Extended Gamepad',
+                systemVersions: defaultGamepadLayouts[0]!.systemVersions[0]!,
+            },
+            expect: defaultGamepadLayouts[0],
+        },
+        {
             it: 'finds layout with more specific version number',
             input: {
                 gamepad: {
@@ -52,4 +70,65 @@ describe(findMatchingGamepadLayout.name, () => {
             expect: mockLayouts[8],
         },
     ]);
+});
+
+describe(findMatchingGamepadModel.name, () => {
+    itCases(findMatchingGamepadModel, [
+        {
+            it: 'matches a gamepad object',
+            input: {
+                gamepad: {
+                    deviceName: 'Pro Controller Extended Gamepad',
+                },
+            },
+            expect: {
+                gamepadModel: PredefinedGamepadModel.SwitchPro,
+                gamepadBrand: PredefinedGamepadBrand.Nintendo,
+                gamepadModelDescription:
+                    'Nintendo Switch Pro gamepad for the Nintendo Switch console.',
+            },
+        },
+        {
+            it: 'matches a gamepad name string',
+            input: {
+                gamepad: 'Pro Controller Extended Gamepad',
+            },
+            expect: {
+                gamepadModel: PredefinedGamepadModel.SwitchPro,
+                gamepadBrand: PredefinedGamepadBrand.Nintendo,
+                gamepadModelDescription:
+                    'Nintendo Switch Pro gamepad for the Nintendo Switch console.',
+            },
+        },
+        {
+            it: 'handles an absent gamepad',
+            input: {
+                gamepad: undefined,
+            },
+            expect: {
+                gamepadModel: undefined,
+                gamepadBrand: undefined,
+                gamepadModelDescription: undefined,
+            },
+        },
+    ]);
+
+    it('returns the expected result for a custom model map', () => {
+        assert.deepEquals(
+            findMatchingGamepadModel({
+                gamepad: 'custom gamepad',
+                gamepadModelMap: {
+                    'custom gamepad': 'custom-model',
+                },
+                gamepadBrandMap: {
+                    'custom-model': 'custom-brand',
+                },
+            }),
+            {
+                gamepadModel: 'custom-model',
+                gamepadBrand: 'custom-brand',
+                gamepadModelDescription: undefined,
+            },
+        );
+    });
 });

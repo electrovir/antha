@@ -203,8 +203,9 @@ export const VirDemo = defineElement()({
                 const allDevices: AllDevices = state.deviceHandler.getLastPollResults();
                 updateState({
                     gamepadDevices: Object.values(allDevices).filter(
-                        (device): device is GamepadDevice =>
-                            device.deviceType === InputDeviceType.Gamepad,
+                        (device): device is GamepadDevice => {
+                            return device.deviceType === InputDeviceType.Gamepad;
+                        },
                     ),
                 });
             }),

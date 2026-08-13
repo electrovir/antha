@@ -223,11 +223,11 @@ describe(WebrtcController.name, () => {
             const dataChannel = connection.createdDataChannels[0];
             assert.isDefined(dataChannel);
 
-            assert.throws(() =>
-                controller.sendMessage({
+            assert.throws(() => {
+                return controller.sendMessage({
                     message: 'before open',
-                }),
-            );
+                });
+            });
 
             dataChannel.open();
             controller.sendMessage({
@@ -322,14 +322,15 @@ describe(WebrtcController.name, () => {
             });
 
             await assert.throws(
-                () =>
-                    controller.createAnswer(
+                () => {
+                    return controller.createAnswer(
                         {
                             type: 'offer',
                             sdp: 'remote offer',
                         },
                         [],
-                    ),
+                    );
+                },
                 {
                     matchMessage: 'Connection already created!',
                 },

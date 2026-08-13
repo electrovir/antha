@@ -40,6 +40,9 @@ type WebrtcMultiplayerControllerInternals<MessageData extends JsonCompatibleValu
         destroy(): void;
     }>;
     setupWebSocket(): Promise<FakeClientWebSocket>;
+    reconnectAfterHostLoss(): void;
+    reconnectPromise: Promise<void> | undefined;
+    isCleaningUpConnection: boolean;
     webSocket: FakeClientWebSocket | undefined;
 }>;
 
@@ -157,9 +160,10 @@ class FakeClientWebSocket {
     public readonly sentMessages: unknown[] = [];
     public closeCallCount = 0;
     public listeners: CapturedWebSocketListeners | undefined;
+    public sendAndWaitForReplyError: Error | undefined = undefined;
     public readyState: number = WebSocket.OPEN;
 
-    constructor(private readonly replyHostClientId: ClientId) {}
+    constructor(protected readonly replyHostClientId: ClientId) {}
 
     public send(message: unknown) {
         this.sentMessages.push(message);
@@ -172,6 +176,10 @@ class FakeClientWebSocket {
         message: unknown;
         replyCheck(message: unknown): boolean;
     }>) {
+        if (this.sendAndWaitForReplyError) {
+            throw this.sendAndWaitForReplyError;
+        }
+
         this.sentMessages.push(message);
         const reply = {
             type: MultiplayerWebSocketMessageType.OfferResult,
@@ -353,6 +361,46 @@ describe(WebrtcMultiplayerController.name, () => {
                     ],
                 },
             );
+        });
+    });
+
+    it('forwards messages from its initial connection through the host id', async () => {
+        await withMockPeerConnection(async () => {
+            const localClientId = createMultiplayerId.client();
+            const hostClientId = createMultiplayerId.client();
+            const controller = new WebrtcMultiplayerController<TestMessage>(
+                'mock',
+                createCapturingApiClient(new FakeClientWebSocket(hostClientId)).apiClient,
+                [],
+                createNewRoom(),
+                localClientId,
+            );
+            const messages: unknown[] = [];
+            const internals = extractInternals(controller);
+
+            makeWritable(controller).hostClientId = hostClientId;
+            controller.listen(WebrtcMultiplayerMessageEvent, ({sourceClientId, detail}) => {
+                messages.push({
+                    sourceClientId,
+                    detail,
+                });
+            });
+
+            const initialConnection = internals.createNewConnection(localClientId);
+            await initialConnection.createOffer([]);
+            const dataChannel = FakePeerConnection.instances[0]?.createdDataChannels[0];
+            assert.isDefined(dataChannel);
+            dataChannel.open();
+            dataChannel.receive('{"value":"from host"}');
+
+            assert.deepEquals(messages, [
+                {
+                    sourceClientId: hostClientId,
+                    detail: {
+                        value: 'from host',
+                    },
+                },
+            ]);
         });
     });
 
@@ -730,5 +778,80 @@ describe(WebrtcMultiplayerController.name, () => {
 
             assert.isTrue(controller.isDestroyed);
         });
+    });
+
+    it('cleans up when connection initialization fails', async () => {
+        await withMockPeerConnection(async () => {
+            const localClientId = createMultiplayerId.client();
+            const webSocket = new FakeClientWebSocket(localClientId);
+            webSocket.sendAndWaitForReplyError = new Error('connection failed');
+            const controller = new WebrtcMultiplayerController<TestMessage>(
+                'mock',
+                createCapturingApiClient(webSocket).apiClient,
+                [],
+                createNewRoom(),
+                localClientId,
+            );
+            const internals = extractInternals(controller);
+
+            await assert.throws(() => controller.initConnection(), {
+                matchMessage: 'connection failed',
+            });
+
+            assert.deepEquals(
+                {
+                    hasConnection: !!internals.connections[localClientId],
+                    isCleaningUpConnection: internals.isCleaningUpConnection,
+                    isDestroyed: controller.isDestroyed,
+                    webSocket: internals.webSocket,
+                    webSocketCloseCallCount: webSocket.closeCallCount,
+                },
+                {
+                    hasConnection: false,
+                    isCleaningUpConnection: false,
+                    isDestroyed: false,
+                    webSocket: undefined,
+                    webSocketCloseCallCount: 1,
+                },
+            );
+        });
+    });
+
+    it('handles a failed reconnect and skips reconnecting after destruction', async () => {
+        const localClientId = createMultiplayerId.client();
+        const controller = new WebrtcMultiplayerController<TestMessage>(
+            'mock',
+            createCapturingApiClient(new FakeClientWebSocket(localClientId)).apiClient,
+            [],
+            createNewRoom(),
+            localClientId,
+        );
+        const internals = extractInternals(controller);
+        const reconnectCalls: number[] = [];
+
+        makeWritable(controller).initConnection = () => {
+            reconnectCalls.push(1);
+            return Promise.reject(new Error('reconnect failed'));
+        };
+        internals.reconnectAfterHostLoss();
+        const reconnectPromise = internals.reconnectPromise;
+        assert.isDefined(reconnectPromise);
+        await reconnectPromise;
+
+        controller.destroy();
+        internals.reconnectAfterHostLoss();
+
+        assert.deepEquals(
+            {
+                isCleaningUpConnection: internals.isCleaningUpConnection,
+                reconnectCallCount: reconnectCalls.length,
+                reconnectPromise: internals.reconnectPromise,
+            },
+            {
+                isCleaningUpConnection: false,
+                reconnectCallCount: 4,
+                reconnectPromise: undefined,
+            },
+        );
     });
 });

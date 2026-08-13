@@ -57,8 +57,8 @@ export const VirGamepadInputs = defineElement<{
             gamepadModelMap: inputs.gamepadModelMap,
         });
 
-        const buttons = inputs.gamepad.deviceDetails.buttons.map(
-            (gamepadInput) => html`
+        const buttons = inputs.gamepad.deviceDetails.buttons.map((gamepadInput) => {
+            return html`
                 <${VirGamepadInput.assign({
                     gamepadBrand,
                     gamepadInput,
@@ -77,8 +77,8 @@ export const VirGamepadInputs = defineElement<{
                         );
                     })}
                 ></${VirGamepadInput}>
-            `,
-        );
+            `;
+        });
 
         const axes = inputs.gamepad.deviceDetails.axes.map((gamepadInput) => {
             return html`

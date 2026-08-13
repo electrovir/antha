@@ -32,16 +32,16 @@
         "docs": "virmator docs",
         "start": "tsx src/index.ts",
         "test": "virmator test node",
-        "test:coverage": "npm run test coverage",
+        "test:coverage": "npm run test",
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/node": "^32.2.1"
+        "@augment-vir/node": "^32.2.2"
     },
     "devDependencies": {
-        "@augment-vir/assert": "^32.2.1",
-        "@augment-vir/common": "^32.2.1",
-        "@augment-vir/test": "^32.2.1",
+        "@augment-vir/assert": "^32.2.2",
+        "@augment-vir/common": "^32.2.2",
+        "@augment-vir/test": "^32.2.2",
         "@types/node": "^26.2.0",
         "@web/dev-server": "^1.0.0",
         "@web/dev-server-core": "^1.0.1",

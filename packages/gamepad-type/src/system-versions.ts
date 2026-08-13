@@ -24,6 +24,7 @@ export type SystemVersions = Readonly<{
  */
 export function getSystemVersions(): SystemVersions {
     return {
+        /* node:coverage ignore next: supported browser user agents include a browser version. */
         browserVersion: bowser.getBrowserVersion() || 'unknown',
         browserName: bowser.getBrowserName(),
         osName: bowser.getOSName(),

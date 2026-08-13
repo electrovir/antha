@@ -35,14 +35,14 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.2.1",
-        "@augment-vir/common": "^32.2.1",
+        "@augment-vir/assert": "^32.2.2",
+        "@augment-vir/common": "^32.2.2",
         "bowser": "^2.14.1",
         "input-device-handler": "^9.0.4"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.1",
-        "@augment-vir/web": "^32.2.1",
+        "@augment-vir/test": "^32.2.2",
+        "@augment-vir/web": "^32.2.2",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-commands": "^1.0.1",

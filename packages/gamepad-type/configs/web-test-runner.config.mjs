@@ -11,6 +11,13 @@ const baseConfig = defineConfig({
 /** @type {import('@web/test-runner').TestRunnerConfig} */
 const webTestRunnerConfig = {
     ...baseConfig,
+    coverageConfig: {
+        ...baseConfig.coverageConfig,
+        exclude: [
+            ...baseConfig.coverageConfig.exclude,
+            'src/demo/**/*.ts',
+        ],
+    },
 };
 
 export default webTestRunnerConfig;

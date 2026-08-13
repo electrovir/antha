@@ -168,7 +168,7 @@ class PlayerEntity extends defineEntity({
         },
     },
 }) {
-    private static readonly spriteProperties = {
+    protected static readonly spriteProperties = {
         resolution: 4,
         rotationSpeed: 0.002,
         playerDisplaySize: 400,

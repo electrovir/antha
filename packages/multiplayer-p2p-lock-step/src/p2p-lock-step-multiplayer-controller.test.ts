@@ -827,7 +827,20 @@ describe(P2pLockStepMultiplayerController.name, () => {
         });
         singleplayerController.forceUndefinedClientIdForTest = true;
         singleplayerController.startSingleplayer();
+        assert.deepEquals(
+            {
+                clientId: singleplayerController.getClientId(),
+                isConnected: singleplayerController.isConnected(),
+                isHost: singleplayerController.isHost(),
+            },
+            {
+                clientId: undefined,
+                isConnected: true,
+                isHost: true,
+            },
+        );
         singleplayerController.destroy();
+        assert.isFalse(singleplayerController.isConnected());
 
         const multiplayerController = createController({
             debugMultiplayer: true,
@@ -838,7 +851,20 @@ describe(P2pLockStepMultiplayerController.name, () => {
 
         await multiplayerController.joinOrCreateRoom(createNewRoom());
 
+        assert.deepEquals(
+            {
+                clientId: multiplayerController.getClientId(),
+                isConnected: multiplayerController.isConnected(),
+                isHost: multiplayerController.isHost(),
+            },
+            {
+                clientId: undefined,
+                isConnected: true,
+                isHost: true,
+            },
+        );
         multiplayerController.destroy();
+        assert.isFalse(multiplayerController.isConnected());
     });
 
     it('joins rooms as host and member', async () => {

@@ -41,6 +41,14 @@ class MockP2pAuthoritativeHostMultiplayerController extends P2pAuthoritativeHost
     public get roomConnectionForTest() {
         return this.roomConnection;
     }
+
+    public prepareRoomConnectionForTest(
+        roomConnection: MultiplayerRoomConnection<
+            P2pAuthoritativeHostMessage<number, CounterState>
+        >,
+    ) {
+        return this.prepareRoomConnection(roomConnection);
+    }
 }
 
 class FakeDataChannel extends EventTarget {
@@ -345,6 +353,40 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
                 },
             },
         ]);
+    });
+
+    it('restores singleplayer state when preparing a room connection fails', async () => {
+        const controller = createController();
+        controller.startSingleplayer();
+        controller.act(2);
+
+        const failedConnection = createFakeConnection({
+            host: false,
+        });
+        failedConnection.sendMessage = () => {
+            throw new Error('state sync failed');
+        };
+
+        await assert.throws(() => controller.prepareRoomConnectionForTest(failedConnection), {
+            matchMessage: 'state sync failed',
+        });
+
+        assert.deepEquals(
+            {
+                roomConnection: controller.roomConnectionForTest,
+                state: controller.getState(),
+            },
+            {
+                roomConnection: undefined,
+                state: {
+                    count: 2,
+                },
+            },
+        );
+        controller.act(3);
+        assert.deepEquals(controller.getState(), {
+            count: 5,
+        });
     });
 
     it('exposes connection state and guards invalid singleplayer calls', async () => {

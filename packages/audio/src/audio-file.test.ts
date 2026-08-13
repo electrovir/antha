@@ -1,17 +1,18 @@
-import {assert} from '@augment-vir/assert';
-import {describe, it} from '@augment-vir/test';
+import {assert, waitUntil} from '@augment-vir/assert';
+import {describe, it, testWeb} from '@augment-vir/test';
+import {html} from 'element-vir';
 import {AudioFile} from './audio-file.js';
 import {Codec} from './codecs.js';
+import {isPlayingEnabled} from './detect-play.js';
 import {shortMp3Base64, shortMp3FileUrl} from './files.mock.js';
 
 describe(AudioFile.name, () => {
     it('fails to construct on invalid files', () => {
-        assert.throws(
-            () =>
-                new AudioFile({
-                    sources: ['derp.gif'],
-                }),
-        );
+        assert.throws(() => {
+            return new AudioFile({
+                sources: ['derp.gif'],
+            });
+        });
     });
     it('can be loaded multiple times', async () => {
         const file = new AudioFile({
@@ -34,14 +35,15 @@ describe(AudioFile.name, () => {
 
         await file.destroy();
         await file.destroy();
+
+        assert.isTrue(file.isDestroyed);
     });
     it('allows overriding a source codec', () => {
-        assert.throws(
-            () =>
-                new AudioFile({
-                    sources: ['../www-static/powerUp3'],
-                }),
-        );
+        assert.throws(() => {
+            return new AudioFile({
+                sources: ['../www-static/powerUp3'],
+            });
+        });
 
         assert.isDefined(
             new AudioFile({
@@ -54,13 +56,25 @@ describe(AudioFile.name, () => {
             }),
         );
     });
-    it('can play a base64 file', async () => {
+    it('does not play while audio is blocked', async () => {
         const file = new AudioFile({
             sources: [shortMp3Base64],
+            audioContext: new AudioContext(),
+        });
+
+        assert.isFalse(await file.play());
+    });
+    it('can play a base64 file', async () => {
+        const audioContext = new AudioContext();
+        const file = new AudioFile({
+            sources: [shortMp3Base64],
+            audioContext,
         });
 
         await file.load();
-        await file.play();
+        await makePlayable(audioContext);
+        await waitUntil.isTrue(() => file.play());
+        assert.isTrue(file.isAudioAllowed);
     });
     it('fails to play a destroyed file', async () => {
         const file = new AudioFile({
@@ -71,11 +85,15 @@ describe(AudioFile.name, () => {
         await assert.throws(() => file.play());
     });
     it('can auto load', async () => {
+        const audioContext = new AudioContext();
+
         const file = new AudioFile({
             sources: [shortMp3Base64],
+            audioContext,
         });
 
-        await file.play();
+        await makePlayable(audioContext);
+        await waitUntil.isTrue(() => file.play());
     });
     it('errors on invalid file', async () => {
         const file = new AudioFile({
@@ -106,6 +124,15 @@ describe(AudioFile.name, () => {
         );
     });
 });
+
+async function makePlayable(audioContext: AudioContext) {
+    const fixture = await testWeb.render(html`
+        <button></button>
+    `);
+    await testWeb.click(fixture);
+
+    await waitUntil.isTrue(() => isPlayingEnabled(audioContext));
+}
 
 function makeDistortionCurve(amount: number): Float32Array<ArrayBuffer> {
     const samples = 44_100;

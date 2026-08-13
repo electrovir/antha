@@ -71,7 +71,7 @@ describe(createAnthaGraphics2dMod.name, () => {
             ],
         });
 
-        await engine.reset();
+        await assert.doesNotThrow(() => engine.reset());
     });
 
     it('returns undefined when an external canvas is provided via pixiOptions', async () => {

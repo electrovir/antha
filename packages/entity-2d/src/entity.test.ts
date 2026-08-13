@@ -60,10 +60,11 @@ describe('EntityStore', () => {
         const store = createTestStore(suite);
         store.destroy();
         await assert.throws(
-            () =>
-                store.updateAllEntities({
+            () => {
+                return store.updateAllEntities({
                     msSinceLastUpdate: 0,
-                }),
+                });
+            },
             {
                 matchMessage: 'Cannot operate on a destroyed entity store.',
             },
@@ -177,6 +178,7 @@ describe('EntityStore', () => {
         await store.updateAllEntities({
             msSinceLastUpdate: 0,
         });
+        assert.strictEquals(store.currentEntityInstances.size, 2);
     });
 
     it('handles collisions with non-entity hitboxes', async () => {
@@ -217,6 +219,7 @@ describe('EntityStore', () => {
         await store.updateAllEntities({
             msSinceLastUpdate: 0,
         });
+        assert.strictEquals(store.currentEntityInstances.size, 1);
     });
 
     it('skips collisions involving destroyed entities', async () => {
@@ -275,6 +278,7 @@ describe('EntityStore', () => {
         await store.updateAllEntities({
             msSinceLastUpdate: 0,
         });
+        assert.strictEquals(store.currentEntityInstances.size, 3);
     });
 
     it('returns entities from getEntities', async () => {

@@ -74,56 +74,58 @@ export const AnthaAssetLoadingScreen = defineElement<{
     hostClasses: {
         'antha-asset-loading-screen-completed': ({inputs}) => inputs.completed,
     },
-    styles: ({hostClasses}) => css`
-        :host {
-            position: fixed;
-            inset: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            background-color: black;
-            color: white;
-            z-index: 9999;
-            gap: 24px;
-            opacity: 1;
-            transition: opacity ${loadingScreenFadeMs}ms ease-in;
-        }
+    styles: ({hostClasses}) => {
+        return css`
+            :host {
+                position: fixed;
+                inset: 0;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                background-color: black;
+                color: white;
+                z-index: 9999;
+                gap: 24px;
+                opacity: 1;
+                transition: opacity ${loadingScreenFadeMs}ms ease-in;
+            }
 
-        .loading-text {
-            font-size: 24px;
-            position: relative;
-        }
+            .loading-text {
+                font-size: 24px;
+                position: relative;
+            }
 
-        .dots {
-            font-family: monospace;
-            position: absolute;
-            left: 100%;
-            bottom: 0;
-        }
+            .dots {
+                font-family: monospace;
+                position: absolute;
+                left: 100%;
+                bottom: 0;
+            }
 
-        .progress-track {
-            width: 300px;
-            height: 1em;
-            overflow: hidden;
-            border: 4px solid white;
-        }
+            .progress-track {
+                width: 300px;
+                height: 1em;
+                overflow: hidden;
+                border: 4px solid white;
+            }
 
-        .current-resource-name {
-            font-size: 14px;
-            opacity: 0.7;
-        }
+            .current-resource-name {
+                font-size: 14px;
+                opacity: 0.7;
+            }
 
-        .progress-fill {
-            height: 100%;
-            background-color: white;
-            transition: width ${loadingScreenProgressGrowMs}ms ease-in;
-        }
+            .progress-fill {
+                height: 100%;
+                background-color: white;
+                transition: width ${loadingScreenProgressGrowMs}ms ease-in;
+            }
 
-        ${hostClasses['antha-asset-loading-screen-completed'].selector} {
-            opacity: 0;
-        }
-    `,
+            ${hostClasses['antha-asset-loading-screen-completed'].selector} {
+                opacity: 0;
+            }
+        `;
+    },
     render({inputs}) {
         const dotCount = inputs.dotCount % 4;
         const dots = '.'.repeat(dotCount) + '\u00A0'.repeat(3 - dotCount);

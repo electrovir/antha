@@ -87,8 +87,8 @@ function formatStunServerUrls(stunServerUrls: ReadonlyArray<string>) {
 export class WebrtcController<MessageData extends JsonCompatibleValue> extends ListenTarget<
     WebrtcEvents<MessageData>
 > {
-    private dataChannel: undefined | Readonly<RTCDataChannel>;
-    private connection: undefined | Readonly<RTCPeerConnection>;
+    protected dataChannel: undefined | Readonly<RTCDataChannel>;
+    protected connection: undefined | Readonly<RTCPeerConnection>;
     /** Indicates whether the WebRTC connection is live or not. */
     public readonly isConnected: boolean = false;
 
@@ -178,7 +178,8 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
         super.destroy();
     }
 
-    private handleDataChannel(dataChannel: Readonly<RTCDataChannel>) {
+    /** Attach connection and message handling to a WebRTC data channel. */
+    protected handleDataChannel(dataChannel: Readonly<RTCDataChannel>) {
         this.dataChannel?.close();
         this.dataChannel = dataChannel;
         this.dataChannel.addEventListener('open', () => {
@@ -213,7 +214,8 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
         });
     }
 
-    private createConnection(stunServerUrls: ReadonlyArray<string>) {
+    /** Create a peer connection and wait for ICE candidate gathering to finish. */
+    protected createConnection(stunServerUrls: ReadonlyArray<string>) {
         if (this.connection) {
             throw new Error('Connection already created!');
         }

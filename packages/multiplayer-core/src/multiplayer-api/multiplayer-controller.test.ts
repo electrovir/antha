@@ -290,11 +290,11 @@ describe(MultiplayerRoomController.name, () => {
                     isHost: false,
                 },
             );
-            assert.throws(() =>
-                controller.sendMessage({
+            assert.throws(() => {
+                return controller.sendMessage({
                     value: 'before connect',
-                }),
-            );
+                });
+            });
 
             await controller.initMultiplayer({
                 backendOrigin: 'http://mock.example',
@@ -732,8 +732,9 @@ describe(MultiplayerRoomController.name, () => {
                 roomName: 'Member Room',
             });
             const apiClient = createMockRoomHandlerServerApiClient();
-            const acceptConnection = (() =>
-                undefined) satisfies () => undefined as unknown as NonNullable<
+            const acceptConnection = (() => {
+                return undefined;
+            }) satisfies () => undefined as unknown as NonNullable<
                 MultiplayerRoomControllerParams<TestMessage>['acceptConnection']
             >;
             const host = new MultiplayerRoomController<TestMessage>({
@@ -858,12 +859,12 @@ describe(MultiplayerRoomController.name, () => {
 
         controller.currentConnection = fakeConnection;
 
-        await assert.throws(() =>
-            controller.initMultiplayer({
+        await assert.throws(() => {
+            return controller.initMultiplayer({
                 backendOrigin: 'http://mock.example',
                 multiplayerApiClient: createMockRoomHandlerServerApiClient(),
-            }),
-        );
+            });
+        });
         await assert.throws(() => controller.joinOrCreateRoom(createNewRoom()));
 
         controller.currentConnection = undefined;
@@ -881,11 +882,12 @@ describe(MultiplayerRoomController.name, () => {
         } satisfies Record<string, unknown> as unknown as MultiplayerApiClient;
 
         await assert.throws(
-            () =>
-                controller.initMultiplayer({
+            () => {
+                return controller.initMultiplayer({
                     backendOrigin: 'http://mock.example',
                     multiplayerApiClient: failingApiClient,
-                }),
+                });
+            },
             {
                 matchMessage: 'Failed to find multiplayer API',
             },
@@ -941,15 +943,16 @@ describe(MultiplayerRoomController.name, () => {
             externalState = event.detail;
         });
         await assert.throws(
-            () =>
-                controller.initMultiplayer({
+            () => {
+                return controller.initMultiplayer({
                     backendOrigin: 'http://localhost:0',
                     portScanOptions: {
                         timeout: {
                             seconds: 5,
                         },
                     },
-                }),
+                });
+            },
             {
                 matchMessage: 'Cannot find dev origin',
             },
@@ -966,11 +969,11 @@ describe(MultiplayerRoomController.name, () => {
         controller.listen(ControllerConnectionEvent, (event) => {
             externalState = event.detail;
         });
-        await assert.throws(() =>
-            controller.initMultiplayer({
+        await assert.throws(() => {
+            return controller.initMultiplayer({
                 backendOrigin: 'http://localhost:0',
-            }),
-        );
+            });
+        });
 
         assert.instanceOf(externalState?.api, Error);
     });

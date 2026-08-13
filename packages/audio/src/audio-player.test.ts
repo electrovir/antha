@@ -31,11 +31,11 @@ describe(AudioPlayer.name, () => {
     it('rejects a missing file extension', async () => {
         await makePlayable();
 
-        await assert.throws(() =>
-            new AudioPlayer().play({
+        await assert.throws(() => {
+            return new AudioPlayer().play({
                 sources: ['invalid'],
-            }),
-        );
+            });
+        });
     });
     it('allows a specified codec', async () => {
         await makePlayable();
@@ -72,11 +72,15 @@ describe(AudioPlayer.name, () => {
 
         await player.destroy();
         await player.destroy();
+
+        assert.isTrue(player.isDestroyed);
     });
     it('loads a real audio file', async () => {
         const player = new AudioPlayer();
 
         await player.loadFiles([longerMp3Params]);
+
+        assert.isLengthExactly(Object.keys(player.audioFiles), 1);
     });
     it('loads a real audio file with serial option', async () => {
         const player = new AudioPlayer();
@@ -84,6 +88,8 @@ describe(AudioPlayer.name, () => {
         await player.loadFiles([longerMp3Params], {
             serial: true,
         });
+
+        assert.isLengthExactly(Object.keys(player.audioFiles), 1);
     });
     it('sets all isPlayingEnabled', async () => {
         const player = new AudioPlayer();

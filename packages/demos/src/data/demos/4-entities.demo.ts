@@ -208,13 +208,13 @@ class PlayerEntity extends defineEntity({
     public static readonly maxTurnRate = 0.05;
     public static readonly borderMargin = 40;
     public static readonly stopDistance = 100;
-    private shootCooldown = 0;
+    protected shootCooldown = 0;
 
     /**
      * Solve for the time t at which a bullet fired from the player can intercept a moving target.
      * Returns the smallest positive root, or undefined if no intercept is possible.
      */
-    private static computeInterceptTime({
+    protected static computeInterceptTime({
         deltaX,
         deltaY,
         targetVelocityX,

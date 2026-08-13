@@ -278,9 +278,10 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
               })
             : [[...assets]];
 
-        const createIncrementProgressCallback =
-            (asset: Readonly<Asset>): AssetIncrementProgressCallback =>
-            (amount) => {
+        const createIncrementProgressCallback = (
+            asset: Readonly<Asset>,
+        ): AssetIncrementProgressCallback => {
+            return (amount) => {
                 currentProgress += amount ?? 1;
                 if (!options.hideLoadingScreen) {
                     this.dispatchProgressUpdate({
@@ -291,6 +292,7 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
                     });
                 }
             };
+        };
 
         const results: unknown[] = (
             await awaitedBlockingMap(chunkedAssets, async (assetChunk) => {
@@ -346,7 +348,8 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
         return results;
     }
 
-    private dispatchProgressUpdate(
+    /** Dispatch a loading progress event for the active bulk load. */
+    protected dispatchProgressUpdate(
         detail: ConstructorParameters<typeof AssetLoaderProgressUpdateEvent>[0]['detail'],
     ): void {
         this.dispatch(

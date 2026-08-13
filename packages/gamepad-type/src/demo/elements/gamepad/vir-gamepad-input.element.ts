@@ -11,18 +11,21 @@ export const VirGamepadInput = defineElement<{
 }>()({
     tagName: 'vir-gamepad-input',
     hostClasses: {
-        'vir-gamepad-input-circle': ({inputs}) =>
-            inputs.gamepadInput.inputType === DeviceInputType.Button,
+        'vir-gamepad-input-circle': ({inputs}) => {
+            return inputs.gamepadInput.inputType === DeviceInputType.Button;
+        },
     },
-    styles: ({hostClasses}) => css`
-        :host {
-            display: flex;
-        }
+    styles: ({hostClasses}) => {
+        return css`
+            :host {
+                display: flex;
+            }
 
-        ${hostClasses['vir-gamepad-input-circle'].selector} {
-            border-radius: 50%;
-        }
-    `,
+            ${hostClasses['vir-gamepad-input-circle'].selector} {
+                border-radius: 50%;
+            }
+        `;
+    },
     render({inputs}) {
         if (inputs.gamepadInput.inputType === DeviceInputType.Axe) {
             return html`

@@ -7,7 +7,10 @@ describe('multiplayer server index', () => {
         assert.deepEquals(Object.keys(multiplayerServerExports).toSorted(), [
             'defaultMultiplayerApiLogger',
             'implementMultiplayerApi',
+            'multiplayerServerOptionsShape',
+            'runMultiplayerServerCli',
             'startMultiplayerServer',
+            'startMultiplayerServerOptionsShape',
         ]);
     });
 });

@@ -155,17 +155,21 @@ describe(AssetLoader.name, () => {
                 },
             });
 
-            await loader.loadIndividualAsset({
+            const value = await loader.loadIndividualAsset({
                 asset,
             });
             await loader.unloadAssets([asset]);
+
+            assert.strictEquals(value, 'no-cleanup');
         });
 
         it('handles assets that were never loaded', async () => {
             const loader = new AssetLoader();
-            const {asset} = createMockAsset('never-loaded');
+            const {asset, cleanedUp} = createMockAsset('never-loaded');
 
             await loader.unloadAssets([asset]);
+
+            assert.isFalse(cleanedUp.value);
         });
     });
 
@@ -201,10 +205,12 @@ describe(AssetLoader.name, () => {
                 },
             });
 
-            await loader.loadIndividualAsset({
+            const value = await loader.loadIndividualAsset({
                 asset,
             });
             await loader.destroy();
+
+            assert.strictEquals(value, 'no-cleanup-destroy');
         });
     });
 

@@ -35,13 +35,13 @@
         "test:update": "npm test update"
     },
     "dependencies": {
-        "@augment-vir/common": "^32.2.1",
+        "@augment-vir/common": "^32.2.2",
         "date-vir": "^9.0.0",
         "fuzzy-vir": "^1.0.0"
     },
     "devDependencies": {
-        "@augment-vir/assert": "^32.2.1",
-        "@augment-vir/test": "^32.2.1",
+        "@augment-vir/assert": "^32.2.2",
+        "@augment-vir/test": "^32.2.2",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",

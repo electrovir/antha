@@ -13,33 +13,35 @@ export const VirGamepadAxe = defineElement<{
     cssVars: {
         'vir-gamepad-axe-color': getGamepadBrandColor(undefined),
     },
-    styles: ({cssVars}) => css`
-        :host {
-            display: block;
-            width: 200px;
-            border: 2px solid ${cssVars['vir-gamepad-axe-color'].value};
-            text-align: center;
-            position: relative;
-            background-color: white;
-        }
+    styles: ({cssVars}) => {
+        return css`
+            :host {
+                display: block;
+                width: 200px;
+                border: 2px solid ${cssVars['vir-gamepad-axe-color'].value};
+                text-align: center;
+                position: relative;
+                background-color: white;
+            }
 
-        .progress {
-            z-index: 1;
-            position: absolute;
-            top: 0;
-            bottom: 0;
-            left: 50%;
-            right: 50%;
-            border: 1px solid ${cssVars['vir-gamepad-axe-color'].value};
-            background-color: ${cssVars['vir-gamepad-axe-color'].value};
-        }
+            .progress {
+                z-index: 1;
+                position: absolute;
+                top: 0;
+                bottom: 0;
+                left: 50%;
+                right: 50%;
+                border: 1px solid ${cssVars['vir-gamepad-axe-color'].value};
+                background-color: ${cssVars['vir-gamepad-axe-color'].value};
+            }
 
-        p {
-            ${noNativeSpacing};
-            position: relative;
-            z-index: 10;
-        }
-    `,
+            p {
+                ${noNativeSpacing};
+                position: relative;
+                z-index: 10;
+            }
+        `;
+    },
     render({inputs, host}) {
         host.style.setProperty(
             '--vir-gamepad-axe-color',

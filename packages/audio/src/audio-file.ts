@@ -260,7 +260,7 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
     public readonly gainNode: GainNode;
     public readonly sourceKey: string;
 
-    constructor(private readonly params: AudioFileParams) {
+    constructor(protected readonly params: AudioFileParams) {
         super();
         this.sourceKey = createAudioSourceKey(params);
         const chosenSource = ensureArray(params.sources).find((source) => {

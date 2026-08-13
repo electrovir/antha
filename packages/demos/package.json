@@ -23,8 +23,8 @@
         "@antha/multiplayer-core": "^0.1.0",
         "@antha/multiplayer-p2p-authoritative-host": "^0.1.0",
         "@antha/multiplayer-p2p-lock-step": "^0.1.0",
-        "@augment-vir/assert": "^32.2.1",
-        "@augment-vir/common": "^32.2.1",
+        "@augment-vir/assert": "^32.2.2",
+        "@augment-vir/common": "^32.2.2",
         "@electrovir/color": "^1.7.11",
         "date-vir": "^9.0.0",
         "detect-collisions": "^10.10.2025",
@@ -37,7 +37,7 @@
         "vira": "^31.29.0"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.1",
+        "@augment-vir/test": "^32.2.2",
         "@vitejs/plugin-basic-ssl": "^2.3.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
