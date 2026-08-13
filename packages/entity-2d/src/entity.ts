@@ -789,6 +789,7 @@ export abstract class ViewEntity2d<
         super(args);
     }
 
+    /** Wrap entity params in a proxy that maps changes to the view and hitbox properties. */
     protected wrapParamsInProxy(): void {
         const paramsMap = (this.constructor as typeof ViewEntity2d).paramsMap;
         const reverseParamsMap = (this.constructor as typeof ViewEntity2d).reverseParamsMap;

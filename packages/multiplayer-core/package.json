@@ -1,6 +1,6 @@
 {
     "name": "@antha/multiplayer-core",
-    "version": "0.0.8",
+    "version": "0.1.0",
     "description": "Core functionalities for Antha multiplayer mods.",
     "keywords": [
         "vir",
@@ -38,12 +38,12 @@
     "dependencies": {
         "@augment-vir/assert": "^32.2.1",
         "@augment-vir/common": "^32.2.1",
-        "@rest-vir/api": "^2.2.1",
+        "@rest-vir/api": "^2.3.0",
         "@sinclair/typebox": "^0.34.52",
-        "date-vir": "^8.6.2",
+        "date-vir": "^9.0.0",
         "object-shape-tester": "^6.14.1",
         "typed-event-target": "^4.3.3",
-        "url-vir": "^2.1.10"
+        "url-vir": "^2.2.1"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.1",

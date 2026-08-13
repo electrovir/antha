@@ -1,6 +1,6 @@
 {
     "name": "@antha/util",
-    "version": "0.0.8",
+    "version": "0.1.0",
     "description": "Utilities for the Antha game engine.",
     "keywords": [
         "vir",
@@ -36,7 +36,7 @@
     },
     "dependencies": {
         "@augment-vir/common": "^32.2.1",
-        "date-vir": "^8.6.2",
+        "date-vir": "^9.0.0",
         "fuzzy-vir": "^1.0.0"
     },
     "devDependencies": {

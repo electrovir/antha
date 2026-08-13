@@ -339,6 +339,7 @@ export class WebrtcMultiplayerController<
         }
     }
 
+    /** Send the current room client count to the multiplayer server and schedule the next update. */
     protected sendHostPing() {
         if (this.isHost() && this.webSocket) {
             this.webSocket.send({
@@ -354,6 +355,7 @@ export class WebrtcMultiplayerController<
         }
     }
 
+    /** Reconnect this room member after it loses its connection to the host. */
     protected reconnectAfterHostLoss() {
         if (this.isDestroyed || this.reconnectPromise || this.isCleaningUpConnection) {
             return;
@@ -380,6 +382,7 @@ export class WebrtcMultiplayerController<
 
     protected connectionQueue = new PromiseQueue();
 
+    /** Create or reuse the WebSocket used for multiplayer room signaling. */
     protected async setupWebSocket() {
         if (
             this.webSocket &&
@@ -530,6 +533,7 @@ export class WebrtcMultiplayerController<
         return webSocket;
     }
 
+    /** Create and track a WebRTC connection for the given client. */
     protected createNewConnection(clientId: ClientId): WebrtcController<MessageData> {
         const newController = new WebrtcController<MessageData>(clientId);
         this.connections[clientId] = newController;

@@ -8,19 +8,14 @@ import {
     type MultiplayerRoomHandler,
 } from '@antha/multiplayer-core';
 import {check} from '@augment-vir/assert';
-import {
-    callAsynchronously,
-    ensureArray,
-    type PartialWithUndefined,
-    type RequireAtLeastOne,
-} from '@augment-vir/common';
+import {callAsynchronously, ensureArray} from '@augment-vir/common';
 import {
     AnyOrigin,
     checkOriginRequirement,
     HttpMethod,
     HttpStatus,
+    originRequirementShape,
     type BaseSearchParams,
-    type OriginRequirement,
 } from '@rest-vir/api';
 import {
     createApiImplementor,
@@ -29,13 +24,20 @@ import {
     silentServerLogger,
     type ServerLogger,
 } from '@rest-vir/host';
+import {
+    defineShape,
+    nullableShape,
+    optionalShape,
+    recordShape,
+    unionShape,
+} from 'object-shape-tester';
 
 /**
- * Multiplayer server options.
+ * Shape definition for {@link MultiplayerServerOptions}.
  *
  * @category Internal
  */
-export type MultiplayerServerOptions = PartialWithUndefined<{
+export const multiplayerServerOptionsShape = defineShape({
     /**
      * The Multiplayer server's logger.
      *
@@ -45,27 +47,57 @@ export type MultiplayerServerOptions = PartialWithUndefined<{
      * - `defaultServerLogger`
      * - `createServerLogger`
      */
-    logger: ServerLogger;
-    backendOrigin: string;
-}> & {
-    games: RequireAtLeastOne<{
-        /**
-         * Allow specific games by id. If a game id is not matched, the below `default` requirement
-         * is checked. If no game id is matched and there is no specified `default` requirement, the
-         * request is blocked.
-         *
-         * If a game id's origin requirement is `undefined`, it is not considered a match.
-         */
-        byId: {
-            [GameId in string]: OriginRequirement;
-        };
-        /**
-         * The default requirement for all unmatched game ids. If this is omitted or `undefined`,
-         * all unmatched game ids are blocked.
-         */
-        default: OriginRequirement;
-    }>;
-};
+    logger: nullableShape({
+        /** Log an error reported by the multiplayer server. */
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        error: (error: Error) => {},
+        /** Log an informational message from the multiplayer server. */
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        info: (...args: ReadonlyArray<unknown>) => {},
+    }),
+    backendOrigin: nullableShape(''),
+    games: unionShape(
+        {
+            /**
+             * Allow specific games by id. If a game id is not matched, the below `default`
+             * requirement is checked. If no game id is matched and there is no specified `default`
+             * requirement, the request is blocked.
+             *
+             * If a game id's origin requirement is `undefined`, it is not considered a match.
+             */
+            byId: recordShape({
+                keys: '',
+                values: originRequirementShape,
+            }),
+            /**
+             * The default requirement for all unmatched game ids. If this is omitted or
+             * `undefined`, all unmatched game ids are blocked.
+             */
+            default: optionalShape(originRequirementShape, {
+                alsoUndefined: true,
+            }),
+        },
+        {
+            byId: optionalShape(
+                recordShape({
+                    keys: '',
+                    values: originRequirementShape,
+                }),
+                {
+                    alsoUndefined: true,
+                },
+            ),
+            default: originRequirementShape,
+        },
+    ),
+});
+
+/**
+ * Multiplayer server options.
+ *
+ * @category Internal
+ */
+export type MultiplayerServerOptions = typeof multiplayerServerOptionsShape.runtimeType;
 
 /**
  * Internal state for the multiplayer server.

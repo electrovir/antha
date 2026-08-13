@@ -5,15 +5,15 @@ import {sentryAnthaLogger} from './sentry-antha-logger.js';
 
 describe('sentryAnthaLogger', () => {
     it('calls error without throwing', () => {
-        sentryAnthaLogger.error('test sentry error');
+        assert.doesNotThrow(() => sentryAnthaLogger.error('test sentry error'));
     });
 
     it('calls info without throwing', () => {
-        sentryAnthaLogger.info('test sentry info');
+        assert.doesNotThrow(() => sentryAnthaLogger.info('test sentry info'));
     });
 
     it('calls warning without throwing', () => {
-        sentryAnthaLogger.warning('test sentry warning');
+        assert.doesNotThrow(() => sentryAnthaLogger.warning('test sentry warning'));
     });
 
     it('returns base logger when condition is true', () => {

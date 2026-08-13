@@ -1,6 +1,6 @@
 {
     "name": "@antha/gamepad-type",
-    "version": "0.0.8",
+    "version": "0.1.0",
     "description": "Gamepad type detection and gamepad helper elements for the web.",
     "keywords": [
         "gamepad",
@@ -38,7 +38,7 @@
         "@augment-vir/assert": "^32.2.1",
         "@augment-vir/common": "^32.2.1",
         "bowser": "^2.14.1",
-        "input-device-handler": "^9.0.3"
+        "input-device-handler": "^9.0.4"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.1",

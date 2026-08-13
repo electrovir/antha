@@ -1,6 +1,6 @@
 {
     "name": "@antha/engine",
-    "version": "0.0.8",
+    "version": "0.1.0",
     "description": "The Antha game engine (for the web).",
     "keywords": [
         "vir",
@@ -38,7 +38,7 @@
         "@augment-vir/assert": "^32.2.1",
         "@augment-vir/common": "^32.2.1",
         "@paralleldrive/cuid2": "^3.3.0",
-        "date-vir": "^8.6.2",
+        "date-vir": "^9.0.0",
         "observavir": "^2.3.3",
         "sentry-vir": "^4.5.1"
     },

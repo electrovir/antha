@@ -4,15 +4,15 @@ import {baseEmptyAnthaLogger, emptyAnthaLogger} from './empty-antha-logger.js';
 
 describe('emptyAnthaLogger', () => {
     it('has no-op error', () => {
-        emptyAnthaLogger.error('should do nothing');
+        assert.doesNotThrow(() => emptyAnthaLogger.error('should do nothing'));
     });
 
     it('has no-op info', () => {
-        emptyAnthaLogger.info('should do nothing');
+        assert.doesNotThrow(() => emptyAnthaLogger.info('should do nothing'));
     });
 
     it('has no-op warning', () => {
-        emptyAnthaLogger.warning('should do nothing');
+        assert.doesNotThrow(() => emptyAnthaLogger.warning('should do nothing'));
     });
 
     it('if always returns the base empty logger', () => {

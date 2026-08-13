@@ -1,6 +1,6 @@
 {
     "name": "@antha/scripts",
-    "version": "0.0.8",
+    "version": "0.1.0",
     "private": true,
     "sideEffects": false,
     "type": "module",
@@ -16,7 +16,7 @@
         "element-vir": "^26.17.3"
     },
     "devDependencies": {
-        "@types/node": "^26.1.2"
+        "@types/node": "^26.2.0"
     },
     "engines": {
         "node": ">=22"

@@ -6,15 +6,26 @@ import {join as fsJoin} from 'node:path';
 import {join, relative} from 'node:path/posix';
 import {fileURLToPath} from 'node:url';
 
+/**
+ * Create a web-test-runner plugin that resolves `pixi.js` imports for browser tests.
+ *
+ * @category Internal
+ */
 export function pixiPlugin() {
     return new PixiPlugin();
 }
 
+/**
+ * A web-test-runner plugin that resolves `pixi.js` imports to its browser-compatible bundle.
+ *
+ * @category Internal
+ */
 export class PixiPlugin implements Plugin {
     public readonly name = 'pixi';
 
     protected pixiPath: string | undefined;
 
+    /** Resolve the browser-compatible Pixi bundle path relative to the web-test-runner root. */
     protected getPixiPath(rawRootDir: string) {
         const pixiPackageDirPath = findAncestor(
             fileURLToPath(import.meta.resolve('pixi.js')),
@@ -50,10 +61,12 @@ export class PixiPlugin implements Plugin {
         }
     }
 
+    /** Resolve the Pixi bundle path when the web-test-runner server starts. */
     public serverStart({config}: Parameters<NonNullable<Plugin['serverStart']>>[0]) {
         this.pixiPath = this.getPixiPath(config.rootDir);
     }
 
+    /** Resolve direct `pixi.js` imports to the browser-compatible Pixi bundle. */
     public resolveImport({
         source,
     }: SelectFrom<
