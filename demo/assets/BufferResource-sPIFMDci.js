@@ -1,4 +1,4 @@
-import{R as e,j as t,l as n,n as r,r as i,v as a}from"./Geometry-foVdG5LD.js";import{h as o}from"./RenderTargetSystem-6btU4lHJ.js";import{m as s}from"./GCManagedHash-CCn1vKOG.js";var c={name:`local-uniform-bit`,vertex:{header:`
+import{R as e,j as t,l as n,n as r,r as i,v as a}from"./Geometry-Caez7mN4.js";import{h as o}from"./RenderTargetSystem-CP3y7qA-.js";import{m as s}from"./GCManagedHash-DCKC_8ts.js";var c={name:`local-uniform-bit`,vertex:{header:`
 
             struct LocalUniforms {
                 uTransformMatrix:mat3x3<f32>,
@@ -132,11 +132,11 @@ import{R as e,j as t,l as n,n as r,r as i,v as a}from"./Geometry-foVdG5LD.js";im
         var index = 0;
         var name = null;
         var arrayOffset = null;
-    `],a=0;for(let o=0;o<e.length;o++){let s=e[o],c=s.data.name,l=!1,u=0;for(let e=0;e<_.length;e++)if(_[e].test(s.data)){u=s.offset/4,i.push(`name = "${c}";`,`offset += ${u-a};`,_[e][t]||_[e].ubo),l=!0;break}if(!l)if(s.data.size>1)u=s.offset/4,i.push(n(s,u-a));else{let e=r[s.data.type];u=s.offset/4,i.push(`
+    `],a=0;for(let o=0;o<e.length;o++){let s=e[o],c=s.data.name,l=!1,u=0;for(let e=0;e<_.length;e++)if(_[e].test(s.data)){u=s.offset/4,i.push(`name = "${c}";`,`offset += ${u-a};`,_[e][t]||_[e].ubo),l=!0;break}if(!l){if(s.data.size>1)u=s.offset/4,i.push(n(s,u-a));else{let e=r[s.data.type];u=s.offset/4,i.push(`
                     v = uv.${c};
                     offset += ${u-a};
                     ${e};
-                `)}a=u}let o=i.join(`
+                `)}}a=u}let o=i.join(`
 `);return Function(`uv`,`data`,`dataInt32`,`offset`,o)}function y(e,t){return`
         for (let i = 0; i < ${e*t}; i++) {
             data[offset + (((i / ${e})|0) * 4) + (i % ${e})] = v[i];
