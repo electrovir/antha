@@ -1,6 +1,6 @@
 {
     "name": "@antha/gamepad-type",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Gamepad type detection and gamepad helper elements for the web.",
     "keywords": [
         "gamepad",

@@ -1,6 +1,6 @@
 # @antha/web-test-runner-plugin-pixi
 
-A plugin for [web-test-runner](https://modern-web.dev/docs/test-runner/overview/) that transforms pixi.js imports to be compatible with browsers.
+This package provides a web-test-runner plugin that resolves direct `pixi.js` imports to PixiJS's browser-compatible bundle. Use it when browser tests that import PixiJS and use web-test-runner.
 
 ## Install
 
@@ -14,7 +14,9 @@ Make sure all your `pixi.js` imports are directly from `pixi.js` (like `import {
 
 Add the following to your web-test-runner config:
 
-```ts
+<!-- example-link: src/readme-examples/configuring-pixi-plugin.example.ts -->
+
+```TypeScript
 import {pixiPlugin} from '@antha/web-test-runner-plugin-pixi';
 
 export default {

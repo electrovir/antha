@@ -1,6 +1,6 @@
 {
     "name": "@antha/audio",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "An Antha mod for handling audio.",
     "keywords": [
         "vir",
@@ -37,7 +37,7 @@
         "@augment-vir/common": "^32.2.2"
     },
     "devDependencies": {
-        "@antha/engine": "^0.1.0",
+        "@antha/engine": "^0.1.1",
         "@augment-vir/test": "^32.2.2",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",

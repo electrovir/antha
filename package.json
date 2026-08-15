@@ -1,6 +1,6 @@
 {
     "name": "@evir/antha-root",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "private": true,
     "homepage": "https://github.com/electrovir/antha",
     "bugs": {
@@ -23,6 +23,7 @@
     "scripts": {
         "build": "npm run build --workspace @antha/scripts",
         "compile": "virmator compile",
+        "docs": "virmator docs",
         "format": "virmator format",
         "lint": "virmator lint fix",
         "publish": "virmator publish npm run test:all",

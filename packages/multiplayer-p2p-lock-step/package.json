@@ -1,6 +1,6 @@
 {
     "name": "@antha/multiplayer-p2p-lock-step",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "Multiplayer mod for the Antha engine.",
     "keywords": [
         "vir",
@@ -49,7 +49,7 @@
         "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
-        "@antha/multiplayer-core": "^0.1.0"
+        "@antha/multiplayer-core": "^0.1.1"
     },
     "engines": {
         "node": ">=22"

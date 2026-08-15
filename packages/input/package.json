@@ -1,6 +1,6 @@
 {
     "name": "@antha/input",
-    "version": "0.1.0",
+    "version": "0.1.1",
     "description": "An Antha mod for handling inputs.",
     "keywords": [
         "vir",
@@ -33,7 +33,7 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@antha/gamepad-type": "^0.1.0",
+        "@antha/gamepad-type": "^0.1.1",
         "@augment-vir/assert": "^32.2.2",
         "@augment-vir/common": "^32.2.2",
         "date-vir": "^9.0.0",
@@ -51,7 +51,7 @@
         "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.1.0",
+        "@antha/engine": "^0.1.1",
         "element-vir": ">=26"
     },
     "engines": {

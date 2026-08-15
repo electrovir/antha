@@ -56,10 +56,10 @@ export type ModCleanupParams<State extends AnyObject> = {
 } & ModOptions;
 
 /**
- * Return this from a mod's {@link AnthaMod.execute} callback to instruct {@link AnthaEngine} that the
- * mod's current execution should not count toward the mod's frequency schedule. This is useful when
- * a mod needs a dependency (such as a canvas or external resource) that isn't ready yet so that the
- * engine will keep retrying on subsequent ticks, even if the mod has a low execution frequency.
+ * Return this from a mod's `execute` callback to instruct {@link AnthaEngine} that the mod's current
+ * execution should not count toward the mod's frequency schedule. This is useful when a mod needs a
+ * dependency (such as a canvas or external resource) that isn't ready yet so that the engine will
+ * keep retrying on subsequent ticks, even if the mod has a low execution frequency.
  *
  * @category Mod
  */

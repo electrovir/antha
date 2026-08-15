@@ -14,8 +14,6 @@ If you notice incorrect mappings, please enter updated information [on the demo 
 
 It is encouraged that you use the package [`input-device-handler`](https://www.npmjs.com/package/input-device-handler) in conjunction with this one, but it is not required.
 
-# links
-
 -   [demo page](https://electrovir.github.io/gamepad-type) (allows submitting gamepad mapping fixes)
 -   [full API docs](https://electrovir.github.io/gamepad-type/docs)
 -   [GitHub repo](https://github.com/electrovir/gamepad-type) (please open issues for gamepad mapping updates)
