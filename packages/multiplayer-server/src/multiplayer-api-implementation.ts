@@ -56,6 +56,7 @@ export const multiplayerServerOptionsShape = defineShape({
         info: (...args: ReadonlyArray<unknown>) => {},
     }),
     backendOrigin: nullableShape(''),
+    /** The server's supported list of games. */
     games: unionShape(
         {
             /**
@@ -141,7 +142,10 @@ export type ImplementedMultiplayerApi = ReturnType<typeof implementMultiplayerAp
  *
  * @category Internal
  */
-export function implementMultiplayerApi(options: MultiplayerServerOptions) {
+export function implementMultiplayerApi(
+    /** Server options. Any external mutations made to this object will be picked up by the server. */
+    options: Readonly<MultiplayerServerOptions>,
+) {
     const logger = options.logger || defaultMultiplayerApiLogger;
     const roomHandler = createMultiplayerRoomHandler({
         logger,

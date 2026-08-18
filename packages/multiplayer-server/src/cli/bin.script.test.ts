@@ -38,6 +38,29 @@ type SendHostPingOptions = SendOfferOptions & {
     clientCount: number;
 };
 
+type ConfigContentsOptions = {
+    configReloadIntervalSource?: string | undefined;
+    games: string;
+};
+
+function createConfigContents({
+    configReloadIntervalSource = '{milliseconds: 10}',
+    games,
+}: Readonly<ConfigContentsOptions>) {
+    return `
+        import {defaultServerLogger} from '@rest-vir/host';
+
+        export default {
+            configReloadInterval: ${configReloadIntervalSource},
+            games: ${games},
+            host: '127.0.0.1',
+            lockPort: false,
+            logger: defaultServerLogger,
+            port: 0,
+        };
+    `;
+}
+
 describe('multiplayer server CLI', () => {
     it('starts a reachable server and manages room clients', async () => {
         const notCommittedDirPath = join(monoRepoDirPath, '.not-committed');
@@ -54,19 +77,11 @@ describe('multiplayer server CLI', () => {
 
         await writeFile(
             configFilePath,
-            `
-                import {defaultServerLogger} from '@rest-vir/host';
-                
-                export default {
-                    games: {
-                        default: '*',
-                    },
-                    host: '127.0.0.1',
-                    lockPort: false,
-                    port: 0,
-                    logger: defaultServerLogger,
-                };
-            `,
+            createConfigContents({
+                games: `{
+                    default: '*',
+                }`,
+            }),
         );
 
         const cliOutputChunks: string[] = [];
@@ -308,6 +323,60 @@ describe('multiplayer server CLI', () => {
                 fetchRooms,
                 undefined,
                 'The CLI-started server should remove the room after its last client leaves.',
+            );
+
+            await writeFile(configFilePath, 'export default {games: "invalid"};');
+            await waitUntil.isTrue(
+                () => cliOutputChunks.join('').includes('ShapeMismatchError'),
+                undefined,
+                'The CLI should log a failed configuration reload.',
+            );
+            await writeFile(
+                configFilePath,
+                createConfigContents({
+                    games: `{
+                        default: 'https://blocked.example',
+                    }`,
+                }),
+            );
+            await waitUntil.isTrue(
+                async () => {
+                    const roomsUrl = new URL(multiplayerRoomsEndpoint.path, serverOrigin);
+                    roomsUrl.searchParams.set('gameId', 'test');
+                    const roomsResponse = await fetch(roomsUrl, {
+                        headers: {
+                            origin: 'https://allowed.example',
+                        },
+                    });
+
+                    return roomsResponse.status === 401;
+                },
+                undefined,
+                'The CLI should apply game changes after a failed configuration reload.',
+            );
+            await writeFile(
+                configFilePath,
+                createConfigContents({
+                    configReloadIntervalSource: 'null',
+                    games: `{
+                        default: '*',
+                    }`,
+                }),
+            );
+            await waitUntil.isTrue(
+                async () => {
+                    const roomsUrl = new URL(multiplayerRoomsEndpoint.path, serverOrigin);
+                    roomsUrl.searchParams.set('gameId', 'test');
+                    const roomsResponse = await fetch(roomsUrl, {
+                        headers: {
+                            origin: 'https://allowed.example',
+                        },
+                    });
+
+                    return roomsResponse.status === 200;
+                },
+                undefined,
+                'The CLI should fall back to its default reload interval when none is configured.',
             );
         } finally {
             await Promise.all(clients.map(({webSocket}) => webSocket.close()));

@@ -29,7 +29,7 @@ await startMultiplayerServer({
 
 ## CLI
 
-The `start-mp-server` command accepts a required path to a JavaScript, TypeScript, JSON, YAML, or TOML configuration file. The configuration uses the same options as `startMultiplayerServer`.
+The `start-mp-server` command accepts a required path to a JavaScript, TypeScript, JSON, YAML, or TOML configuration file.
 
 Create a configuration file:
 
@@ -53,3 +53,5 @@ Start the server with the configuration file path:
 ```sh
 npx start-mp-server ./multiplayer-server.config.mjs
 ```
+
+[The `ensure-service` package](https://www.npmjs.com/package/ensure-service) is recommended for making sure the server stays up.
