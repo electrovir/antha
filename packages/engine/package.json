@@ -38,7 +38,7 @@
         "@augment-vir/assert": "^32.2.2",
         "@augment-vir/common": "^32.2.2",
         "@paralleldrive/cuid2": "^3.3.0",
-        "date-vir": "^9.0.0",
+        "date-vir": "^9.1.0",
         "observavir": "^2.3.3",
         "sentry-vir": "^4.5.1"
     },

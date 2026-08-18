@@ -46,9 +46,9 @@
         "@rest-vir/api": "^2.3.1",
         "@rest-vir/host": "^2.3.1",
         "cli-vir": "^1.0.5",
-        "config-vir": "^1.0.1",
-        "date-vir": "^9.0.0",
-        "object-shape-tester": "^6.14.1"
+        "config-vir": "^1.0.5",
+        "date-vir": "^9.1.0",
+        "object-shape-tester": "^6.15.0"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.2",
@@ -58,7 +58,7 @@
         "@web/test-runner-playwright": "^1.0.0",
         "c8": "^12.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
-        "tsx": "^4.23.11"
+        "tsx": "^4.23.12"
     },
     "peerDependencies": {
         "@antha/engine": "^0.1.1"

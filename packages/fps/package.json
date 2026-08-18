@@ -36,7 +36,7 @@
         "@augment-vir/assert": "^32.2.2",
         "@augment-vir/common": "^32.2.2",
         "@electrovir/color": "^1.7.11",
-        "vira": "^31.29.0"
+        "vira": "^31.31.0"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.2",

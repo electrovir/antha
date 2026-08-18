@@ -36,11 +36,11 @@
         "@antha/gamepad-type": "^0.1.1",
         "@augment-vir/assert": "^32.2.2",
         "@augment-vir/common": "^32.2.2",
-        "date-vir": "^9.0.0",
+        "date-vir": "^9.1.0",
         "device-navigation": "^4.7.3",
         "input-device-handler": "^9.0.4",
-        "object-shape-tester": "^6.14.1",
-        "vira": "^31.29.0"
+        "object-shape-tester": "^6.15.0",
+        "vira": "^31.31.0"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.2",

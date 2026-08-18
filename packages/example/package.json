@@ -40,9 +40,9 @@
         "device-navigation": "^4.7.3",
         "element-vir": "^26.17.3",
         "indexed-vir": "^1.0.2",
-        "object-shape-tester": "^6.14.1",
+        "object-shape-tester": "^6.15.0",
         "typed-event-target": "^4.3.3",
-        "vira": "^31.29.0"
+        "vira": "^31.31.0"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.2",

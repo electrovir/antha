@@ -26,15 +26,15 @@
         "@augment-vir/assert": "^32.2.2",
         "@augment-vir/common": "^32.2.2",
         "@electrovir/color": "^1.7.11",
-        "date-vir": "^9.0.0",
+        "date-vir": "^9.1.0",
         "detect-collisions": "^10.10.2025",
         "element-vir": "^26.17.3",
-        "object-shape-tester": "^6.14.1",
+        "object-shape-tester": "^6.15.0",
         "pixi.js": "^8.19.0",
         "spa-router-vir": "^6.6.1",
         "theme-vir": "^28.25.1",
         "url-vir": "^2.2.1",
-        "vira": "^31.29.0"
+        "vira": "^31.31.0"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.2",
