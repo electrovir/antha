@@ -1,6 +1,6 @@
 {
     "name": "antha",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "A simple-to-use all-in-one Antha engine variant with default mods.",
     "keywords": [
         "vir",
@@ -35,12 +35,12 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.2.2",
-        "@augment-vir/common": "^32.2.2"
+        "@augment-vir/assert": "^32.2.3",
+        "@augment-vir/common": "^32.2.3"
     },
     "devDependencies": {
-        "@antha/web-test-runner-plugin-pixi": "^0.1.2",
-        "@augment-vir/test": "^32.2.2",
+        "@antha/web-test-runner-plugin-pixi": "^0.1.3",
+        "@augment-vir/test": "^32.2.3",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
@@ -49,13 +49,13 @@
         "vite": "^8.2.1"
     },
     "peerDependencies": {
-        "@antha/asset": "^0.1.2",
-        "@antha/audio": "^0.1.2",
-        "@antha/engine": "^0.1.2",
-        "@antha/entity-2d": "^0.1.2",
-        "@antha/fps": "^0.1.2",
-        "@antha/graphics-2d": "^0.1.2",
-        "@antha/input": "^0.1.2"
+        "@antha/asset": "^0.1.3",
+        "@antha/audio": "^0.1.3",
+        "@antha/engine": "^0.1.3",
+        "@antha/entity-2d": "^0.1.3",
+        "@antha/fps": "^0.1.3",
+        "@antha/graphics-2d": "^0.1.3",
+        "@antha/input": "^0.1.3"
     },
     "engines": {
         "node": ">=22"

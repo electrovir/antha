@@ -1,6 +1,6 @@
 {
     "name": "@antha/gamepad-type",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Gamepad type detection and gamepad helper elements for the web.",
     "keywords": [
         "gamepad",
@@ -35,14 +35,14 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.2.2",
-        "@augment-vir/common": "^32.2.2",
+        "@augment-vir/assert": "^32.2.3",
+        "@augment-vir/common": "^32.2.3",
         "bowser": "^2.14.1",
         "input-device-handler": "^9.0.4"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.2",
-        "@augment-vir/web": "^32.2.2",
+        "@augment-vir/test": "^32.2.3",
+        "@augment-vir/web": "^32.2.3",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-commands": "^1.0.1",
@@ -55,7 +55,7 @@
         "sentry-vir": "^4.5.1",
         "typedoc": "^0.28.20",
         "typescript": "^6.0.3",
-        "vira": "^31.31.0",
+        "vira": "^31.31.2",
         "vite": "^8.2.1"
     },
     "engines": {

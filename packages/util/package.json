@@ -1,6 +1,6 @@
 {
     "name": "@antha/util",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "description": "Utilities for the Antha game engine.",
     "keywords": [
         "vir",
@@ -35,13 +35,13 @@
         "test:update": "npm test update"
     },
     "dependencies": {
-        "@augment-vir/common": "^32.2.2",
-        "date-vir": "^9.1.0",
+        "@augment-vir/common": "^32.2.3",
+        "date-vir": "^9.1.1",
         "fuzzy-vir": "^1.0.0"
     },
     "devDependencies": {
-        "@augment-vir/assert": "^32.2.2",
-        "@augment-vir/test": "^32.2.2",
+        "@augment-vir/assert": "^32.2.3",
+        "@augment-vir/test": "^32.2.3",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
