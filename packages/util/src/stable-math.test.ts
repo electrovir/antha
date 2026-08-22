@@ -1,6 +1,6 @@
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {StableMath} from './stable-math.js';
+import {normalizeVector2d, StableMath} from './stable-math.js';
 
 describe('stable math', () => {
     it('normalizes trig output', () => {
@@ -97,6 +97,34 @@ describe('stable math', () => {
                 infinity: Infinity,
                 sqrt: 1.4142,
             },
+        );
+    });
+
+    it('normalizes two-dimensional vectors', () => {
+        assert.deepEquals(
+            [
+                normalizeVector2d({
+                    x: 3,
+                    y: 4,
+                    options: {
+                        digits: 4,
+                    },
+                }),
+                normalizeVector2d({
+                    x: 0,
+                    y: 0,
+                }),
+            ],
+            [
+                {
+                    x: 0.6,
+                    y: 0.8,
+                },
+                {
+                    x: 0,
+                    y: 0,
+                },
+            ],
         );
     });
 });

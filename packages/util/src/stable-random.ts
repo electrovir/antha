@@ -1,4 +1,5 @@
 import {clamp, SeededRandom, type SeededRandomState} from '@augment-vir/common';
+import {StableMath, type StableMathOptions} from './stable-math.js';
 
 export {SeededRandom} from '@augment-vir/common';
 
@@ -49,6 +50,25 @@ export function stableRandomInteger({
     const integerMax = Math.floor(max);
 
     return Math.floor(random.next() * (integerMax - integerMin + 1)) + integerMin;
+}
+
+/**
+ * Generate the next deterministic pseudo-random floating-point number within a range.
+ *
+ * @category Random
+ */
+export function stableRandomFloat({
+    random,
+    min,
+    max,
+    options,
+}: Readonly<{
+    random: Readonly<SeededRandom>;
+    min: number;
+    max: number;
+    options?: Readonly<StableMathOptions> | undefined;
+}>) {
+    return StableMath.round(min + stableRandom(random) * (max - min), options);
 }
 
 /**

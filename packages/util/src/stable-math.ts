@@ -135,3 +135,38 @@ export const StableMath = {
         return StableMath.round(Math.tan(radians), options);
     },
 };
+
+/**
+ * Normalize a two-dimensional vector with stable rounding.
+ *
+ * @category Math
+ */
+export function normalizeVector2d({
+    x,
+    y,
+    options,
+}: Readonly<{
+    x: number;
+    y: number;
+    options?: Readonly<StableMathOptions> | undefined;
+}>) {
+    const magnitude = StableMath.hypot(
+        [
+            x,
+            y,
+        ],
+        options,
+    );
+
+    if (!magnitude) {
+        return {
+            x: 0,
+            y: 0,
+        };
+    }
+
+    return {
+        x: StableMath.round(x / magnitude, options),
+        y: StableMath.round(y / magnitude, options),
+    };
+}

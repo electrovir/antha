@@ -5,6 +5,7 @@ import {
     createStableRandomFromState,
     stableRandom,
     stableRandomBoolean,
+    stableRandomFloat,
     stableRandomInteger,
 } from './stable-random.js';
 
@@ -60,6 +61,32 @@ describe('stable random', () => {
                 2,
                 3,
                 2,
+            ],
+        );
+    });
+
+    it('generates stable rounded floats', () => {
+        const random = createStableRandom('float seed');
+
+        assert.deepEquals(
+            [
+                stableRandomFloat({
+                    random,
+                    min: 0.04,
+                    max: 0.07,
+                }),
+                stableRandomFloat({
+                    random,
+                    min: -0.0003,
+                    max: -0.0001,
+                    options: {
+                        digits: 8,
+                    },
+                }),
+            ],
+            [
+                0.054877696431,
+                -0.00024948,
             ],
         );
     });
