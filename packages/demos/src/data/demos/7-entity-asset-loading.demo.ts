@@ -292,7 +292,7 @@ const EntityAssetDemoControls = defineElement<{
                     await inputs.entityStore.addEntity(BlueDotEntity);
                 })}
             >
-                Add Dynamic
+                Add Dynamic Slow Loading Asset
             </button>
         `;
     },
@@ -306,23 +306,30 @@ const entityAssetDemoMod = defineAnthaMod<
     execute({state}) {
         const entityStore = state.entityStore;
 
-        if (!entityStore) {
+        if (!entityStore || !state.assetLoader) {
             return SkipExecution;
         }
 
         if (!state.assetsLoaded) {
             state.assetsLoaded = true;
+            const loadSession = state.assetLoader.createLoadSession();
             void (async () => {
-                await entityStore.loadEntityAssets({
-                    entities: [
-                        RedCircleEntity,
-                        state.yellowToggle && YellowCircleEntity,
-                    ].filter(check.isTruthy),
-                });
+                await entityStore.loadEntityAssets(
+                    {
+                        entities: [
+                            RedCircleEntity,
+                            state.yellowToggle && YellowCircleEntity,
+                        ].filter(check.isTruthy),
+                    },
+                    {
+                        loadSession,
+                    },
+                );
                 if (state.yellowToggle) {
                     await entityStore.addEntity(YellowCircleEntity);
                 }
                 await entityStore.addEntity(RedCircleEntity);
+                loadSession.complete();
             })();
         }
 

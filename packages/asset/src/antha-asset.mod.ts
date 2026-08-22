@@ -2,24 +2,7 @@ import {defineAnthaMod} from '@antha/engine';
 import {addSuffix, type PartialWithUndefined} from '@augment-vir/common';
 import {css, defineElement, html} from 'element-vir';
 import {setCssVarValue} from 'lit-css-vars';
-import {AssetLoader, AssetLoaderProgressUpdateEvent} from './asset-loader.js';
-
-/**
- * Engine state for the Antha asset mod loading screen.
- *
- * @category Internal
- */
-export type AnthaAssetModLoadingScreenState = {
-    /** The total number to load. Once `current` reaches this, loading is considered complete. */
-    total: number;
-    /**
-     * The current number of loaded assets. Once this reaches `total`, the loading is considered
-     * complete.
-     */
-    current: number;
-    currentResourceName?: string | undefined;
-    completedAt: DOMHighResTimeStamp | undefined;
-};
+import {AssetLoader} from './asset-loader.js';
 
 /**
  * State for {@link AnthaAssetMod}.
@@ -28,8 +11,6 @@ export type AnthaAssetModLoadingScreenState = {
  */
 export type AnthaAssetModState = {
     assetLoader: AssetLoader;
-    isShowingLoadingScreen: boolean;
-    loadingScreenState: AnthaAssetModLoadingScreenState | undefined;
 };
 
 /**
@@ -39,8 +20,8 @@ export type AnthaAssetModState = {
  */
 export type AnthaAssetModOptions = PartialWithUndefined<{
     /**
-     * If set to `true`, the default loading screen is not rendered. You should probably make your
-     * own loading screen in that case.
+     * If set to `true`, the default loading screen is not rendered. Loading-session state remains
+     * available for a custom loading screen.
      *
      * @default false
      */
@@ -204,67 +185,45 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
         modName: anthaAssetModName,
         async cleanup({state}) {
             await state.assetLoader?.destroy();
-            state.loadingScreenState = undefined;
-            state.isShowingLoadingScreen = false;
         },
         execute({state, engine}) {
             if (!state.assetLoader) {
                 state.assetLoader = new AssetLoader({
                     logger: engine.log,
                 });
-
-                if (!options.hideLoadingScreen) {
-                    state.assetLoader.listen(AssetLoaderProgressUpdateEvent, (event) => {
-                        if (event.detail.complete) {
-                            state.loadingScreenState = {
-                                current: 1,
-                                total: 1,
-                                currentResourceName:
-                                    event.detail.currentResourceName ||
-                                    state.loadingScreenState?.currentResourceName,
-                                completedAt: engine.totalMs,
-                            };
-                            state.isShowingLoadingScreen = false;
-                        } else {
-                            state.isShowingLoadingScreen = true;
-                            state.loadingScreenState = {
-                                current: event.detail.current,
-                                total: event.detail.total,
-                                currentResourceName: event.detail.currentResourceName,
-                                completedAt: undefined,
-                            };
-                        }
-                    });
-                }
             }
+
+            state.assetLoader.advanceLoadState({
+                currentTick: engine.currentTick,
+                totalMs: engine.totalMs,
+            });
 
             if (options.hideLoadingScreen) {
                 return;
             }
 
-            const shouldShowLoadingScreen = state.loadingScreenState?.completedAt
-                ? engine.totalMs <=
-                  state.loadingScreenState.completedAt + configuredLoadingScreenFadeMs
-                : true;
+            const loadState = state.assetLoader.loadState;
 
-            if (state.loadingScreenState && shouldShowLoadingScreen) {
+            if (
+                loadState &&
+                (loadState.completedAt == undefined ||
+                    engine.totalMs <= loadState.completedAt + configuredLoadingScreenFadeMs)
+            ) {
                 const progressPercent =
-                    state.loadingScreenState.total > 0
-                        ? (state.loadingScreenState.current / state.loadingScreenState.total) * 100
-                        : 0;
+                    loadState.total > 0 ? (loadState.current / loadState.total) * 100 : 0;
 
                 return html`
                     <${AnthaAssetLoadingScreen.assign({
                         progressPercent,
                         dotCount: Math.floor(engine.totalMs / 500) % 4,
-                        completed: !!state.loadingScreenState.completedAt,
-                        currentResourceName: state.loadingScreenState.currentResourceName,
+                        completed: loadState.completedAt != undefined,
+                        currentResourceName: loadState.currentResourceName,
                         loadingScreenFadeMs: configuredLoadingScreenFadeMs,
                     })}></${AnthaAssetLoadingScreen}>
                 `;
-            } else {
-                return undefined;
             }
+
+            return undefined;
         },
     });
 }

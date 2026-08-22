@@ -5,7 +5,8 @@ import {type SpritesheetData} from 'pixi.js';
 import {
     type Asset,
     AssetLoader,
-    AssetLoaderProgressUpdateEvent,
+    AssetLoadSessionUpdateEvent,
+    type AssetLoadState,
     type AssetValue,
     defineAsset,
 } from './asset-loader.js';
@@ -37,6 +38,80 @@ function createMockAsset(
 }
 
 describe(AssetLoader.name, () => {
+    it('manages its active load session and load state', () => {
+        const loader = new AssetLoader();
+        const initialLoadSession = loader.currentLoadSession;
+
+        initialLoadSession.reportProgress({
+            current: 1,
+            currentResourceName: 'initial-asset',
+            total: 2,
+        });
+
+        const initialLoadState = loader.loadState;
+        assert.deepEquals(initialLoadState, {
+            current: 1,
+            currentResourceName: 'initial-asset',
+            total: 2,
+            completedAt: undefined,
+            isLoading: true,
+        } satisfies AssetLoadState);
+
+        const loadSession = loader.createLoadSession();
+
+        assert.strictEquals(loader.currentLoadSession, loadSession);
+        const replacementLoadState = loader.loadState;
+        assert.deepEquals(replacementLoadState, {
+            current: 0,
+            currentResourceName: undefined,
+            total: 0,
+            completedAt: undefined,
+            isLoading: true,
+        } satisfies AssetLoadState);
+
+        initialLoadSession.reportProgress({
+            current: 2,
+            currentResourceName: 'stale-asset',
+            total: 2,
+        });
+
+        const staleLoadState = loader.loadState;
+        assert.deepEquals(staleLoadState, {
+            current: 0,
+            currentResourceName: undefined,
+            total: 0,
+            completedAt: undefined,
+            isLoading: true,
+        } satisfies AssetLoadState);
+
+        loader.advanceLoadState({
+            currentTick: 0,
+            totalMs: 0,
+        });
+        loadSession.complete();
+        loader.advanceLoadState({
+            currentTick: 1,
+            totalMs: 10,
+        });
+
+        const incompleteLoadState = loader.loadState;
+        assert.isUndefined(incompleteLoadState?.completedAt);
+
+        loader.advanceLoadState({
+            currentTick: 2,
+            totalMs: 20,
+        });
+
+        const completedLoadState = loader.loadState;
+        assert.deepEquals(completedLoadState, {
+            current: 0,
+            currentResourceName: undefined,
+            total: 0,
+            completedAt: 20,
+            isLoading: false,
+        } satisfies AssetLoadState);
+    });
+
     describe('loadIndividualAsset', () => {
         it('loads an asset and returns its value', async () => {
             const loader = new AssetLoader();
@@ -125,6 +200,47 @@ describe(AssetLoader.name, () => {
             });
 
             assert.strictEquals(result, 'no-callback');
+        });
+
+        it('reports individual asset progress to a load session', async () => {
+            const loader = new AssetLoader();
+            const loadSession = loader.createLoadSession();
+            const completionStates: boolean[] = [];
+            const asset = defineAsset({
+                name: 'session-asset',
+                maxProgress: 2,
+                load({incrementProgressCallback}) {
+                    incrementProgressCallback();
+                    incrementProgressCallback();
+                    return {
+                        value: 'session-value',
+                    };
+                },
+            });
+
+            loadSession.listen(AssetLoadSessionUpdateEvent, (event) => {
+                completionStates.push(event.detail.complete);
+            });
+
+            await loader.loadIndividualAsset({
+                asset,
+                loadSession,
+            });
+
+            assert.deepEquals(completionStates, [
+                false,
+                false,
+                false,
+            ]);
+
+            loadSession.complete();
+
+            assert.deepEquals(completionStates, [
+                false,
+                false,
+                false,
+                true,
+            ]);
         });
     });
 
@@ -231,12 +347,13 @@ describe(AssetLoader.name, () => {
             ]);
         });
 
-        it('dispatches progress events including complete flag', async () => {
+        it('reports progress to a load session until explicitly completed', async () => {
             const loader = new AssetLoader();
+            const loadSession = loader.createLoadSession();
             const {asset} = createMockAsset('events-test');
             const events: {current: number; total: number; complete: boolean}[] = [];
 
-            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
+            loadSession.listen(AssetLoadSessionUpdateEvent, (event) => {
                 events.push({
                     current: event.detail.current,
                     total: event.detail.total,
@@ -244,9 +361,14 @@ describe(AssetLoader.name, () => {
                 });
             });
 
-            await loader.bulkLoadAssets([
-                asset,
-            ]);
+            await loader.bulkLoadAssets(
+                [
+                    asset,
+                ],
+                {
+                    loadSession,
+                },
+            );
 
             assert.deepEquals(events, [
                 {
@@ -269,19 +391,23 @@ describe(AssetLoader.name, () => {
                     total: 1,
                     complete: false,
                 },
-                {
-                    current: 1,
-                    total: 1,
-                    complete: true,
-                },
             ]);
+
+            loadSession.complete();
+
+            assert.deepEquals(events.at(-1), {
+                complete: true,
+                current: 1,
+                total: 1,
+            });
         });
 
-        it('dispatches progress update events', async () => {
+        it('reports bulk progress to a load session', async () => {
             const loader = new AssetLoader();
+            const loadSession = loader.createLoadSession();
             const progressUpdates: {current: number; total: number; complete: boolean}[] = [];
 
-            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
+            loadSession.listen(AssetLoadSessionUpdateEvent, (event) => {
                 progressUpdates.push({
                     current: event.detail.current,
                     total: event.detail.total,
@@ -311,10 +437,15 @@ describe(AssetLoader.name, () => {
                 },
             });
 
-            await loader.bulkLoadAssets([
-                asset1,
-                asset2,
-            ]);
+            await loader.bulkLoadAssets(
+                [
+                    asset1,
+                    asset2,
+                ],
+                {
+                    loadSession,
+                },
+            );
 
             assert.deepEquals(progressUpdates, [
                 {
@@ -352,19 +483,15 @@ describe(AssetLoader.name, () => {
                     total: 3,
                     complete: false,
                 },
-                {
-                    current: 3,
-                    total: 3,
-                    complete: true,
-                },
             ]);
         });
 
-        it('dispatches the current asset name in progress events', async () => {
+        it('reports the current asset name to a load session', async () => {
             const loader = new AssetLoader();
+            const loadSession = loader.createLoadSession();
             const resourceNames: (string | undefined)[] = [];
 
-            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
+            loadSession.listen(AssetLoadSessionUpdateEvent, (event) => {
                 resourceNames.push(event.detail.currentResourceName);
             });
 
@@ -380,12 +507,16 @@ describe(AssetLoader.name, () => {
                 },
             });
 
-            await loader.bulkLoadAssets([
-                asset,
-            ]);
+            await loader.bulkLoadAssets(
+                [
+                    asset,
+                ],
+                {
+                    loadSession,
+                },
+            );
 
             assert.deepEquals(resourceNames, [
-                'entity:asset',
                 'entity:asset',
                 'entity:asset',
                 'entity:asset',
@@ -480,9 +611,10 @@ describe(AssetLoader.name, () => {
 
         it('increments progress by custom amount', async () => {
             const loader = new AssetLoader();
+            const loadSession = loader.createLoadSession();
             const progressUpdates: {current: number; total: number; complete: boolean}[] = [];
 
-            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
+            loadSession.listen(AssetLoadSessionUpdateEvent, (event) => {
                 progressUpdates.push({
                     current: event.detail.current,
                     total: event.detail.total,
@@ -502,9 +634,14 @@ describe(AssetLoader.name, () => {
                 },
             });
 
-            await loader.bulkLoadAssets([
-                asset,
-            ]);
+            await loader.bulkLoadAssets(
+                [
+                    asset,
+                ],
+                {
+                    loadSession,
+                },
+            );
 
             assert.deepEquals(progressUpdates, [
                 {
@@ -531,11 +668,6 @@ describe(AssetLoader.name, () => {
                     current: 5,
                     total: 5,
                     complete: false,
-                },
-                {
-                    current: 5,
-                    total: 5,
-                    complete: true,
                 },
             ]);
         });
@@ -718,28 +850,6 @@ describe(AssetLoader.name, () => {
             ]);
 
             assert.isLengthExactly(errors, 1);
-        });
-
-        it('suppresses progress events when hideLoadingScreen is true', async () => {
-            const loader = new AssetLoader();
-            const events: unknown[] = [];
-
-            loader.listen(AssetLoaderProgressUpdateEvent, (event) => {
-                events.push(event.detail);
-            });
-
-            const {asset} = createMockAsset('hidden');
-
-            await loader.bulkLoadAssets(
-                [
-                    asset,
-                ],
-                {
-                    hideLoadingScreen: true,
-                },
-            );
-
-            assert.isLengthExactly(events, 0);
         });
 
         it('accounts for already loaded assets and cleanup in progress', async () => {

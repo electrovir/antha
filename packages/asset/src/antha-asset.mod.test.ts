@@ -1,16 +1,16 @@
 import {AnthaEngine} from '@antha/engine';
-import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
+import {assert, assertWrap} from '@augment-vir/assert';
+import {wait} from '@augment-vir/common';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
 import {
     AnthaAssetLoadingScreen,
-    type AnthaAssetModLoadingScreenState,
     type AnthaAssetModState,
     anthaAssetModName,
     createAnthaAssetMod,
     defaultLoadingScreenFadeMs,
 } from './antha-asset.mod.js';
-import {AssetLoaderProgressUpdateEvent} from './asset-loader.js';
+import {type AssetLoadState} from './asset-loader.js';
 
 describe(createAnthaAssetMod.name, () => {
     it('creates a mod with the correct name', () => {
@@ -18,7 +18,7 @@ describe(createAnthaAssetMod.name, () => {
         assert.strictEquals(mod.modName, anthaAssetModName);
     });
 
-    it('initializes an AssetLoader on first execute', async () => {
+    it('initializes an AssetLoader and its first load session on first execute', async () => {
         const mod = createAnthaAssetMod();
         const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
@@ -27,9 +27,10 @@ describe(createAnthaAssetMod.name, () => {
         await engine.runSingleTick();
 
         assert.isDefined(engine.state.assetLoader);
+        assert.isDefined(engine.state.assetLoader.currentLoadSession);
     });
 
-    it('sets up a progress listener when hideLoadingScreen is false', async () => {
+    it('exposes progress reported by its current load session', async () => {
         const mod = createAnthaAssetMod();
         const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
@@ -37,10 +38,91 @@ describe(createAnthaAssetMod.name, () => {
 
         await engine.runSingleTick();
 
-        /** Simulate loading by loading a mock asset. */
+        const assetLoader = assertWrap.isDefined(engine.state.assetLoader);
+        assetLoader.currentLoadSession.reportProgress({
+            current: 1,
+            currentResourceName: 'test-asset',
+            total: 2,
+        });
+
+        assert.deepEquals(assetLoader.loadState, {
+            current: 1,
+            total: 2,
+            currentResourceName: 'test-asset',
+            completedAt: undefined,
+            isLoading: true,
+        } satisfies AssetLoadState);
+    });
+
+    it('replaces the active load session without accepting stale progress', async () => {
+        const mod = createAnthaAssetMod();
+        const engine = new AnthaEngine<AnthaAssetModState>({
+            mods: [mod],
+        });
+
+        await engine.runSingleTick();
+
+        const assetLoader = assertWrap.isDefined(engine.state.assetLoader);
+        const previousSession = assetLoader.currentLoadSession;
+        previousSession.reportProgress({
+            current: 1,
+            currentResourceName: 'previous-asset',
+            total: 1,
+        });
+        previousSession.complete();
+
+        const loadSession = assetLoader.createLoadSession();
+
+        const replacementSessionState = assetLoader.loadState;
+        assert.deepEquals(replacementSessionState, {
+            current: 0,
+            currentResourceName: undefined,
+            total: 0,
+            completedAt: undefined,
+            isLoading: true,
+        } satisfies AssetLoadState);
+
+        previousSession.reportProgress({
+            current: 1,
+            currentResourceName: 'stale-asset',
+            total: 1,
+        });
+
+        const staleSessionState = assetLoader.loadState;
+        assert.deepEquals(staleSessionState, {
+            current: 0,
+            currentResourceName: undefined,
+            total: 0,
+            completedAt: undefined,
+            isLoading: true,
+        } satisfies AssetLoadState);
+
+        loadSession.reportProgress({
+            current: 1,
+            currentResourceName: 'new-asset',
+            total: 2,
+        });
+
+        assert.deepEquals(assetLoader.loadState, {
+            current: 1,
+            currentResourceName: 'new-asset',
+            total: 2,
+            completedAt: undefined,
+            isLoading: true,
+        } satisfies AssetLoadState);
+    });
+
+    it('does not show a loading screen for asset loads without a session', async () => {
+        const mod = createAnthaAssetMod();
+        const engine = new AnthaEngine<AnthaAssetModState>({
+            mods: [mod],
+        });
+
+        await engine.runSingleTick();
+
         await assertWrap.isDefined(engine.state.assetLoader).bulkLoadAssets([
             {
-                name: 'test-asset',
+                name: 'unscoped-asset',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -51,12 +133,10 @@ describe(createAnthaAssetMod.name, () => {
             },
         ]);
 
-        await waitUntil.isFalse(() => {
-            return engine.state.isShowingLoadingScreen ?? false;
-        });
+        assert.isUndefined(assertWrap.isDefined(engine.state.assetLoader).loadState);
     });
 
-    it('preserves current resource name when completion has none', async () => {
+    it('defers load completion until after the next render', async () => {
         const mod = createAnthaAssetMod();
         const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
@@ -64,34 +144,30 @@ describe(createAnthaAssetMod.name, () => {
 
         await engine.runSingleTick();
 
-        assertWrap.isDefined(engine.state.assetLoader).dispatch(
-            new AssetLoaderProgressUpdateEvent({
-                detail: {
-                    complete: false,
-                    current: 1,
-                    total: 2,
-                    currentResourceName: 'test-asset',
-                },
-            }),
-        );
-
-        assertWrap.isDefined(engine.state.assetLoader).dispatch(
-            new AssetLoaderProgressUpdateEvent({
-                detail: {
-                    complete: true,
-                    current: 2,
-                    total: 2,
-                    currentResourceName: undefined,
-                },
-            }),
-        );
-
-        assert.deepEquals(engine.state.loadingScreenState, {
+        const assetLoader = assertWrap.isDefined(engine.state.assetLoader);
+        const loadSession = assetLoader.createLoadSession();
+        loadSession.reportProgress({
             current: 1,
-            total: 1,
             currentResourceName: 'test-asset',
-            completedAt: engine.totalMs,
-        } satisfies AnthaAssetModLoadingScreenState);
+            total: 1,
+        });
+        loadSession.complete();
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(assetLoader.loadState, {
+            completedAt: undefined,
+            current: 1,
+            currentResourceName: 'test-asset',
+            total: 1,
+            isLoading: true,
+        } satisfies AssetLoadState);
+
+        await engine.runSingleTick();
+
+        const completedLoadState = assertWrap.isDefined(assetLoader.loadState);
+        assert.isDefined(completedLoadState.completedAt);
+        assert.isFalse(completedLoadState.isLoading);
     });
 
     it('cleanup destroys the AssetLoader', async () => {
@@ -102,73 +178,27 @@ describe(createAnthaAssetMod.name, () => {
 
         await engine.runSingleTick();
 
-        assert.isDefined(engine.state.assetLoader);
+        const assetLoader = assertWrap.isDefined(engine.state.assetLoader);
+        assetLoader.createLoadSession();
 
         await engine.reset();
 
-        assert.isFalse(engine.state.isShowingLoadingScreen || false);
+        assert.isUndefined(assetLoader.loadState);
     });
 
-    it('renders loading screen template', async () => {
+    it('renders a load session', async () => {
         const mod = createAnthaAssetMod();
         const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
         });
 
-        /**
-         * Manually set the loading screen state to trigger rendering. This path only renders when
-         * hideLoadingScreen is true (inverted logic in the source).
-         */
-        engine.state.loadingScreenState = {
-            current: 0,
-            total: 1,
-            completedAt: undefined,
-        };
-
+        await engine.runSingleTick();
+        assertWrap.isDefined(engine.state.assetLoader).createLoadSession();
         await engine.runSingleTick();
 
         const templates = engine.currentTemplateArray;
         assert.isLengthExactly(templates, 1);
         assert.isDefined(templates[0]);
-    });
-
-    it('renders completed loading screen with fade-out', async () => {
-        const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine<AnthaAssetModState>({
-            mods: [mod],
-        });
-
-        engine.state.loadingScreenState = {
-            current: 1,
-            total: 1,
-            completedAt: 0,
-        };
-
-        await engine.runSingleTick();
-
-        const templates = engine.currentTemplateArray;
-        assert.isLengthExactly(templates, 1);
-        assert.isDefined(templates[0]);
-    });
-
-    it('returns undefined when loading screen fade has completed', async () => {
-        const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine<AnthaAssetModState>({
-            mods: [mod],
-        });
-
-        /** Set completedAt far in the past so the fade has finished. */
-        engine.state.loadingScreenState = {
-            current: 1,
-            total: 1,
-            completedAt: -(defaultLoadingScreenFadeMs + 1000),
-        };
-
-        await engine.runSingleTick();
-
-        const templates = engine.currentTemplateArray;
-        assert.isLengthExactly(templates, 1);
-        assert.isUndefined(templates[0]);
     });
 
     it('uses configured loading screen fade duration', async () => {
@@ -179,18 +209,20 @@ describe(createAnthaAssetMod.name, () => {
             mods: [mod],
         });
 
-        engine.state.loadingScreenState = {
-            current: 1,
-            total: 1,
-            completedAt: -1,
-        };
-
+        await engine.runSingleTick();
+        const loadSession = assertWrap.isDefined(engine.state.assetLoader).createLoadSession();
+        loadSession.complete();
+        await engine.runSingleTick();
+        await engine.runSingleTick();
+        await wait({
+            milliseconds: 10,
+        });
         await engine.runSingleTick();
 
         assert.isUndefined(engine.currentTemplateArray[0]);
     });
 
-    it('returns undefined when loadingScreenState is not set', async () => {
+    it('tracks a custom loading screen without rendering the default screen', async () => {
         const mod = createAnthaAssetMod({
             hideLoadingScreen: true,
         });
@@ -200,11 +232,23 @@ describe(createAnthaAssetMod.name, () => {
 
         await engine.runSingleTick();
 
+        assertWrap.isDefined(engine.state.assetLoader).createLoadSession();
+        await engine.runSingleTick();
+
+        assert.deepEquals(assertWrap.isDefined(engine.state.assetLoader).loadState, {
+            current: 0,
+            currentResourceName: undefined,
+            total: 0,
+            completedAt: undefined,
+            isLoading: true,
+        } satisfies AssetLoadState);
+
         const templates = engine.currentTemplateArray;
         assert.isLengthExactly(templates, 1);
+        assert.isUndefined(templates[0]);
     });
 
-    it('does not return a template when hideLoadingScreen is false', async () => {
+    it('does not render before a load session reports progress', async () => {
         const mod = createAnthaAssetMod();
         const engine = new AnthaEngine<AnthaAssetModState>({
             mods: [mod],
@@ -215,25 +259,6 @@ describe(createAnthaAssetMod.name, () => {
         const templates = engine.currentTemplateArray;
         assert.isLengthExactly(templates, 1);
         assert.isUndefined(templates[0]);
-    });
-
-    it('renders zero progress when total is zero', async () => {
-        const mod = createAnthaAssetMod();
-        const engine = new AnthaEngine<AnthaAssetModState>({
-            mods: [mod],
-        });
-
-        engine.state.loadingScreenState = {
-            current: 0,
-            total: 0,
-            completedAt: undefined,
-        };
-
-        await engine.runSingleTick();
-
-        const templates = engine.currentTemplateArray;
-        assert.isLengthExactly(templates, 1);
-        assert.isDefined(templates[0]);
     });
 });
 

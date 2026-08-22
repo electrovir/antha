@@ -1,4 +1,9 @@
-import {createAnthaAssetMod, defineAsset, type AnthaAssetModState} from '@antha/asset';
+import {
+    type AnthaAssetModState,
+    type AssetLoader,
+    createAnthaAssetMod,
+    defineAsset,
+} from '@antha/asset';
 import {AnthaEngine, defineAnthaMod} from '@antha/engine';
 import {randomInteger, wait} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
@@ -27,6 +32,24 @@ const slowAsset = defineAsset({
     },
 });
 
+async function loadSlowAsset({
+    assetLoader,
+}: Readonly<{
+    assetLoader: AssetLoader;
+}>) {
+    const loadSession = assetLoader.createLoadSession();
+
+    await assetLoader.bulkLoadAssets(
+        [
+            slowAsset,
+        ],
+        {
+            loadSession,
+        },
+    );
+    loadSession.complete();
+}
+
 export const assetLoadingDemo: AnthaDemo = {
     demoName: 'Asset Loading Screen',
     demoPathId: 'asset-loading-screen',
@@ -42,26 +65,25 @@ export const assetLoadingDemo: AnthaDemo = {
                 >({
                     modName: 'slow-asset-loader',
                     async execute({state, engine}) {
-                        if (state.assetLoader && !state.loadStarted) {
-                            state.loadStarted = true;
-                            void state.assetLoader.bulkLoadAssets([
-                                slowAsset,
-                            ]);
-                        }
-
                         if (
                             state.assetLoader &&
-                            state.loadingScreenState?.completedAt &&
-                            state.loadingScreenState.completedAt + 10_000 < engine.totalMs
+                            (!state.loadStarted ||
+                                (state.assetLoader.loadState?.completedAt &&
+                                    state.assetLoader.loadState.completedAt + 10_000 <
+                                        engine.totalMs))
                         ) {
-                            console.info('reloading assets');
-                            await state.assetLoader.unloadAssets([slowAsset]);
-                            void state.assetLoader.bulkLoadAssets([
-                                slowAsset,
-                            ]);
+                            if (state.loadStarted) {
+                                console.info('reloading assets');
+                                await state.assetLoader.unloadAssets([slowAsset]);
+                            } else {
+                                state.loadStarted = true;
+                            }
+                            void loadSlowAsset({
+                                assetLoader: state.assetLoader,
+                            });
                         }
 
-                        if (state.isShowingLoadingScreen) {
+                        if (state.assetLoader?.loadState?.isLoading) {
                             return undefined;
                         } else {
                             return html`

@@ -86,7 +86,7 @@ function createSaveStateAsset({
 export const saveStateMod = defineAnthaMod<FullExampleGameState>({
     modName: 'save-state',
     execute({state}) {
-        if (!state.entityStore) {
+        if (!state.entityStore || !state.assetLoader) {
             return SkipExecution;
         }
 
@@ -96,25 +96,31 @@ export const saveStateMod = defineAnthaMod<FullExampleGameState>({
 
         if (!state.saveState && !state.loadPromise) {
             const saveStateStore = state.saveStateStore;
+            const loadSession = state.assetLoader.createLoadSession();
 
-            state.loadPromise = state.entityStore.loadEntityAssets(
-                {
-                    entities: [
-                        HangarEntity,
-                        PlayerShipEntity,
-                    ],
-                    otherAssets: [
-                        fontsAsset,
-                        createSaveStateAsset({
-                            saveStateStore,
-                            state,
-                        }),
-                    ],
-                },
-                {
-                    maxParallelism: 1,
-                },
-            );
+            state.loadPromise = state.entityStore
+                .loadEntityAssets(
+                    {
+                        entities: [
+                            HangarEntity,
+                            PlayerShipEntity,
+                        ],
+                        otherAssets: [
+                            fontsAsset,
+                            createSaveStateAsset({
+                                saveStateStore,
+                                state,
+                            }),
+                        ],
+                    },
+                    {
+                        maxParallelism: 1,
+                        loadSession,
+                    },
+                )
+                .then(() => {
+                    loadSession.complete();
+                });
         }
 
         return undefined;

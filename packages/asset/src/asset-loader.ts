@@ -103,12 +103,8 @@ export type AssetBulkLoaderLoadOptions = PartialWithUndefined<{
      * @default false
      */
     doNotUnload: boolean;
-    /**
-     * If `true`, the loading screen events will not be emitted.
-     *
-     * @default false
-     */
-    hideLoadingScreen: boolean;
+    /** Receives this bulk load's progress. */
+    loadSession: AssetLoadSession;
 }>;
 
 /**
@@ -124,31 +120,176 @@ export type AssetLoaderOptions = PartialWithUndefined<{
     logger: AnthaLogger;
 }>;
 
-/**
- * Custom event dispatched by {@link AssetLoader} whenever bulk loading progress changes. Used for
- * loading screen progression.
- *
- * @category Internal
- */
-export class AssetLoaderProgressUpdateEvent extends defineTypedCustomEvent<{
+/** Progress tracked by an {@link AssetLoadSession}. */
+export type AssetLoadProgress = {
     current: number;
     total: number;
     currentResourceName?: string | undefined;
-    /**
-     * Always check this complete field first, as any misconfigured assets ma not correctly
-     * increment `total` but complete will always reliably mark the end of loading.
-     */
-    complete: boolean;
-}>()('antha-asset-loader-progress-update-event') {}
+};
+
+/** State of the active asset load. */
+export type AssetLoadState = AssetLoadProgress & {
+    completedAt: DOMHighResTimeStamp | undefined;
+    isLoading: boolean;
+};
+
+/** Event dispatched when an {@link AssetLoadSession} progresses or completes. */
+export class AssetLoadSessionUpdateEvent extends defineTypedCustomEvent<
+    AssetLoadProgress & {
+        /** Indicates that the caller explicitly requested load completion. */
+        complete: boolean;
+    }
+>()('antha-asset-load-session-update-event') {}
+
+/** Manages the progress and explicit completion of an asset load. */
+export class AssetLoadSession extends ListenTarget<AssetLoadSessionUpdateEvent> {
+    protected currentProgress: AssetLoadProgress = {
+        current: 0,
+        currentResourceName: undefined,
+        total: 0,
+    };
+
+    protected isComplete = false;
+
+    /** Reports a load-progress update without completing the session. */
+    public reportProgress(progress: Readonly<AssetLoadProgress>) {
+        this.currentProgress = progress;
+        this.isComplete = false;
+        this.dispatch(
+            new AssetLoadSessionUpdateEvent({
+                detail: {
+                    ...progress,
+                    complete: false,
+                },
+            }),
+        );
+    }
+
+    /** Adds progress to the active resource. */
+    public incrementProgress({
+        amount,
+        currentResourceName,
+    }: Readonly<{
+        amount?: number | undefined;
+        currentResourceName: string;
+    }>) {
+        this.reportProgress({
+            ...this.currentProgress,
+            current: this.currentProgress.current + (amount ?? 1),
+            currentResourceName,
+        });
+    }
+
+    /** Marks this asset load as complete. */
+    public complete() {
+        if (this.isComplete) {
+            return;
+        }
+
+        this.isComplete = true;
+        this.dispatch(
+            new AssetLoadSessionUpdateEvent({
+                detail: {
+                    ...this.currentProgress,
+                    complete: true,
+                },
+            }),
+        );
+    }
+}
+
+class AssetLoadSessionController {
+    protected currentLoadSessionInternal: AssetLoadSession;
+    protected loadStateInternal: AssetLoadState | undefined;
+    protected completionRequestedAtTick: number | undefined;
+    protected latestEngineTick = 0;
+    protected removeLoadSessionListener: (() => boolean) | undefined;
+
+    constructor() {
+        const initialLoadSession = new AssetLoadSession();
+        this.currentLoadSessionInternal = initialLoadSession;
+        this.listenToLoadSession(initialLoadSession);
+    }
+
+    public get currentLoadSession() {
+        return this.currentLoadSessionInternal;
+    }
+
+    public get loadState() {
+        return this.loadStateInternal;
+    }
+
+    public createLoadSession() {
+        const loadSession = new AssetLoadSession();
+        this.removeLoadSessionListener?.();
+        this.currentLoadSessionInternal = loadSession;
+        this.listenToLoadSession(loadSession);
+        loadSession.reportProgress({
+            current: 0,
+            total: 0,
+        });
+
+        return loadSession;
+    }
+
+    public advance({
+        currentTick,
+        totalMs,
+    }: Readonly<{
+        currentTick: number;
+        totalMs: DOMHighResTimeStamp;
+    }>) {
+        this.latestEngineTick = currentTick + 1;
+
+        if (
+            this.completionRequestedAtTick != undefined &&
+            this.completionRequestedAtTick < currentTick &&
+            this.loadStateInternal
+        ) {
+            this.completionRequestedAtTick = undefined;
+            this.loadStateInternal = {
+                ...this.loadStateInternal,
+                completedAt: totalMs,
+                isLoading: false,
+            };
+        }
+    }
+
+    public destroy() {
+        this.removeLoadSessionListener?.();
+        this.currentLoadSessionInternal.destroy();
+        this.completionRequestedAtTick = undefined;
+        this.loadStateInternal = undefined;
+    }
+
+    protected listenToLoadSession(loadSession: AssetLoadSession) {
+        this.removeLoadSessionListener = loadSession.listen(
+            AssetLoadSessionUpdateEvent,
+            (event) => {
+                if (event.detail.complete) {
+                    this.completionRequestedAtTick = this.latestEngineTick;
+                } else {
+                    this.completionRequestedAtTick = undefined;
+                    this.loadStateInternal = {
+                        current: event.detail.current,
+                        currentResourceName: event.detail.currentResourceName,
+                        total: event.detail.total,
+                        completedAt: undefined,
+                        isLoading: true,
+                    };
+                }
+            },
+        );
+    }
+}
 
 /**
  * Manages loading, caching, and cleanup of game assets with progress tracking.
  *
  * @category Asset
  */
-export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
+export class AssetLoader {
     constructor(options: Readonly<AssetLoaderOptions> = {}) {
-        super();
         this.log = options.logger || browserAnthaLogger;
     }
 
@@ -157,13 +298,46 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
 
     protected readonly assetCache = new Map<Readonly<Asset>, Promise<AssetLoaderResult>>();
 
+    protected readonly loadSessionController = new AssetLoadSessionController();
+
+    /** The active asset-load session. */
+    public get currentLoadSession() {
+        return this.loadSessionController.currentLoadSession;
+    }
+
+    /** The active asset-load state. */
+    public get loadState() {
+        return this.loadSessionController.loadState;
+    }
+
+    /** Creates and activates a new asset-load session. */
+    public createLoadSession() {
+        return this.loadSessionController.createLoadSession();
+    }
+
+    /** Advances asset-load completion after an engine render. */
+    public advanceLoadState({
+        currentTick,
+        totalMs,
+    }: Readonly<{
+        currentTick: number;
+        totalMs: DOMHighResTimeStamp;
+    }>) {
+        this.loadSessionController.advance({
+            currentTick,
+            totalMs,
+        });
+    }
+
     /** Loads a single asset, returning its cached value if already loaded. */
     public async loadIndividualAsset<ThisAsset extends Asset>({
         asset,
         incrementProgressCallback,
+        loadSession,
     }: Readonly<{
         asset: Readonly<ThisAsset>;
         incrementProgressCallback?: AssetIncrementProgressCallback | undefined;
+        loadSession?: AssetLoadSession | undefined;
     }>): Promise<AssetValue<ThisAsset>> {
         const cached = this.assetCache.get(asset);
         if (cached) {
@@ -176,9 +350,19 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
 
         this.assetCache.set(asset, deferredLoadPromise.promise);
 
+        loadSession?.reportProgress({
+            current: 0,
+            currentResourceName: asset.name,
+            total: asset.maxProgress,
+        });
+
         const loadedAsset = await asset.load({
             incrementProgressCallback(progressParams) {
                 incrementProgressCallback?.(progressParams);
+                loadSession?.incrementProgress({
+                    amount: progressParams,
+                    currentResourceName: asset.name,
+                });
             },
         });
 
@@ -208,8 +392,8 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
         });
     }
 
-    public override async destroy() {
-        super.destroy();
+    public async destroy() {
+        this.loadSessionController.destroy();
         const entries = Array.from(this.assetCache.entries());
         await awaitedForEach(
             entries,
@@ -247,12 +431,14 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
 
         let currentProgress = 0;
 
-        if (!options.hideLoadingScreen && assetsToLoad.length) {
-            this.dispatchProgressUpdate({
-                current: currentProgress,
-                total: maxProgress,
-                currentResourceName: assetsToLoad[0]?.name,
-                complete: false,
+        if (assetsToLoad.length) {
+            this.reportProgress({
+                loadSession: options.loadSession,
+                progress: {
+                    current: currentProgress,
+                    total: maxProgress,
+                    currentResourceName: assetsToLoad[0]?.name,
+                },
             });
         }
 
@@ -263,14 +449,14 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
         }
 
         currentProgress += cleanupCount;
-        if (!options.hideLoadingScreen) {
-            this.dispatchProgressUpdate({
+        this.reportProgress({
+            loadSession: options.loadSession,
+            progress: {
                 current: currentProgress,
                 total: maxProgress,
                 currentResourceName: assetsToLoad[0]?.name,
-                complete: false,
-            });
-        }
+            },
+        });
 
         const chunkedAssets: ArrayElement<typeof assetsToLoad>[][] = options.maxParallelism
             ? chunkArray(assets, {
@@ -283,14 +469,14 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
         ): AssetIncrementProgressCallback => {
             return (amount) => {
                 currentProgress += amount ?? 1;
-                if (!options.hideLoadingScreen) {
-                    this.dispatchProgressUpdate({
+                this.reportProgress({
+                    loadSession: options.loadSession,
+                    progress: {
                         current: currentProgress,
                         total: maxProgress,
                         currentResourceName: asset.name,
-                        complete: false,
-                    });
-                }
+                    },
+                });
             };
         };
 
@@ -302,14 +488,14 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
                             return (await this.assetCache.get(asset))?.value;
                         }
 
-                        if (!options.hideLoadingScreen) {
-                            this.dispatchProgressUpdate({
+                        this.reportProgress({
+                            loadSession: options.loadSession,
+                            progress: {
                                 current: currentProgress,
                                 total: maxProgress,
                                 currentResourceName: asset.name,
-                                complete: false,
-                            });
-                        }
+                            },
+                        });
 
                         return await this.loadIndividualAsset({
                             incrementProgressCallback: createIncrementProgressCallback(asset),
@@ -336,26 +522,17 @@ export class AssetLoader extends ListenTarget<AssetLoaderProgressUpdateEvent> {
                 },
             );
         }
-        if (!options.hideLoadingScreen) {
-            this.dispatchProgressUpdate({
-                current: maxProgress,
-                total: maxProgress,
-                currentResourceName: assetsToLoad[assetsToLoad.length - 1]?.name,
-                complete: true,
-            });
-        }
-
         return results;
     }
 
-    /** Dispatch a loading progress event for the active bulk load. */
-    protected dispatchProgressUpdate(
-        detail: ConstructorParameters<typeof AssetLoaderProgressUpdateEvent>[0]['detail'],
-    ): void {
-        this.dispatch(
-            new AssetLoaderProgressUpdateEvent({
-                detail,
-            }),
-        );
+    /** Sends load progress to the provided session. */
+    protected reportProgress({
+        loadSession,
+        progress,
+    }: Readonly<{
+        loadSession: AssetLoadSession | undefined;
+        progress: AssetLoadProgress;
+    }>) {
+        loadSession?.reportProgress(progress);
     }
 }
