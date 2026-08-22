@@ -1,6 +1,6 @@
 {
     "name": "@antha/multiplayer-p2p-authoritative-host",
-    "version": "0.3.0",
+    "version": "0.4.0",
     "description": "P2P authoritative-host multiplayer strategy for the Antha engine.",
     "keywords": [
         "vir",
@@ -48,7 +48,7 @@
         "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
-        "@antha/multiplayer-core": "^0.3.0"
+        "@antha/multiplayer-core": "^0.4.0"
     },
     "engines": {
         "node": ">=22"

@@ -234,6 +234,7 @@ describe(AssetLoader.name, () => {
             ]);
 
             loadSession.complete();
+            loadSession.complete();
 
             assert.deepEquals(completionStates, [
                 false,

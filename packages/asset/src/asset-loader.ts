@@ -198,11 +198,17 @@ export class AssetLoadSession extends ListenTarget<AssetLoadSessionUpdateEvent> 
     }
 }
 
-class AssetLoadSessionController {
+/**
+ * Maintains the active asset-load session and its state.
+ *
+ * @category Internal
+ */
+export class AssetLoadSessionController {
     protected currentLoadSessionInternal: AssetLoadSession;
     protected loadStateInternal: AssetLoadState | undefined;
     protected completionRequestedAtTick: number | undefined;
     protected latestEngineTick = 0;
+    /** Removes the listener for the active load session. */
     protected removeLoadSessionListener: (() => boolean) | undefined;
 
     constructor() {
@@ -211,14 +217,17 @@ class AssetLoadSessionController {
         this.listenToLoadSession(initialLoadSession);
     }
 
+    /** The active asset-load session. */
     public get currentLoadSession() {
         return this.currentLoadSessionInternal;
     }
 
+    /** The active asset-load state. */
     public get loadState() {
         return this.loadStateInternal;
     }
 
+    /** Creates and activates a new asset-load session. */
     public createLoadSession() {
         const loadSession = new AssetLoadSession();
         this.removeLoadSessionListener?.();
@@ -232,6 +241,7 @@ class AssetLoadSessionController {
         return loadSession;
     }
 
+    /** Advances asset-load completion after an engine render. */
     public advance({
         currentTick,
         totalMs,
@@ -255,6 +265,7 @@ class AssetLoadSessionController {
         }
     }
 
+    /** Stops tracking the active load session. */
     public destroy() {
         this.removeLoadSessionListener?.();
         this.currentLoadSessionInternal.destroy();
@@ -262,6 +273,7 @@ class AssetLoadSessionController {
         this.loadStateInternal = undefined;
     }
 
+    /** Tracks updates from the active load session. */
     protected listenToLoadSession(loadSession: AssetLoadSession) {
         this.removeLoadSessionListener = loadSession.listen(
             AssetLoadSessionUpdateEvent,
@@ -392,6 +404,7 @@ export class AssetLoader {
         });
     }
 
+    /** Cleans up cached assets and stops tracking the active load session. */
     public async destroy() {
         this.loadSessionController.destroy();
         const entries = Array.from(this.assetCache.entries());
