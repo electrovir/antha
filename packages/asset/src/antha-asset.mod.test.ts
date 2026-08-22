@@ -8,7 +8,7 @@ import {
     type AnthaAssetModState,
     anthaAssetModName,
     createAnthaAssetMod,
-    loadingScreenFadeMs,
+    defaultLoadingScreenFadeMs,
 } from './antha-asset.mod.js';
 import {AssetLoaderProgressUpdateEvent} from './asset-loader.js';
 
@@ -161,7 +161,7 @@ describe(createAnthaAssetMod.name, () => {
         engine.state.loadingScreenState = {
             current: 1,
             total: 1,
-            completedAt: -(loadingScreenFadeMs + 1000),
+            completedAt: -(defaultLoadingScreenFadeMs + 1000),
         };
 
         await engine.runSingleTick();
@@ -169,6 +169,25 @@ describe(createAnthaAssetMod.name, () => {
         const templates = engine.currentTemplateArray;
         assert.isLengthExactly(templates, 1);
         assert.isUndefined(templates[0]);
+    });
+
+    it('uses configured loading screen fade duration', async () => {
+        const mod = createAnthaAssetMod({
+            loadingScreenFadeMs: 0,
+        });
+        const engine = new AnthaEngine<AnthaAssetModState>({
+            mods: [mod],
+        });
+
+        engine.state.loadingScreenState = {
+            current: 1,
+            total: 1,
+            completedAt: -1,
+        };
+
+        await engine.runSingleTick();
+
+        assert.isUndefined(engine.currentTemplateArray[0]);
     });
 
     it('returns undefined when loadingScreenState is not set', async () => {
@@ -226,6 +245,7 @@ describe(AnthaAssetLoadingScreen.tagName, () => {
                 dotCount: 2,
                 completed: false,
                 currentResourceName: undefined,
+                loadingScreenFadeMs: defaultLoadingScreenFadeMs,
             })}></${AnthaAssetLoadingScreen}>
         `);
 
@@ -240,10 +260,26 @@ describe(AnthaAssetLoadingScreen.tagName, () => {
                 dotCount: 0,
                 completed: true,
                 currentResourceName: undefined,
+                loadingScreenFadeMs: defaultLoadingScreenFadeMs,
             })}></${AnthaAssetLoadingScreen}>
         `);
 
         assert.instanceOf(fixture, AnthaAssetLoadingScreen);
+        testWeb.cleanupRender();
+    });
+
+    it('uses its configured fade duration', async () => {
+        const fixture = await testWeb.render(html`
+            <${AnthaAssetLoadingScreen.assign({
+                progressPercent: 100,
+                dotCount: 0,
+                completed: true,
+                currentResourceName: undefined,
+                loadingScreenFadeMs: 200,
+            })}></${AnthaAssetLoadingScreen}>
+        `);
+
+        assert.strictEquals(globalThis.getComputedStyle(fixture).transitionDuration, '0.2s');
         testWeb.cleanupRender();
     });
 });

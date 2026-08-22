@@ -17,7 +17,9 @@ export async function makePlayable() {
     `);
     await testWeb.click(fixture);
 
-    await waitUntil.isTrue(() => isPlayingEnabled());
+    /** Reuse a single context: a fresh one per poll starts suspended again in Firefox. */
+    const audioContext = new AudioContext();
+    await waitUntil.isTrue(() => isPlayingEnabled(audioContext));
 }
 
 const shortMp3Params: AudioSetupParams = {

@@ -1,6 +1,7 @@
 import {defineAnthaMod} from '@antha/engine';
-import {type PartialWithUndefined} from '@augment-vir/common';
+import {addSuffix, type PartialWithUndefined} from '@augment-vir/common';
 import {css, defineElement, html} from 'element-vir';
+import {setCssVarValue} from 'lit-css-vars';
 import {AssetLoader, AssetLoaderProgressUpdateEvent} from './asset-loader.js';
 
 /**
@@ -44,6 +45,12 @@ export type AnthaAssetModOptions = PartialWithUndefined<{
      * @default false
      */
     hideLoadingScreen: boolean;
+    /**
+     * Duration in milliseconds for the default loading screen's fade-out animation.
+     *
+     * @default defaultLoadingScreenFadeMs
+     */
+    loadingScreenFadeMs: number;
 }>;
 
 /**
@@ -51,7 +58,7 @@ export type AnthaAssetModOptions = PartialWithUndefined<{
  *
  * @category Internal
  */
-export const loadingScreenFadeMs = 1000;
+export const defaultLoadingScreenFadeMs = 1000;
 /**
  * Duration in milliseconds for the progress bar grow transition.
  *
@@ -69,12 +76,19 @@ export const AnthaAssetLoadingScreen = defineElement<{
     dotCount: number;
     completed: boolean;
     currentResourceName: string | undefined;
+    loadingScreenFadeMs: number;
 }>()({
     tagName: 'antha-asset-loading-screen',
+    cssVars: {
+        'antha-asset-loading-screen-fade-ms': addSuffix({
+            value: defaultLoadingScreenFadeMs,
+            suffix: 'ms',
+        }),
+    },
     hostClasses: {
         'antha-asset-loading-screen-completed': ({inputs}) => inputs.completed,
     },
-    styles: ({hostClasses}) => {
+    styles: ({cssVars, hostClasses}) => {
         return css`
             :host {
                 position: fixed;
@@ -88,7 +102,7 @@ export const AnthaAssetLoadingScreen = defineElement<{
                 z-index: 9999;
                 gap: 24px;
                 opacity: 1;
-                transition: opacity ${loadingScreenFadeMs}ms ease-in;
+                transition: opacity ${cssVars['antha-asset-loading-screen-fade-ms'].value} ease-in;
             }
 
             .loading-text {
@@ -126,7 +140,16 @@ export const AnthaAssetLoadingScreen = defineElement<{
             }
         `;
     },
-    render({inputs}) {
+    render({host, inputs, cssVars}) {
+        setCssVarValue({
+            forCssVar: cssVars['antha-asset-loading-screen-fade-ms'],
+            onElement: host,
+            toValue: addSuffix({
+                value: inputs.loadingScreenFadeMs,
+                suffix: 'ms',
+            }),
+        });
+
         const dotCount = inputs.dotCount % 4;
         const dots = '.'.repeat(dotCount) + '\u00A0'.repeat(3 - dotCount);
 
@@ -175,6 +198,8 @@ export const anthaAssetModName = 'antha-asset';
  * @category Pre-Built Mods
  */
 export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}) {
+    const configuredLoadingScreenFadeMs = options.loadingScreenFadeMs ?? defaultLoadingScreenFadeMs;
+
     return defineAnthaMod<AnthaAssetModState>({
         modName: anthaAssetModName,
         async cleanup({state}) {
@@ -218,7 +243,8 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
             }
 
             const shouldShowLoadingScreen = state.loadingScreenState?.completedAt
-                ? engine.totalMs <= state.loadingScreenState.completedAt + loadingScreenFadeMs
+                ? engine.totalMs <=
+                  state.loadingScreenState.completedAt + configuredLoadingScreenFadeMs
                 : true;
 
             if (state.loadingScreenState && shouldShowLoadingScreen) {
@@ -233,6 +259,7 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
                         dotCount: Math.floor(engine.totalMs / 500) % 4,
                         completed: !!state.loadingScreenState.completedAt,
                         currentResourceName: state.loadingScreenState.currentResourceName,
+                        loadingScreenFadeMs: configuredLoadingScreenFadeMs,
                     })}></${AnthaAssetLoadingScreen}>
                 `;
             } else {

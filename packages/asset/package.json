@@ -1,6 +1,6 @@
 {
     "name": "@antha/asset",
-    "version": "0.2.0",
+    "version": "0.3.0",
     "description": "An Antha mod for handling asset loading.",
     "keywords": [
         "vir",
@@ -36,6 +36,7 @@
     "dependencies": {
         "@augment-vir/assert": "^32.2.3",
         "@augment-vir/common": "^32.2.3",
+        "lit-css-vars": "^3.6.3",
         "typed-event-target": "^4.3.3"
     },
     "devDependencies": {
@@ -47,7 +48,7 @@
         "pixi.js": "^8.19.0"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.2.0",
+        "@antha/engine": "^0.3.0",
         "element-vir": ">=26"
     },
     "engines": {
