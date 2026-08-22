@@ -28,18 +28,20 @@ function createActiveBinding({
     holdDurationMs = 0,
     lastActDurationMs = 0,
     actCount = 0,
+    value = 1,
 }: Readonly<
     Partial<{
         holdDurationMs: number;
         lastActDurationMs: number;
         actCount: number;
+        value: number;
     }>
 > = {}): ActiveBinding {
     return {
         holdDuration: {
             milliseconds: holdDurationMs,
         },
-        value: 1,
+        value,
         actCount,
         lastActDuration: {
             milliseconds: lastActDurationMs,
@@ -137,6 +139,7 @@ async function runMenuNav({
                 repeatInterval: {
                     milliseconds: 10,
                 },
+                minimumDirectionalInputValue: 0.8,
                 allowWrapping: false,
                 blockPerpendicularNavigation,
             },
@@ -149,6 +152,7 @@ async function runMenuNav({
                 repeatInterval: {
                     milliseconds: 10,
                 },
+                minimumDirectionalInputValue: 0.8,
                 allowWrapping: false,
                 blockPerpendicularNavigation,
             }),
@@ -329,6 +333,30 @@ describe(createAnthaMenuNavMod.name, () => {
                 },
             },
         });
+
+        assert.deepEquals(navController.calls, []);
+    });
+
+    it('requires the default minimum directional input value before navigating', async () => {
+        const navController = createRecordingNavController();
+        const engine = new AnthaEngine<MenuNavModState>({
+            initState: {
+                activeBindings: {
+                    '1': {
+                        [MenuNavBinding.MenuRight]: createActiveBinding({
+                            value: 0.79,
+                        }),
+                    },
+                },
+                isInMenu: true,
+                navController,
+            },
+            mods: [
+                createAnthaMenuNavMod(),
+            ],
+        });
+
+        await engine.runSingleTick();
 
         assert.deepEquals(navController.calls, []);
     });

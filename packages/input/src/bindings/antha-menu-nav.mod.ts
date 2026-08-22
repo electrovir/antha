@@ -49,6 +49,13 @@ export enum MenuNavBinding {
     OpenPauseMenu = 'open-pause-menu',
 }
 
+const directionalMenuNavBindings: ReadonlyArray<MenuNavBinding> = [
+    MenuNavBinding.MenuUp,
+    MenuNavBinding.MenuDown,
+    MenuNavBinding.MenuLeft,
+    MenuNavBinding.MenuRight,
+];
+
 /**
  * Default menu nav bindings for {@link AnthaMenuNavMod}.
  *
@@ -245,6 +252,13 @@ export type MenuNavOptions = Readonly<
          */
         repeatInterval: Readonly<AnyDuration>;
         /**
+         * The minimum input value required to trigger directional menu navigation. Helps prevent
+         * unintentional perpendicular navigation with joysticks in 2D menus.
+         *
+         * @default 0.8
+         */
+        minimumDirectionalInputValue: number;
+        /**
          * Allow wrapping when navigating menu items.
          *
          * @default true
@@ -283,6 +297,7 @@ export const defaultMenuNavOptions: Required<MenuNavOptions> = {
     repeatInterval: {
         milliseconds: 60,
     },
+    minimumDirectionalInputValue: 0.8,
     allowWrapping: true,
     blockPerpendicularNavigation: false,
 };
@@ -322,6 +337,7 @@ export function createAnthaMenuNavMod(
             const repeatInterval = convertDuration(state.menuNavOptions.repeatInterval, {
                 milliseconds: true,
             }).milliseconds;
+            const minimumDirectionalInputValue = state.menuNavOptions.minimumDirectionalInputValue;
 
             const bindingsToAct: Partial<Record<MenuNavBinding, boolean>> = {};
             const activeMenuBindings: Partial<Record<MenuNavBinding, boolean>> = {};
@@ -339,11 +355,13 @@ export function createAnthaMenuNavMod(
                         activeMenuBindings[bindingName] = true;
 
                         if (
-                            !activeBinding.actCount ||
-                            (activeBinding.holdDuration.milliseconds >= repeatThreshold &&
-                                activeBinding.holdDuration.milliseconds -
-                                    activeBinding.lastActDuration.milliseconds >
-                                    repeatInterval)
+                            (!directionalMenuNavBindings.includes(bindingName) ||
+                                activeBinding.value >= minimumDirectionalInputValue) &&
+                            (!activeBinding.actCount ||
+                                (activeBinding.holdDuration.milliseconds >= repeatThreshold &&
+                                    activeBinding.holdDuration.milliseconds -
+                                        activeBinding.lastActDuration.milliseconds >
+                                        repeatInterval))
                         ) {
                             bindingsToAct[bindingName] = true;
                             activeBinding.actCount++;
