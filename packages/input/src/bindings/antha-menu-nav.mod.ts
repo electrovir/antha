@@ -250,6 +250,13 @@ export type MenuNavOptions = Readonly<
          * @default true
          */
         allowWrapping: boolean;
+        /**
+         * Prevent a one-dimensional nav tree from using its available axis for perpendicular
+         * navigation.
+         *
+         * @default false
+         */
+        blockPerpendicularNavigation: boolean;
     }>
 >;
 
@@ -277,6 +284,7 @@ export const defaultMenuNavOptions: Required<MenuNavOptions> = {
         milliseconds: 60,
     },
     allowWrapping: true,
+    blockPerpendicularNavigation: false,
 };
 
 /**
@@ -374,6 +382,7 @@ export function createAnthaMenuNavMod(
             if (sectionDirection) {
                 state.navController.navigatePibling({
                     allowWrapping: state.menuNavOptions.allowWrapping,
+                    blockPerpendicularNavigation: state.menuNavOptions.blockPerpendicularNavigation,
                     direction: sectionDirection,
                 });
                 return;
@@ -398,12 +407,14 @@ export function createAnthaMenuNavMod(
             if (vertical) {
                 state.navController.navigate({
                     allowWrapping: state.menuNavOptions.allowWrapping,
+                    blockPerpendicularNavigation: state.menuNavOptions.blockPerpendicularNavigation,
                     direction: vertical,
                 });
             }
             if (horizontal) {
                 state.navController.navigate({
                     allowWrapping: state.menuNavOptions.allowWrapping,
+                    blockPerpendicularNavigation: state.menuNavOptions.blockPerpendicularNavigation,
                     direction: horizontal,
                 });
             }

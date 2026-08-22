@@ -8,12 +8,14 @@ import {
     NavEntry,
     NavValue,
     type CurrentNavEntry,
+    type NavigationInputs,
 } from 'device-navigation';
 import {createAnthaMenuNavMod, MenuNavBinding, type MenuNavModState} from './antha-menu-nav.mod.js';
 import {type ActiveBinding, type PlayersActiveBindings} from './player-bindings.js';
 
 type RecordingNavController = NavController & {
     calls: string[];
+    navigationInputs: NavigationInputs[];
 };
 
 class TestNavEntry extends NavEntry {
@@ -51,6 +53,7 @@ function createRecordingNavController() {
     ) satisfies NavController as RecordingNavController;
 
     navController.calls = [];
+    navController.navigationInputs = [];
     navController.enterInto = () => {
         navController.calls.push('enter');
 
@@ -81,8 +84,10 @@ function createRecordingNavController() {
             reason: 'test nav tree is empty',
         };
     };
-    navController.navigatePibling = ({direction}) => {
+    navController.navigatePibling = (navigationInputs) => {
+        const {direction} = navigationInputs;
         navController.calls.push(`pibling-${direction}`);
+        navController.navigationInputs.push(navigationInputs);
 
         return {
             success: false,
@@ -91,8 +96,10 @@ function createRecordingNavController() {
             reason: 'test nav tree is empty',
         };
     };
-    navController.navigate = ({direction}) => {
+    navController.navigate = (navigationInputs) => {
+        const {direction} = navigationInputs;
         navController.calls.push(`navigate-${direction}`);
+        navController.navigationInputs.push(navigationInputs);
 
         return {
             success: false,
@@ -107,10 +114,12 @@ function createRecordingNavController() {
 
 async function runMenuNav({
     activeBindings,
+    blockPerpendicularNavigation = false,
     navController = createRecordingNavController(),
     isInMenu = true,
 }: Readonly<{
     activeBindings?: PlayersActiveBindings | undefined;
+    blockPerpendicularNavigation?: boolean | undefined;
     navController?: RecordingNavController | undefined;
     isInMenu?: boolean | undefined;
 }>) {
@@ -129,6 +138,7 @@ async function runMenuNav({
                     milliseconds: 10,
                 },
                 allowWrapping: false,
+                blockPerpendicularNavigation,
             },
         },
         mods: [
@@ -140,6 +150,7 @@ async function runMenuNav({
                     milliseconds: 10,
                 },
                 allowWrapping: false,
+                blockPerpendicularNavigation,
             }),
         ],
     });
@@ -153,6 +164,38 @@ async function runMenuNav({
 }
 
 describe(createAnthaMenuNavMod.name, () => {
+    it('forwards perpendicular navigation settings', async () => {
+        const navController = createRecordingNavController();
+
+        const {engine} = await runMenuNav({
+            activeBindings: {
+                '1': {
+                    [MenuNavBinding.MenuRight]: createActiveBinding(),
+                },
+            },
+            blockPerpendicularNavigation: true,
+            navController,
+        });
+
+        assert.deepEquals(
+            {
+                blockPerpendicularNavigation:
+                    engine.state.menuNavOptions?.blockPerpendicularNavigation,
+                navigationInputs: navController.navigationInputs,
+            },
+            {
+                blockPerpendicularNavigation: true,
+                navigationInputs: [
+                    {
+                        allowWrapping: false,
+                        blockPerpendicularNavigation: true,
+                        direction: NavDirection.Right,
+                    },
+                ],
+            },
+        );
+    });
+
     it('fires a new active binding regardless of sampled hold duration', async () => {
         const mod = createAnthaMenuNavMod({
             repeatThreshold: {
