@@ -10,7 +10,7 @@ Detects the following per gamepad:
 
 based on hardcoded, pre-collected data. You are also able to define new values for each in case any data is missing.
 
-If you notice incorrect mappings, please enter updated information [on the demo page](https://zorp.fun/gamepad-tester). Every browser, browser version, operating system, and operating system version combination produces different values so it's impossible for me to single-handedly account for them all.
+If you notice incorrect mappings, please [open an issue](https://github.com/electrovir/gamepad-type/issues/new). Every browser, browser version, operating system, and operating system version combination produces different values so it's impossible for me to single-handedly account for them all.
 
 It is encouraged that you use the package [`input-device-handler`](https://www.npmjs.com/package/input-device-handler) in conjunction with this one, but it is not required.
 
@@ -29,8 +29,8 @@ npm i @antha/gamepad-type
 
 The primary exports of this package are the following:
 
--   [`findMatchingGamepadModel`](https://electrovir.github.io/gamepad-type/functions/findMatchingGamepadModel.html): given the system-level gamepad id, determines the gamepad's model and brand. Also includes a model description string. Allows custom model and brand map inputs to handle edge cases that this package doesn't cover. (If you find those edge cases please either [open a ticket in the GitHub repo](https://github.com/electrovir/gamepad-type/issues/new) or submit your fixed data on [the demo page](https://zorp.fun/gamepad-tester).)
--   [`findMatchingGamepadLayout`](https://electrovir.github.io/gamepad-type/functions/findMatchingGamepadLayout.html): given the system-level gamepad id, determines the gamepad's button and axe names (based on gamepad model and user operating system). Allows custom model and input map inputs to handle edge cases that this package doesn't cover. (If you find those edge cases please either [open a ticket in the GitHub repo](https://github.com/electrovir/gamepad-type/issues/new) or submit your fixed data on [the demo page](https://zorp.fun/gamepad-tester).)
+-   [`findMatchingGamepadModel`](https://electrovir.github.io/gamepad-type/functions/findMatchingGamepadModel.html): given the system-level gamepad id, determines the gamepad's model and brand. Also includes a model description string. Allows custom model and brand map inputs to handle edge cases that this package doesn't cover. (If you find those edge cases, please [open a ticket in the GitHub repo](https://github.com/electrovir/gamepad-type/issues/new).)
+-   [`findMatchingGamepadLayout`](https://electrovir.github.io/gamepad-type/functions/findMatchingGamepadLayout.html): given the system-level gamepad id, determines the gamepad's button and axe names (based on gamepad model and user operating system). Allows custom model and input map inputs to handle edge cases that this package doesn't cover. (If you find those edge cases, please [open a ticket in the GitHub repo](https://github.com/electrovir/gamepad-type/issues/new).)
 
 ## examples
 
