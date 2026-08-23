@@ -25,6 +25,8 @@ export const defaultGamepadModelMap: Readonly<GamepadModelMap> = {
     '54c-ce6-Wireless Controller': PredefinedGamepadModel.PlaystationDualSense,
     /** Firefox detected OEM Xbox Wireless gamepad name. */
     '45e-b13-Xbox Wireless Controller': PredefinedGamepadModel.XboxWireless,
+    /** Firefox detected Steam Deck gamepad name. */
+    '28de-11ff-Microsoft X-Box 360 pad 0': PredefinedGamepadModel.SteamDeck,
 
     /** Chrome detected OEM Switch Pro gamepad name. */
     'Pro Controller (STANDARD GAMEPAD Vendor: 057e Product: 2009)':

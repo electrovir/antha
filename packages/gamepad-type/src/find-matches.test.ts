@@ -69,6 +69,19 @@ describe(findMatchingGamepadLayout.name, () => {
             },
             expect: mockLayouts[8],
         },
+        {
+            it: 'finds the Steam Deck Firefox layout for Linux',
+            input: {
+                gamepad: '28de-11ff-Microsoft X-Box 360 pad 0',
+                systemVersions: {
+                    browserVersion: '154.0',
+                    browserName: 'Firefox',
+                    osName: 'Linux',
+                    osVersion: '',
+                },
+            },
+            expect: defaultGamepadLayouts[defaultGamepadLayouts.length - 1],
+        },
     ]);
 });
 
@@ -98,6 +111,17 @@ describe(findMatchingGamepadModel.name, () => {
                 gamepadBrand: PredefinedGamepadBrand.Nintendo,
                 gamepadModelDescription:
                     'Nintendo Switch Pro gamepad for the Nintendo Switch console.',
+            },
+        },
+        {
+            it: 'matches a Steam Deck Firefox device name',
+            input: {
+                gamepad: '28de-11ff-Microsoft X-Box 360 pad 0',
+            },
+            expect: {
+                gamepadModel: PredefinedGamepadModel.SteamDeck,
+                gamepadBrand: PredefinedGamepadBrand.Valve,
+                gamepadModelDescription: 'Gamepad for the Valve Steam Deck handheld console.',
             },
         },
         {

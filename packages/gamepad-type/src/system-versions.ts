@@ -23,12 +23,15 @@ export type SystemVersions = Readonly<{
  * @category Util
  */
 export function getSystemVersions(): SystemVersions {
+    /** Bowser lies about the type here. */
+    const osVersion: string | undefined = bowser.getOSVersion();
+
     return {
         /* node:coverage ignore next: supported browser user agents include a browser version. */
         browserVersion: bowser.getBrowserVersion() || 'unknown',
         browserName: bowser.getBrowserName(),
         osName: bowser.getOSName(),
-        osVersion: bowser.getOSVersion(),
+        osVersion: osVersion || '',
     };
 }
 

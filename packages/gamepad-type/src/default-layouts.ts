@@ -339,4 +339,41 @@ export const defaultGamepadLayouts: ReadonlyArray<Readonly<GamepadLayout>> = [
         ],
         notes: undefined,
     },
+    {
+        gamepadModels: [PredefinedGamepadModel.SteamDeck],
+        inputMappings: {
+            'axe-0': KnownInput.LeftStickX,
+            'axe-1': KnownInput.LeftStickY,
+            'axe-2': KnownInput.RightStickX,
+            'axe-3': KnownInput.RightStickY,
+            'button-0': KnownInput.FaceAccept, // A
+            'button-1': KnownInput.FaceCancel, // B
+            'button-2': KnownInput.FaceAlt2, // Y
+            'button-3': KnownInput.FaceAlt1, // X
+            'button-4': KnownInput.L1,
+            'button-5': KnownInput.R1,
+            'button-6': KnownInput.L2,
+            'button-7': KnownInput.R2,
+            'button-8': KnownInput.Select,
+            'button-9': KnownInput.Start,
+            'button-10': KnownInput.L3,
+            'button-11': KnownInput.R3,
+            'button-12': KnownInput.DPadUp,
+            'button-13': KnownInput.DPadDown,
+            'button-14': KnownInput.DPadLeft,
+            'button-15': KnownInput.DPadRight,
+        },
+        systemVersions: [
+            {
+                browserVersion: '154.0',
+                browserName: 'Firefox',
+                osName: 'Linux',
+                osVersion: '',
+            },
+        ],
+        notes: {
+            info: "Button 16 exists but can't be triggered. Back bumpers do not show up. Start / Menu button cannot be held.",
+            warning: 'This gamepad only registers on Firefox.',
+        },
+    },
 ];
