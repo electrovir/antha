@@ -162,6 +162,46 @@ export class AudioPlayer extends ListenTarget<AllAudioFileEvents> {
         });
     }
 
+    /** Pauses all active playback for an already-loaded audio file. */
+    public pauseFile(file: Readonly<AudioSetupParams>) {
+        const sourceKey = createAudioSourceKey(file);
+        this.audioFiles[sourceKey]?.pause();
+    }
+
+    /** Pauses all active playback for the given already-loaded audio files. */
+    public pauseFiles(files: ReadonlyArray<Readonly<AudioSetupParams>>) {
+        files.forEach((file) => {
+            this.pauseFile(file);
+        });
+    }
+
+    /** Pauses all active playback without unloading any audio files. */
+    public pauseAllFiles() {
+        getObjectTypedValues(this.audioFiles).forEach((audioFile) => {
+            audioFile.pause();
+        });
+    }
+
+    /** Resumes playback paused for an already-loaded audio file. */
+    public resumeFile(file: Readonly<AudioSetupParams>) {
+        const sourceKey = createAudioSourceKey(file);
+        this.audioFiles[sourceKey]?.resume();
+    }
+
+    /** Resumes playback paused for the given already-loaded audio files. */
+    public resumeFiles(files: ReadonlyArray<Readonly<AudioSetupParams>>) {
+        files.forEach((file) => {
+            this.resumeFile(file);
+        });
+    }
+
+    /** Resumes all playback paused through this {@link AudioPlayer}. */
+    public resumeAllFiles() {
+        getObjectTypedValues(this.audioFiles).forEach((audioFile) => {
+            audioFile.resume();
+        });
+    }
+
     /** Load a batch of audio files. */
     public async loadFiles(
         files: ReadonlyArray<Readonly<AudioSetupParams>>,

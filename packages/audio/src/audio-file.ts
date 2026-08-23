@@ -159,6 +159,18 @@ export type AudioFileCache = {
 };
 
 /**
+ * State tracked for an active or paused audio playback.
+ *
+ * @category Internal
+ */
+export type AudioPlayback = {
+    audioBuffer: AudioBuffer;
+    deferredPlayPromise: DeferredPromise<boolean>;
+    offsetSeconds: number;
+    startedAt: number;
+};
+
+/**
  * Allows creating an array of `AudioNode` instances ("effects") by passing the given `AudioContext`
  * to `createEffects`. The effects created by `createEffects`, if any, are then sequentially
  * connected to each other and finally to the `originalOutputNode`. If effects are created, the
@@ -259,7 +271,8 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
     public readonly isDestroyed = false as boolean;
     public readonly gainNode: GainNode;
     public readonly sourceKey: string;
-    protected readonly activeBufferSources = new Set<AudioBufferSourceNode>();
+    protected readonly activeBufferSources = new Map<AudioBufferSourceNode, AudioPlayback>();
+    protected readonly pausedPlaybacks = new Set<AudioPlayback>();
 
     constructor(protected readonly params: AudioFileParams) {
         super();
@@ -341,31 +354,70 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
             }
         }
 
-        const deferredPlayPromise = new DeferredPromise<boolean>();
+        const playback: AudioPlayback = {
+            audioBuffer,
+            deferredPlayPromise: new DeferredPromise<boolean>(),
+            offsetSeconds: 0,
+            startedAt: this.audioContext.currentTime,
+        };
+        this.startPlayback(playback);
 
-        const bufferSource = this.audioContext.createBufferSource();
-        bufferSource.buffer = audioBuffer;
-
-        bufferSource.connect(this.outputNode);
-        this.activeBufferSources.add(bufferSource);
-
-        bufferSource.addEventListener('ended', () => {
-            this.activeBufferSources.delete(bufferSource);
-            deferredPlayPromise.resolve(true);
-            this.dispatch(new AudioFilePlayEndEvent());
-        });
-        this.dispatch(new AudioFilePlayStartEvent());
-        bufferSource.start();
-
-        return deferredPlayPromise.promise;
+        return playback.deferredPlayPromise.promise;
     }
 
     /** Stops every active playback while preserving the loaded audio buffer. */
     public stop() {
+        const pausedPlaybacks = [...this.pausedPlaybacks];
         const activeBufferSources = [...this.activeBufferSources];
+        this.pausedPlaybacks.clear();
         this.activeBufferSources.clear();
-        activeBufferSources.forEach((bufferSource) => {
-            bufferSource.stop();
+        pausedPlaybacks.forEach((playback) => {
+            playback.deferredPlayPromise.resolve(true);
+            this.dispatch(new AudioFilePlayEndEvent());
+        });
+        activeBufferSources.forEach(
+            ([
+                bufferSource,
+                playback,
+            ]) => {
+                bufferSource.stop();
+                playback.deferredPlayPromise.resolve(true);
+                this.dispatch(new AudioFilePlayEndEvent());
+            },
+        );
+    }
+
+    /** Pauses every active playback while preserving its current position. */
+    public pause() {
+        [...this.activeBufferSources].forEach(
+            ([
+                bufferSource,
+                playback,
+            ]) => {
+                const offsetSeconds = Math.min(
+                    playback.audioBuffer.duration,
+                    playback.offsetSeconds + this.audioContext.currentTime - playback.startedAt,
+                );
+
+                if (offsetSeconds >= playback.audioBuffer.duration) {
+                    return;
+                }
+
+                this.activeBufferSources.delete(bufferSource);
+                this.pausedPlaybacks.add({
+                    ...playback,
+                    offsetSeconds,
+                });
+                bufferSource.stop();
+            },
+        );
+    }
+
+    /** Resumes every playback paused by {@link pause}. */
+    public resume() {
+        [...this.pausedPlaybacks].forEach((playback) => {
+            this.pausedPlaybacks.delete(playback);
+            this.startPlayback(playback);
         });
     }
 
@@ -462,5 +514,25 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
     /** Load the audio file's `ArrayBuffer` from its source URL. */
     protected async loadFromUrl() {
         return await (await this.fetch(this.urlOrBase64)).arrayBuffer();
+    }
+
+    /** Starts an audio source for the supplied playback state. */
+    protected startPlayback(playback: AudioPlayback) {
+        const bufferSource = this.audioContext.createBufferSource();
+        bufferSource.buffer = playback.audioBuffer;
+        bufferSource.connect(this.outputNode);
+        playback.startedAt = this.audioContext.currentTime;
+        this.activeBufferSources.set(bufferSource, playback);
+
+        bufferSource.addEventListener('ended', () => {
+            if (!this.activeBufferSources.delete(bufferSource)) {
+                return;
+            }
+
+            playback.deferredPlayPromise.resolve(true);
+            this.dispatch(new AudioFilePlayEndEvent());
+        });
+        this.dispatch(new AudioFilePlayStartEvent());
+        bufferSource.start(0, playback.offsetSeconds);
     }
 }

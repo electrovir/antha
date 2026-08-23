@@ -236,6 +236,87 @@ describe(AudioPlayer.name, () => {
             await player.destroy();
         }
     });
+    it('pauses and resumes files without stopping them', async () => {
+        const player = new AudioPlayer();
+        const sourceKey = createAudioSourceKey(longerMp3Params);
+
+        try {
+            await player.loadFiles([longerMp3Params]);
+            await makePlayable();
+
+            const audioFile = assertWrap.isDefined(player.audioFiles[sourceKey]);
+            const initialPlaybackStarted = new DeferredPromise<void>();
+            audioFile.listen(
+                new AudioFilePlayStartEvent(),
+                () => {
+                    initialPlaybackStarted.resolve();
+                },
+                {
+                    once: true,
+                },
+            );
+            const playback = player.play(longerMp3Params);
+
+            await initialPlaybackStarted.promise;
+            player.pauseFiles([
+                longerMp3Params,
+            ]);
+
+            assert.isFalse(
+                await Promise.race([
+                    playback,
+                    wait({
+                        milliseconds: 100,
+                    }).then(() => false),
+                ]),
+            );
+
+            const resumedPlaybackStarted = new DeferredPromise<void>();
+            audioFile.listen(
+                new AudioFilePlayStartEvent(),
+                () => {
+                    resumedPlaybackStarted.resolve();
+                },
+                {
+                    once: true,
+                },
+            );
+            player.resumeFiles([
+                longerMp3Params,
+            ]);
+
+            await resumedPlaybackStarted.promise;
+            player.pauseAllFiles();
+
+            assert.isFalse(
+                await Promise.race([
+                    playback,
+                    wait({
+                        milliseconds: 100,
+                    }).then(() => false),
+                ]),
+            );
+
+            const resumedAllPlaybackStarted = new DeferredPromise<void>();
+            audioFile.listen(
+                new AudioFilePlayStartEvent(),
+                () => {
+                    resumedAllPlaybackStarted.resolve();
+                },
+                {
+                    once: true,
+                },
+            );
+            player.resumeAllFiles();
+
+            await resumedAllPlaybackStarted.promise;
+            player.stopFile(longerMp3Params);
+
+            assert.isTrue(await playback);
+        } finally {
+            await player.destroy();
+        }
+    });
     it('loads and unloads multiple files', async () => {
         const player = new AudioPlayer();
         const progressResults: AudioLoadProgressCallbackParams[] = [];

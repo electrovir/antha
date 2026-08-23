@@ -7,6 +7,25 @@ import {Codec} from './codecs.js';
 import {isPlayingEnabled} from './detect-play.js';
 import {shortMp3Base64, shortMp3FileUrl} from './files.mock.js';
 
+class TestAudioFile extends AudioFile {
+    public addCompletedPlaybackForTest(audioBuffer: AudioBuffer) {
+        this.activeBufferSources.set(this.audioContext.createBufferSource(), {
+            audioBuffer,
+            deferredPlayPromise: new DeferredPromise<boolean>(),
+            offsetSeconds: audioBuffer.duration,
+            startedAt: this.audioContext.currentTime,
+        });
+    }
+
+    public getActiveBufferSourcesForTest() {
+        return [...this.activeBufferSources.keys()];
+    }
+
+    public clearActiveBufferSourcesForTest() {
+        this.activeBufferSources.clear();
+    }
+}
+
 describe(AudioFile.name, () => {
     it('fails to construct on invalid files', () => {
         assert.throws(() => {
@@ -132,6 +151,56 @@ describe(AudioFile.name, () => {
             assert.isFalse(file.isDestroyed);
             assert.isDefined(await file.load());
         } finally {
+            await file.destroy();
+            await audioContext.close();
+        }
+    });
+    it('stops paused playback', async () => {
+        const audioContext = new AudioContext();
+        const file = new AudioFile({
+            sources: [shortMp3Base64],
+            audioContext,
+        });
+        const playbackStarted = new DeferredPromise<void>();
+        file.listen(
+            new AudioFilePlayStartEvent(),
+            () => {
+                playbackStarted.resolve();
+            },
+            {
+                once: true,
+            },
+        );
+
+        try {
+            await file.load();
+            await makePlayable(audioContext);
+            const playback = file.play();
+
+            await playbackStarted.promise;
+            file.pause();
+            file.stop();
+
+            assert.isTrue(await playback);
+        } finally {
+            await file.destroy();
+            await audioContext.close();
+        }
+    });
+    it('does not pause completed playback', async () => {
+        const audioContext = new AudioContext();
+        const file = new TestAudioFile({
+            sources: [shortMp3Base64],
+            audioContext,
+        });
+
+        try {
+            file.addCompletedPlaybackForTest(await file.load());
+            file.pause();
+
+            assert.isLengthExactly(file.getActiveBufferSourcesForTest(), 1);
+        } finally {
+            file.clearActiveBufferSourcesForTest();
             await file.destroy();
             await audioContext.close();
         }
