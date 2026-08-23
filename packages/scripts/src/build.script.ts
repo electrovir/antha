@@ -20,8 +20,8 @@ const builds: {
     {
         buildName: 'Antha docs',
         packageDirPath: packageDirPaths.antha,
-        finalOutputDirPath: join(distDirPath, 'antha'),
-        buildOutputDirPath: join(packageDirPaths.antha, 'dist'),
+        finalOutputDirPath: join(distDirPath, 'docs'),
+        buildOutputDirPath: join(packageDirPaths.antha, 'dist-docs'),
         buildCommand: 'docs',
     },
     {

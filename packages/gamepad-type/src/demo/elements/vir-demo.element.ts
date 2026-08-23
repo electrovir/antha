@@ -465,9 +465,7 @@ export const VirDemo = defineElement()({
                         </p>
                         <ul>
                             <li>
-                                <a href="https://electrovir.github.io/gamepad-type/docs">
-                                    Full API docs
-                                </a>
+                                <a href="https://electrovir.github.io/antha/docs">Full API docs</a>
                             </li>
                             <li>
                                 <a href="https://github.com/electrovir/gamepad-type">

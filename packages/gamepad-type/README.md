@@ -10,14 +10,12 @@ Detects the following per gamepad:
 
 based on hardcoded, pre-collected data. You are also able to define new values for each in case any data is missing.
 
-If you notice incorrect mappings, please [open an issue](https://github.com/electrovir/gamepad-type/issues/new). Every browser, browser version, operating system, and operating system version combination produces different values so it's impossible for me to single-handedly account for them all.
+If you notice incorrect mappings, please enter updated information [on the demo page](https://antha-engine.github.io/gamepad/). Every browser, browser version, operating system, and operating system version combination produces different values so it's impossible for me to single-handedly account for them all.
 
 It is encouraged that you use the package [`input-device-handler`](https://www.npmjs.com/package/input-device-handler) in conjunction with this one, but it is not required.
 
--   [demo page](https://electrovir.github.io/gamepad-type) (allows submitting gamepad mapping fixes)
--   [full API docs](https://electrovir.github.io/gamepad-type/docs)
--   [GitHub repo](https://github.com/electrovir/gamepad-type) (please open issues for gamepad mapping updates)
--   [npm package](https://www.npmjs.com/package/gamepad-type)
+-   [demo page](https://antha-engine.github.io/gamepad/) (allows submitting gamepad mapping fixes)
+-   [full API docs](https://electrovir.github.io/antha/docs)
 
 # install
 
@@ -29,8 +27,8 @@ npm i @antha/gamepad-type
 
 The primary exports of this package are the following:
 
--   [`findMatchingGamepadModel`](https://electrovir.github.io/gamepad-type/functions/findMatchingGamepadModel.html): given the system-level gamepad id, determines the gamepad's model and brand. Also includes a model description string. Allows custom model and brand map inputs to handle edge cases that this package doesn't cover. (If you find those edge cases, please [open a ticket in the GitHub repo](https://github.com/electrovir/gamepad-type/issues/new).)
--   [`findMatchingGamepadLayout`](https://electrovir.github.io/gamepad-type/functions/findMatchingGamepadLayout.html): given the system-level gamepad id, determines the gamepad's button and axe names (based on gamepad model and user operating system). Allows custom model and input map inputs to handle edge cases that this package doesn't cover. (If you find those edge cases, please [open a ticket in the GitHub repo](https://github.com/electrovir/gamepad-type/issues/new).)
+-   [`findMatchingGamepadModel`](https://electrovir.github.io/antha/docs): given the system-level gamepad id, determines the gamepad's model and brand. Also includes a model description string. Allows custom model and brand map inputs to handle edge cases that this package doesn't cover. (If you find those edge cases, please either [open a ticket in the GitHub repo](https://github.com/electrovir/gamepad-type/issues/new) or submit your fixed data on [the demo page](https://antha-engine.github.io/gamepad/).)
+-   [`findMatchingGamepadLayout`](https://electrovir.github.io/antha/docs): given the system-level gamepad id, determines the gamepad's button and axe names (based on gamepad model and user operating system). Allows custom model and input map inputs to handle edge cases that this package doesn't cover. (If you find those edge cases please either [open a ticket in the GitHub repo](https://github.com/electrovir/gamepad-type/issues/new) or submit your fixed data on [the demo page](https://antha-engine.github.io/gamepad/).)
 
 ## examples
 
