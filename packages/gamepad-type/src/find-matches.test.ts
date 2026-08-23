@@ -82,6 +82,19 @@ describe(findMatchingGamepadLayout.name, () => {
             },
             expect: defaultGamepadLayouts[defaultGamepadLayouts.length - 1],
         },
+        {
+            it: 'finds the Xbox 360 Firefox layout for Linux',
+            input: {
+                gamepad: '045e-02a1-Xbox 360 Wireless Receiver',
+                systemVersions: {
+                    browserVersion: '154.0',
+                    browserName: 'Firefox',
+                    osName: 'Linux',
+                    osVersion: '',
+                },
+            },
+            expect: defaultGamepadLayouts[defaultGamepadLayouts.length - 3],
+        },
     ]);
 });
 
@@ -122,6 +135,41 @@ describe(findMatchingGamepadModel.name, () => {
                 gamepadModel: PredefinedGamepadModel.SteamDeck,
                 gamepadBrand: PredefinedGamepadBrand.Valve,
                 gamepadModelDescription: 'Gamepad for the Valve Steam Deck handheld console.',
+            },
+        },
+        {
+            it: 'matches a Steam Deck Chrome device name',
+            input: {
+                gamepad: 'Microsoft X-Box 360 pad 0 (STANDARD GAMEPAD Vendor: 28de Product: 11ff)',
+            },
+            expect: {
+                gamepadModel: PredefinedGamepadModel.SteamDeck,
+                gamepadBrand: PredefinedGamepadBrand.Valve,
+                gamepadModelDescription: 'Gamepad for the Valve Steam Deck handheld console.',
+            },
+        },
+        {
+            it: 'matches an Xbox 360 Chrome device name',
+            input: {
+                gamepad: 'Xbox 360 Wireless Receiver (STANDARD GAMEPAD Vendor: 045e Product: 02a1)',
+            },
+            expect: {
+                gamepadModel: PredefinedGamepadModel.Xbox360,
+                gamepadBrand: PredefinedGamepadBrand.Microsoft,
+                gamepadModelDescription:
+                    'Microsoft Xbox 360 gamepad for the Microsoft Xbox 360 console. Can be wired or wireless.',
+            },
+        },
+        {
+            it: 'matches an Xbox 360 Firefox device name',
+            input: {
+                gamepad: '045e-02a1-Xbox 360 Wireless Receiver',
+            },
+            expect: {
+                gamepadModel: PredefinedGamepadModel.Xbox360,
+                gamepadBrand: PredefinedGamepadBrand.Microsoft,
+                gamepadModelDescription:
+                    'Microsoft Xbox 360 gamepad for the Microsoft Xbox 360 console. Can be wired or wireless.',
             },
         },
         {

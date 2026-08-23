@@ -25,6 +25,8 @@ export const defaultGamepadModelMap: Readonly<GamepadModelMap> = {
     '54c-ce6-Wireless Controller': PredefinedGamepadModel.PlaystationDualSense,
     /** Firefox detected OEM Xbox Wireless gamepad name. */
     '45e-b13-Xbox Wireless Controller': PredefinedGamepadModel.XboxWireless,
+    /** Firefox detected Xbox 360 gamepad name. */
+    '045e-02a1-Xbox 360 Wireless Receiver': PredefinedGamepadModel.Xbox360,
     /** Firefox detected Steam Deck gamepad name. */
     '28de-11ff-Microsoft X-Box 360 pad 0': PredefinedGamepadModel.SteamDeck,
 
@@ -37,6 +39,12 @@ export const defaultGamepadModelMap: Readonly<GamepadModelMap> = {
     /** Chrome detected OEM Xbox Wireless gamepad name. */
     'Xbox Series X Controller (STANDARD GAMEPAD Vendor: 045e Product: 0b12)':
         PredefinedGamepadModel.XboxWireless,
+    /** Chrome detected Steam Deck gamepad name. */
+    'Microsoft X-Box 360 pad 0 (STANDARD GAMEPAD Vendor: 28de Product: 11ff)':
+        PredefinedGamepadModel.SteamDeck,
+    /** Chrome detected Xbox 360 gamepad name. */
+    'Xbox 360 Wireless Receiver (STANDARD GAMEPAD Vendor: 045e Product: 02a1)':
+        PredefinedGamepadModel.Xbox360,
 
     /** Inputs from external users. */
 
