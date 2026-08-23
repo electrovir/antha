@@ -358,7 +358,8 @@ export function createAnthaMenuNavMod(
                             (!directionalMenuNavBindings.includes(bindingName) ||
                                 activeBinding.value >= minimumDirectionalInputValue) &&
                             (!activeBinding.actCount ||
-                                (activeBinding.holdDuration.milliseconds >= repeatThreshold &&
+                                (directionalMenuNavBindings.includes(bindingName) &&
+                                    activeBinding.holdDuration.milliseconds >= repeatThreshold &&
                                     activeBinding.holdDuration.milliseconds -
                                         activeBinding.lastActDuration.milliseconds >
                                         repeatInterval))

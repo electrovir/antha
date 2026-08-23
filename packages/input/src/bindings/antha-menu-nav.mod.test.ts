@@ -427,6 +427,69 @@ describe(createAnthaMenuNavMod.name, () => {
         );
     });
 
+    it('does not repeat enter or exit bindings', async () => {
+        const enterNavController = createRecordingNavController();
+        const exitNavController = createRecordingNavController();
+        const enterBinding = createActiveBinding({
+            holdDurationMs: 120,
+            lastActDurationMs: 70,
+            actCount: 1,
+        });
+        const exitBinding = createActiveBinding({
+            holdDurationMs: 120,
+            lastActDurationMs: 70,
+            actCount: 1,
+        });
+
+        await runMenuNav({
+            navController: enterNavController,
+            activeBindings: {
+                '1': {
+                    [MenuNavBinding.MenuEnter]: enterBinding,
+                },
+            },
+        });
+        await runMenuNav({
+            navController: exitNavController,
+            activeBindings: {
+                '1': {
+                    [MenuNavBinding.MenuExit]: exitBinding,
+                },
+            },
+        });
+
+        assert.deepEquals(
+            {
+                enter: {
+                    calls: enterNavController.calls,
+                    binding: enterBinding,
+                },
+                exit: {
+                    calls: exitNavController.calls,
+                    binding: exitBinding,
+                },
+            },
+            {
+                enter: {
+                    calls: [],
+                    binding: createActiveBinding({
+                        holdDurationMs: 120,
+                        lastActDurationMs: 70,
+                        actCount: 1,
+                    }),
+                },
+                exit: {
+                    calls: [],
+                    binding: createActiveBinding({
+                        holdDurationMs: 120,
+                        lastActDurationMs: 70,
+                        actCount: 1,
+                    }),
+                },
+            },
+        );
+    });
+
     it('dispatches enter and exit bindings first', async () => {
         const enterNavController = createRecordingNavController();
         const exitNavController = createRecordingNavController();
