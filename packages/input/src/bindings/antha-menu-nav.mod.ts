@@ -242,7 +242,7 @@ export type MenuNavOptions = Readonly<
         /**
          * The duration that any menu nav binding must be held before it starts auto-repeating.
          *
-         * @default {milliseconds: 500}
+         * @default {milliseconds: 750}
          */
         repeatThreshold: Readonly<AnyDuration>;
         /**
@@ -292,7 +292,7 @@ export type MenuNavModState = {
 /** @category Internal */
 export const defaultMenuNavOptions: Required<MenuNavOptions> = {
     repeatThreshold: {
-        milliseconds: 500,
+        milliseconds: 750,
     },
     repeatInterval: {
         milliseconds: 60,
@@ -327,7 +327,13 @@ export function createAnthaMenuNavMod(
                     ...options,
                 });
             }
-            if (!state.isInMenu || !state.menuNavOptions || !state.activeBindings) {
+            if (!state.menuNavOptions || !state.activeBindings) {
+                return;
+            } else if (!state.isInMenu) {
+                consumeInactiveMenuActivationBindings({
+                    activeBindings: state.activeBindings,
+                });
+
                 return;
             }
 
@@ -438,6 +444,28 @@ export function createAnthaMenuNavMod(
                 });
             }
         },
+    });
+}
+
+function consumeInactiveMenuActivationBindings({
+    activeBindings,
+}: Readonly<{
+    activeBindings: PlayersActiveBindings;
+}>) {
+    getObjectTypedValues(activeBindings).forEach((playerActiveBindings) => {
+        [
+            MenuNavBinding.MenuEnter,
+            MenuNavBinding.MenuExit,
+        ].forEach((bindingName) => {
+            const activeBinding = playerActiveBindings[bindingName];
+
+            if (!activeBinding || activeBinding.actCount) {
+                return;
+            }
+
+            activeBinding.actCount++;
+            activeBinding.lastActDuration = activeBinding.holdDuration;
+        });
     });
 }
 

@@ -1,6 +1,6 @@
 {
     "name": "@antha/audio",
-    "version": "0.4.2",
+    "version": "0.4.3",
     "description": "An Antha mod for handling audio.",
     "keywords": [
         "vir",
@@ -37,7 +37,7 @@
         "@augment-vir/common": "^32.2.3"
     },
     "devDependencies": {
-        "@antha/engine": "^0.4.2",
+        "@antha/engine": "^0.4.3",
         "@augment-vir/test": "^32.2.3",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
@@ -46,7 +46,7 @@
         "typed-event-target": "^4.3.3"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.4.2",
+        "@antha/engine": "^0.4.3",
         "element-vir": ">=26",
         "typed-event-target": ">=4.3"
     },

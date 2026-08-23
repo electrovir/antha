@@ -322,6 +322,61 @@ describe(createAnthaMenuNavMod.name, () => {
         assert.deepEquals(navController.calls, []);
     });
 
+    it('does nothing before bindings are available', async () => {
+        const navController = createRecordingNavController();
+
+        await runMenuNav({
+            navController,
+        });
+
+        assert.deepEquals(navController.calls, []);
+    });
+
+    it('requires held enter and exit bindings to be released before opening a menu', async () => {
+        const navController = createRecordingNavController();
+        const enterBinding = createActiveBinding({
+            holdDurationMs: 120,
+        });
+        const exitBinding = createActiveBinding({
+            holdDurationMs: 120,
+        });
+        const {engine} = await runMenuNav({
+            isInMenu: false,
+            navController,
+            activeBindings: {
+                '1': {
+                    [MenuNavBinding.MenuEnter]: enterBinding,
+                    [MenuNavBinding.MenuExit]: exitBinding,
+                },
+            },
+        });
+
+        assert.deepEquals(
+            {
+                enterBinding,
+                exitBinding,
+            },
+            {
+                enterBinding: createActiveBinding({
+                    actCount: 1,
+                    holdDurationMs: 120,
+                    lastActDurationMs: 120,
+                }),
+                exitBinding: createActiveBinding({
+                    actCount: 1,
+                    holdDurationMs: 120,
+                    lastActDurationMs: 120,
+                }),
+            },
+        );
+
+        engine.state.isInMenu = true;
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(navController.calls, []);
+    });
+
     it('ignores non-menu binding names', async () => {
         const navController = createRecordingNavController();
 
@@ -345,6 +400,31 @@ describe(createAnthaMenuNavMod.name, () => {
                     '1': {
                         [MenuNavBinding.MenuRight]: createActiveBinding({
                             value: 0.79,
+                        }),
+                    },
+                },
+                isInMenu: true,
+                navController,
+            },
+            mods: [
+                createAnthaMenuNavMod(),
+            ],
+        });
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(navController.calls, []);
+    });
+
+    it('waits longer before repeating directional navigation by default', async () => {
+        const navController = createRecordingNavController();
+        const engine = new AnthaEngine<MenuNavModState>({
+            initState: {
+                activeBindings: {
+                    '1': {
+                        [MenuNavBinding.MenuRight]: createActiveBinding({
+                            actCount: 1,
+                            holdDurationMs: 600,
                         }),
                     },
                 },
