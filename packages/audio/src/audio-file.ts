@@ -259,6 +259,7 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
     public readonly isDestroyed = false as boolean;
     public readonly gainNode: GainNode;
     public readonly sourceKey: string;
+    protected readonly activeBufferSources = new Set<AudioBufferSourceNode>();
 
     constructor(protected readonly params: AudioFileParams) {
         super();
@@ -346,8 +347,10 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
         bufferSource.buffer = audioBuffer;
 
         bufferSource.connect(this.outputNode);
+        this.activeBufferSources.add(bufferSource);
 
         bufferSource.addEventListener('ended', () => {
+            this.activeBufferSources.delete(bufferSource);
             deferredPlayPromise.resolve(true);
             this.dispatch(new AudioFilePlayEndEvent());
         });
@@ -357,6 +360,15 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
         return deferredPlayPromise.promise;
     }
 
+    /** Stops every active playback while preserving the loaded audio buffer. */
+    public stop() {
+        const activeBufferSources = [...this.activeBufferSources];
+        this.activeBufferSources.clear();
+        activeBufferSources.forEach((bufferSource) => {
+            bufferSource.stop();
+        });
+    }
+
     /** Destroys this audio file entirely; it cannot be used anymore. */
     public override async destroy() {
         if (this.isDestroyed) {
@@ -364,6 +376,7 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
             return;
         }
         makeWritable(this).isDestroyed = true;
+        this.stop();
         super.destroy();
 
         const cacheEntry = await this.audioCache[this.urlOrBase64];

@@ -1,6 +1,6 @@
 {
     "name": "@antha/fps",
-    "version": "0.4.1",
+    "version": "0.4.2",
     "description": "An Antha mod for rendering FPS.",
     "keywords": [
         "vir",
@@ -47,7 +47,7 @@
         "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.4.1",
+        "@antha/engine": "^0.4.2",
         "element-vir": ">=26"
     },
     "engines": {

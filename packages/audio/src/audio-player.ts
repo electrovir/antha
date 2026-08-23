@@ -1,6 +1,7 @@
 import {
     awaitedBlockingMap,
     clamp,
+    getObjectTypedValues,
     makeWritable,
     type AnyObject,
     type MaybePromise,
@@ -139,6 +140,26 @@ export class AudioPlayer extends ListenTarget<AllAudioFileEvents> {
                 delete this.audioFiles[sourceKey];
             }),
         );
+    }
+
+    /** Stops all active playback for an already-loaded audio file. */
+    public stopFile(file: Readonly<AudioSetupParams>) {
+        const sourceKey = createAudioSourceKey(file);
+        this.audioFiles[sourceKey]?.stop();
+    }
+
+    /** Stops all active playback for the given already-loaded audio files. */
+    public stopFiles(files: ReadonlyArray<Readonly<AudioSetupParams>>) {
+        files.forEach((file) => {
+            this.stopFile(file);
+        });
+    }
+
+    /** Stops all active playback without unloading any audio files. */
+    public stopAllFiles() {
+        getObjectTypedValues(this.audioFiles).forEach((audioFile) => {
+            audioFile.stop();
+        });
     }
 
     /** Load a batch of audio files. */

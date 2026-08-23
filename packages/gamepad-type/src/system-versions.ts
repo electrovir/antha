@@ -31,6 +31,7 @@ export function getSystemVersions(): SystemVersions {
         browserVersion: bowser.getBrowserVersion() || 'unknown',
         browserName: bowser.getBrowserName(),
         osName: bowser.getOSName(),
+        /* node:coverage ignore next: Linux user agents omit the OS version. */
         osVersion: osVersion || '',
     };
 }

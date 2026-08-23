@@ -1,7 +1,8 @@
-import {assert, waitUntil} from '@augment-vir/assert';
+import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
+import {DeferredPromise, wait} from '@augment-vir/common';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
-import {createAudioSourceKey} from './audio-file.js';
+import {AudioFilePlayStartEvent, createAudioSourceKey} from './audio-file.js';
 import {
     AudioPlayer,
     type AudioLoadProgressCallbackParams,
@@ -132,6 +133,108 @@ describe(AudioPlayer.name, () => {
 
         assert.hasKey(player.audioCache, shortMp3FileUrl);
         assert.isLengthExactly(Object.keys(player.audioCache), 1);
+    });
+    it('stops files without unloading them', async () => {
+        const player = new AudioPlayer();
+        const quieterLongerMp3Params: AudioSetupParams = {
+            ...longerMp3Params,
+            volume: 0.5,
+        };
+        const firstSourceKey = createAudioSourceKey(longerMp3Params);
+        const secondSourceKey = createAudioSourceKey(quieterLongerMp3Params);
+
+        try {
+            await player.loadFiles([
+                longerMp3Params,
+                quieterLongerMp3Params,
+            ]);
+            await makePlayable();
+
+            const firstAudioFile = assertWrap.isDefined(player.audioFiles[firstSourceKey]);
+            const firstPlaybackStarted = new DeferredPromise<void>();
+            firstAudioFile.listen(
+                new AudioFilePlayStartEvent(),
+                () => {
+                    firstPlaybackStarted.resolve();
+                },
+                {
+                    once: true,
+                },
+            );
+            const firstPlayback = player.play(longerMp3Params);
+
+            await firstPlaybackStarted.promise;
+            player.stopFile(longerMp3Params);
+
+            assert.isTrue(
+                await Promise.race([
+                    firstPlayback,
+                    wait({
+                        milliseconds: 100,
+                    }).then(() => false),
+                ]),
+            );
+
+            const secondAudioFile = assertWrap.isDefined(player.audioFiles[secondSourceKey]);
+            const secondPlaybackStarted = new DeferredPromise<void>();
+            secondAudioFile.listen(
+                new AudioFilePlayStartEvent(),
+                () => {
+                    secondPlaybackStarted.resolve();
+                },
+                {
+                    once: true,
+                },
+            );
+            const secondPlayback = player.play(quieterLongerMp3Params);
+
+            await secondPlaybackStarted.promise;
+            player.stopFiles([
+                quieterLongerMp3Params,
+            ]);
+
+            assert.isTrue(
+                await Promise.race([
+                    secondPlayback,
+                    wait({
+                        milliseconds: 100,
+                    }).then(() => false),
+                ]),
+            );
+
+            const thirdPlaybackStarted = new DeferredPromise<void>();
+            firstAudioFile.listen(
+                new AudioFilePlayStartEvent(),
+                () => {
+                    thirdPlaybackStarted.resolve();
+                },
+                {
+                    once: true,
+                },
+            );
+            const thirdPlayback = player.play(longerMp3Params);
+
+            await thirdPlaybackStarted.promise;
+            player.stopAllFiles();
+
+            assert.isTrue(
+                await Promise.race([
+                    thirdPlayback,
+                    wait({
+                        milliseconds: 100,
+                    }).then(() => false),
+                ]),
+            );
+            assert.hasKeys(player.audioFiles, [
+                firstSourceKey,
+                secondSourceKey,
+            ]);
+            assert.hasKey(player.audioCache, longerMp3FileUrl);
+            assert.isFalse(firstAudioFile.isDestroyed);
+            assert.isFalse(secondAudioFile.isDestroyed);
+        } finally {
+            await player.destroy();
+        }
     });
     it('loads and unloads multiple files', async () => {
         const player = new AudioPlayer();

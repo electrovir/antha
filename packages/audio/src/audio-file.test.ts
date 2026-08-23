@@ -1,7 +1,8 @@
 import {assert, waitUntil} from '@augment-vir/assert';
+import {DeferredPromise, wait} from '@augment-vir/common';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
-import {AudioFile} from './audio-file.js';
+import {AudioFile, AudioFilePlayStartEvent} from './audio-file.js';
 import {Codec} from './codecs.js';
 import {isPlayingEnabled} from './detect-play.js';
 import {shortMp3Base64, shortMp3FileUrl} from './files.mock.js';
@@ -94,6 +95,46 @@ describe(AudioFile.name, () => {
 
         await makePlayable(audioContext);
         await waitUntil.isTrue(() => file.play());
+    });
+    it('stops active playback without unloading', async () => {
+        const audioContext = new AudioContext();
+        const file = new AudioFile({
+            sources: [shortMp3Base64],
+            audioContext,
+        });
+        const playbackStarted = new DeferredPromise<void>();
+        file.listen(
+            new AudioFilePlayStartEvent(),
+            () => {
+                playbackStarted.resolve();
+            },
+            {
+                once: true,
+            },
+        );
+
+        try {
+            await file.load();
+            await makePlayable(audioContext);
+            const playback = file.play();
+
+            await playbackStarted.promise;
+            file.stop();
+
+            assert.isTrue(
+                await Promise.race([
+                    playback,
+                    wait({
+                        milliseconds: 100,
+                    }).then(() => false),
+                ]),
+            );
+            assert.isFalse(file.isDestroyed);
+            assert.isDefined(await file.load());
+        } finally {
+            await file.destroy();
+            await audioContext.close();
+        }
     });
     it('errors on invalid file', async () => {
         const file = new AudioFile({
