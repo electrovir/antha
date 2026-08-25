@@ -11,6 +11,7 @@ import {type Shape} from 'object-shape-tester';
 import {
     BaseEntity2d,
     type BaseEntityAssetDefinitions,
+    type Entity2dConstructor,
     type Entity2dConstructorParams,
     entityPositionParamsShape,
     EntityStore2d,
@@ -30,6 +31,8 @@ export type DefineEntity2dArgs<
     ParamsShape extends Shape<AnyObject> | undefined,
     EntityAssets extends BaseEntityAssetDefinitions | undefined,
 > = {
+    /** Entity classes this entity observes collisions with. Omit to observe none. */
+    collidesWith?: ReadonlyArray<Entity2dConstructor> | undefined;
     /**
      * This key is used for deserialization of entities to track which class needs to be
      * constructed. Do not use duplicate key strings across multiple entity classes.
@@ -130,6 +133,10 @@ export type StaticEntity2dParts<
     ParamsShape extends Shape<AnyObject> | undefined = any,
     EntityAssets extends BaseEntityAssetDefinitions | undefined = any,
 > = {
+    /** Entity classes this entity observes collisions with. Omit to observe none. */
+    collidesWith: ReadonlyArray<Entity2dConstructor> | undefined;
+    /** Cached entity classes this entity observes collisions with. */
+    collidesWithSet: ReadonlySet<Entity2dConstructor> | undefined;
     /**
      * This key is used for deserialization of entities to track which class needs to be
      * constructed. You cannot have duplicate keys loaded at the same time.
@@ -339,7 +346,7 @@ export function defineEntitySuite2d<State extends AnyObject>(): EntitySuite2d<St
 
     function defineEntity(
         entityParent: typeof BaseEntity2d,
-        {key, paramsShape, paramsMap, assets}: DefineEntity2dArgs<any, any>,
+        {collidesWith, key, paramsShape, paramsMap, assets}: DefineEntity2dArgs<any, any>,
     ) {
         if (entityKeys.has(key)) {
             throw new Error(`Entity key '${key}' has already been attached to an entity class.`);
@@ -349,6 +356,8 @@ export function defineEntitySuite2d<State extends AnyObject>(): EntitySuite2d<St
         const classWrapper = {
             // @ts-expect-error: abstract methods are intentionally not implemented here
             [key]: class extends entityParent {
+                public static override readonly collidesWith = collidesWith;
+                public static override readonly collidesWithSet = new Set(collidesWith);
                 public static override readonly entityKey = key;
                 public static override readonly paramsShape = paramsShape;
                 public static override readonly assets = assets;

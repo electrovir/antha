@@ -26,6 +26,7 @@ import {
 } from '@augment-vir/common';
 import {
     System as HitboxSystem,
+    Response,
     type Response as Collision,
     type Body as Hitbox,
 } from 'detect-collisions';
@@ -119,6 +120,199 @@ export type EntityStore2dConstructorParams<State extends AnyObject = any> = {
  */
 export type Entity2dConstructor = Constructor<BaseEntity2d> & StaticEntity2dParts;
 
+function extractEntityFromHitbox(hitbox: Hitbox) {
+    return hitbox.userData instanceof BaseEntity2d ? hitbox.userData : undefined;
+}
+
+function hasCollisionTargets(entity: BaseEntity2d) {
+    return (
+        (entity.entityDefinition.collidesWithSet?.size ??
+            entity.entityDefinition.collidesWith?.length ??
+            0) > 0
+    );
+}
+
+function doesEntityCollideWith({
+    entity,
+    otherEntity,
+}: Readonly<{
+    entity: BaseEntity2d;
+    otherEntity: BaseEntity2d;
+}>) {
+    return (
+        entity.entityDefinition.collidesWithSet?.has(otherEntity.entityDefinition) ??
+        entity.entityDefinition.collidesWith?.includes(otherEntity.entityDefinition) ??
+        false
+    );
+}
+
+function shouldCheckEntityCollision({
+    firstEntity,
+    secondEntity,
+}: Readonly<{
+    firstEntity: BaseEntity2d;
+    secondEntity: BaseEntity2d;
+}>) {
+    return (
+        doesEntityCollideWith({
+            entity: firstEntity,
+            otherEntity: secondEntity,
+        }) ||
+        doesEntityCollideWith({
+            entity: secondEntity,
+            otherEntity: firstEntity,
+        })
+    );
+}
+
+function shouldNotifyEntityOfCollision({
+    entity,
+    otherEntity,
+}: Readonly<{
+    entity: BaseEntity2d;
+    otherEntity: BaseEntity2d;
+}>) {
+    return doesEntityCollideWith({
+        entity,
+        otherEntity,
+    });
+}
+
+function createReversedCollision(collision: Readonly<Collision>) {
+    const reversedCollision = new Response();
+    reversedCollision.a = collision.b;
+    reversedCollision.aInB = collision.bInA;
+    reversedCollision.b = collision.a;
+    reversedCollision.bInA = collision.aInB;
+    reversedCollision.overlap = collision.overlap;
+    reversedCollision.overlapN.x = -collision.overlapN.x;
+    reversedCollision.overlapN.y = -collision.overlapN.y;
+    reversedCollision.overlapV.x = -collision.overlapV.x;
+    reversedCollision.overlapV.y = -collision.overlapV.y;
+
+    return reversedCollision;
+}
+
+function hasAlreadyCheckedHitboxPair({
+    checkedHitboxPairs,
+    firstHitbox,
+    secondHitbox,
+}: Readonly<{
+    checkedHitboxPairs: WeakMap<Hitbox, WeakSet<Hitbox>>;
+    firstHitbox: Hitbox;
+    secondHitbox: Hitbox;
+}>) {
+    return (
+        checkedHitboxPairs.get(firstHitbox)?.has(secondHitbox) ||
+        checkedHitboxPairs.get(secondHitbox)?.has(firstHitbox)
+    );
+}
+
+function markHitboxPairAsChecked({
+    checkedHitboxPairs,
+    firstHitbox,
+    secondHitbox,
+}: Readonly<{
+    checkedHitboxPairs: WeakMap<Hitbox, WeakSet<Hitbox>>;
+    firstHitbox: Hitbox;
+    secondHitbox: Hitbox;
+}>) {
+    const firstHitboxPairs = checkedHitboxPairs.get(firstHitbox);
+
+    if (firstHitboxPairs) {
+        firstHitboxPairs.add(secondHitbox);
+    } else {
+        checkedHitboxPairs.set(firstHitbox, new WeakSet([secondHitbox]));
+    }
+}
+
+/** A collision system that skips pairs no entity observes before running SAT collision checks. */
+export class EntityHitboxSystem extends HitboxSystem {
+    protected checkedHitboxPairs: WeakMap<Hitbox, WeakSet<Hitbox>> | undefined;
+
+    public override checkAll(
+        ...[
+            callback,
+            response,
+        ]: Parameters<HitboxSystem['checkAll']>
+    ) {
+        const previousCheckedHitboxPairs = this.checkedHitboxPairs;
+        this.checkedHitboxPairs = new WeakMap();
+
+        try {
+            return this.all().some((hitbox: Hitbox) => {
+                const entity = extractEntityFromHitbox(hitbox);
+
+                return (
+                    (!entity || hasCollisionTargets(entity)) &&
+                    this.checkOne(hitbox, callback, response)
+                );
+            });
+        } finally {
+            this.checkedHitboxPairs = previousCheckedHitboxPairs;
+        }
+    }
+
+    public override checkOne(
+        ...[
+            hitbox,
+            callback,
+            response,
+        ]: Parameters<HitboxSystem['checkOne']>
+    ) {
+        const entity = extractEntityFromHitbox(hitbox);
+
+        if (entity && !hasCollisionTargets(entity)) {
+            return false;
+        }
+
+        return super.checkOne(hitbox, callback, response);
+    }
+
+    public override checkCollision(...hitboxes: Parameters<HitboxSystem['checkCollision']>) {
+        const [
+            firstHitbox,
+            secondHitbox,
+        ] = hitboxes;
+        const checkedHitboxPairs = this.checkedHitboxPairs;
+
+        if (
+            checkedHitboxPairs &&
+            hasAlreadyCheckedHitboxPair({
+                checkedHitboxPairs,
+                firstHitbox,
+                secondHitbox,
+            })
+        ) {
+            return false;
+        }
+
+        if (checkedHitboxPairs) {
+            markHitboxPairAsChecked({
+                checkedHitboxPairs,
+                firstHitbox,
+                secondHitbox,
+            });
+        }
+
+        const firstEntity = extractEntityFromHitbox(firstHitbox);
+        const secondEntity = extractEntityFromHitbox(secondHitbox);
+
+        if (
+            firstEntity &&
+            secondEntity &&
+            !shouldCheckEntityCollision({
+                firstEntity,
+                secondEntity,
+            })
+        ) {
+            return false;
+        }
+
+        return super.checkCollision(...hitboxes);
+    }
+}
+
 /**
  * The top level storage class of all entities. Add entities with {@link EntityStore2d.addEntity}.
  *
@@ -151,7 +345,7 @@ export class EntityStore2d<State extends AnyObject = any> {
     constructor(args: Readonly<EntityStore2dConstructorParams>) {
         this.pixi = args.pixi;
         this.assetLoader = args.assetLoader;
-        this.hitboxSystem = args.customHitboxSystem || new HitboxSystem();
+        this.hitboxSystem = args.customHitboxSystem || new EntityHitboxSystem();
         this.state = args.state;
         if (args.preregisteredEntities) {
             this.registerEntities({
@@ -256,9 +450,30 @@ export class EntityStore2d<State extends AnyObject = any> {
             ) {
                 return;
             }
-            const result = primaryEntity.collide(secondaryEntity, response);
-            if (result instanceof Promise) {
-                collisionPromises.push(result);
+            function trackCollisionResult(result: MaybePromise<void>) {
+                if (result instanceof Promise) {
+                    collisionPromises.push(result);
+                }
+            }
+
+            if (
+                shouldNotifyEntityOfCollision({
+                    entity: primaryEntity,
+                    otherEntity: secondaryEntity,
+                })
+            ) {
+                trackCollisionResult(primaryEntity.collide(secondaryEntity, response));
+            }
+
+            if (
+                shouldNotifyEntityOfCollision({
+                    entity: secondaryEntity,
+                    otherEntity: primaryEntity,
+                })
+            ) {
+                trackCollisionResult(
+                    secondaryEntity.collide(primaryEntity, createReversedCollision(response)),
+                );
             }
         });
         await Promise.all(collisionPromises);
@@ -551,6 +766,10 @@ export abstract class BaseEntity2d<
      * constructed. You cannot have duplicate keys loaded at the same time.
      */
     public static readonly entityKey: string = 'BaseEntity';
+    /** Entity classes this entity observes collisions with. Omit to observe none. */
+    public static readonly collidesWith: ReadonlyArray<Entity2dConstructor> | undefined;
+    /** Cached entity classes this entity observes collisions with. */
+    public static readonly collidesWithSet: ReadonlySet<Entity2dConstructor> | undefined;
     /** Shape definition of this entity's parameters. */
     public static readonly paramsShape: Shape<AnyObject> | undefined;
 
@@ -591,6 +810,8 @@ export abstract class BaseEntity2d<
 
     /** If true, this entity should no longer be used or operated upon. */
     public readonly isDestroyed: boolean = false;
+    /** Static definition used to construct this entity. */
+    public readonly entityDefinition: Entity2dConstructor;
     protected readonly abortController = new AbortController();
     /** An `AbortSignal` that triggers when the entity is destroyed. */
     public readonly abortSignal: AbortSignal = this.abortController.signal;
@@ -608,6 +829,7 @@ export abstract class BaseEntity2d<
     public getAsset: EntityAssetAccessor<MappedEntityAssets<EntityAssets>>;
 
     constructor(args: Readonly<Entity2dConstructorParams<NoInfer<State>, NoInfer<Params>>>) {
+        this.entityDefinition = this.constructor as Entity2dConstructor;
         this.entityStore = args.entityStore;
         this.params = args.params as Params;
         this.pixi = args.pixi;

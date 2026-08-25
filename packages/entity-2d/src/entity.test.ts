@@ -1,7 +1,7 @@
 import {AssetLoader} from '@antha/asset';
 import {createMockPixi} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
-import {makeWritable} from '@augment-vir/common';
+import {DeferredPromise, makeWritable} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {Circle} from 'detect-collisions';
 import {Graphics, ParticleContainer} from 'pixi.js';
@@ -9,10 +9,10 @@ import {defineEntitySuite2d} from './entity-suite.js';
 import {
     EntityDestroyEvent,
     EntityEvent,
+    EntityHitboxSystem,
     entityPositionParamsShape,
     position2dParamsMap,
     type BaseEntity2d,
-    type Collision,
     type EntityStore2d,
     type ViewCreation2d,
 } from './entity.js';
@@ -28,13 +28,30 @@ function createTestSuite() {
 
 function createTestStore(
     suite: {EntityStore: new (...args: any[]) => EntityStore2d},
-    options?: {assetLoader?: AssetLoader},
+    options?: {
+        assetLoader?: AssetLoader;
+        customHitboxSystem?: EntityHitboxSystem;
+    },
 ) {
     return new suite.EntityStore({
         pixi: createMockPixi(),
         state: {},
         assetLoader: options?.assetLoader,
+        customHitboxSystem: options?.customHitboxSystem,
     });
+}
+
+function createCollisionView(): ViewCreation2d {
+    return {
+        view: new Graphics().rect(0, 0, 50, 50).fill('blue'),
+        hitbox: new Circle(
+            {
+                x: 0,
+                y: 0,
+            },
+            100,
+        ),
+    };
 }
 
 describe(EntityEvent.name, () => {
@@ -112,10 +129,21 @@ describe('EntityStore', () => {
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
-    it('triggers collision callback between overlapping hitboxes', async () => {
+    it('does not trigger collision callbacks without collidesWith', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
-        let collisionDetected = false;
+        let collisionCount = 0;
+        let hitboxSearchCount = 0;
+
+        class CountingHitboxSystem extends EntityHitboxSystem {
+            public override search(...args: Parameters<EntityHitboxSystem['search']>) {
+                hitboxSearchCount += 1;
+                return super.search(...args);
+            }
+        }
+
+        const store = createTestStore(suite, {
+            customHitboxSystem: new CountingHitboxSystem(),
+        });
 
         class CollidingEntity extends suite.defineEntity({
             key: 'Colliding',
@@ -124,30 +152,199 @@ describe('EntityStore', () => {
             public override update(): void {}
 
             public override createView(): ViewCreation2d {
-                return {
-                    view: new Graphics().rect(0, 0, 50, 50).fill('blue'),
-                    hitbox: new Circle(
-                        {
-                            x: 0,
-                            y: 0,
-                        },
-                        100,
-                    ),
-                };
+                return createCollisionView();
             }
 
             public override collide(): void {
-                collisionDetected = true;
+                collisionCount += 1;
             }
         }
 
+        const firstEntity = await store.addEntity(CollidingEntity);
         await store.addEntity(CollidingEntity);
-        await store.addEntity(CollidingEntity);
+        hitboxSearchCount = 0;
+
+        assert.isDefined(firstEntity.hitbox);
+        assert.isFalse(store.hitboxSystem.checkOne(firstEntity.hitbox));
 
         await store.updateAllEntities({
             msSinceLastUpdate: 0,
         });
-        assert.isTrue(collisionDetected);
+        assert.deepEquals(
+            {
+                collisionCount,
+                hitboxSearchCount,
+            },
+            {
+                collisionCount: 0,
+                hitboxSearchCount: 0,
+            },
+        );
+    });
+
+    it('skips collisions when neither entity targets the other', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        let collisionCount = 0;
+
+        class IgnoredEntity extends suite.defineEntity({
+            key: 'IgnoredCollisionTarget',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+        }
+
+        class FirstEntity extends suite.defineEntity({
+            collidesWith: [IgnoredEntity],
+            key: 'FirstCollisionObserver',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+
+            public override collide(): void {
+                collisionCount += 1;
+            }
+        }
+
+        class SecondEntity extends suite.defineEntity({
+            collidesWith: [IgnoredEntity],
+            key: 'SecondCollisionObserver',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+
+            public override collide(): void {
+                collisionCount += 1;
+            }
+        }
+
+        await store.addEntity(FirstEntity);
+        await store.addEntity(SecondEntity);
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
+
+        assert.strictEquals(collisionCount, 0);
+    });
+
+    it('only notifies the entity that lists the other class in collidesWith', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        let observerCollisionCount = 0;
+        let targetCollisionCount = 0;
+
+        class TargetEntity extends suite.defineEntity({
+            key: 'CollisionTarget',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+
+            public override collide(): void {
+                targetCollisionCount += 1;
+            }
+        }
+
+        class ObserverEntity extends suite.defineEntity({
+            collidesWith: [TargetEntity],
+            key: 'CollisionObserver',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+
+            public override collide(otherEntity: BaseEntity2d): void {
+                if (otherEntity instanceof TargetEntity) {
+                    observerCollisionCount += 1;
+                }
+            }
+        }
+
+        const targetEntity = await store.addEntity(TargetEntity);
+        const observerEntity = await store.addEntity(ObserverEntity);
+
+        makeWritable(TargetEntity).collidesWithSet = undefined;
+        makeWritable(ObserverEntity).collidesWithSet = undefined;
+        assert.isDefined(targetEntity.hitbox);
+        assert.isDefined(observerEntity.hitbox);
+        assert.isTrue(
+            store.hitboxSystem.checkCollision(targetEntity.hitbox, observerEntity.hitbox),
+        );
+
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
+
+        assert.deepEquals(
+            {
+                observerCollisionCount,
+                targetCollisionCount,
+            },
+            {
+                observerCollisionCount: 1,
+                targetCollisionCount: 0,
+            },
+        );
+    });
+
+    it('checks each matching collision target once', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        let collisionCount = 0;
+
+        class CollisionTargetEntity extends suite.defineEntity({
+            key: 'MultiTargetCollisionTarget',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+        }
+
+        class ObserverEntity extends suite.defineEntity({
+            collidesWith: [CollisionTargetEntity],
+            key: 'MultiTargetCollisionObserver',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+
+            public override collide(): void {
+                collisionCount += 1;
+            }
+        }
+
+        await store.addEntity(ObserverEntity);
+        await store.addEntity(CollisionTargetEntity);
+        await store.addEntity(CollisionTargetEntity);
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
+
+        assert.strictEquals(collisionCount, 2);
     });
 
     it('calls the base collide no-op for entities without override', async () => {
@@ -567,45 +764,56 @@ describe('EntityStore', () => {
         assert.isTrue(otherAssetLoadCalled);
     });
 
-    it('handles async collide returning a Promise', async () => {
+    it('awaits async collision callbacks', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
         let asyncCollisionResolved = false;
+        const collisionStarted = new DeferredPromise<void>();
+        const finishCollision = new DeferredPromise<void>();
+
+        class CollisionTargetEntity extends suite.defineEntity({
+            key: 'AsyncCollisionTarget',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+        }
 
         class AsyncCollideEntity extends suite.defineEntity({
+            collidesWith: [CollisionTargetEntity],
             key: 'AsyncCollide',
             paramsShape: undefined,
         }) {
             public override update(): void {}
 
             public override createView(): ViewCreation2d {
-                return {
-                    view: new Graphics().rect(0, 0, 50, 50).fill('orange'),
-                    hitbox: new Circle(
-                        {
-                            x: 0,
-                            y: 0,
-                        },
-                        100,
-                    ),
-                };
+                return createCollisionView();
             }
 
-            public override async collide(
-                _otherEntity: BaseEntity2d,
-                _collision: Readonly<Collision>,
-            ): Promise<void> {
+            public override async collide() {
+                collisionStarted.resolve();
+                await finishCollision.promise;
                 asyncCollisionResolved = true;
-                return Promise.resolve();
             }
         }
 
-        await store.addEntity(AsyncCollideEntity);
+        makeWritable(CollisionTargetEntity).collidesWith = [AsyncCollideEntity];
+        makeWritable(CollisionTargetEntity).collidesWithSet = new Set([AsyncCollideEntity]);
+
+        await store.addEntity(CollisionTargetEntity);
         await store.addEntity(AsyncCollideEntity);
 
-        await store.updateAllEntities({
+        const updatePromise = store.updateAllEntities({
             msSinceLastUpdate: 0,
         });
+
+        await collisionStarted.promise;
+        assert.isFalse(asyncCollisionResolved);
+        finishCollision.resolve();
+        await updatePromise;
         assert.isTrue(asyncCollisionResolved);
     });
 });
