@@ -122,7 +122,7 @@ describe(createAnthaAssetMod.name, () => {
 
         await assertWrap.isDefined(engine.state.assetLoader).bulkLoadAssets([
             {
-                name: 'unscoped-asset',
+                assetName: 'unscoped-asset',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();

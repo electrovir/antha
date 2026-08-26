@@ -21,7 +21,7 @@ function createMockAsset(
 
     return {
         asset: {
-            name: value,
+            assetName: value,
             maxProgress,
             load({incrementProgressCallback}) {
                 incrementProgressCallback();
@@ -128,7 +128,7 @@ describe(AssetLoader.name, () => {
             const loader = new AssetLoader();
             let loadCount = 0;
             const asset = defineAsset({
-                name: 'cached',
+                assetName: 'cached',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
                     loadCount++;
@@ -155,7 +155,7 @@ describe(AssetLoader.name, () => {
             const loader = new AssetLoader();
             const progressAmounts: (number | undefined)[] = [];
             const asset = defineAsset({
-                name: 'progress',
+                assetName: 'progress',
                 maxProgress: 3,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback(1);
@@ -185,7 +185,7 @@ describe(AssetLoader.name, () => {
         it('works without incrementProgressCallback', async () => {
             const loader = new AssetLoader();
             const asset = defineAsset({
-                name: 'no-callback',
+                assetName: 'no-callback',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -207,7 +207,7 @@ describe(AssetLoader.name, () => {
             const loadSession = loader.createLoadSession();
             const completionStates: boolean[] = [];
             const asset = defineAsset({
-                name: 'session-asset',
+                assetName: 'session-asset',
                 maxProgress: 2,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -262,7 +262,7 @@ describe(AssetLoader.name, () => {
         it('handles assets without cleanup callbacks', async () => {
             const loader = new AssetLoader();
             const asset = defineAsset({
-                name: 'no-cleanup',
+                assetName: 'no-cleanup',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -312,7 +312,7 @@ describe(AssetLoader.name, () => {
         it('handles assets without cleanup on destroy', async () => {
             const loader = new AssetLoader();
             const asset = defineAsset({
-                name: 'no-cleanup-destroy',
+                assetName: 'no-cleanup-destroy',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -417,7 +417,7 @@ describe(AssetLoader.name, () => {
             });
 
             const asset1 = defineAsset({
-                name: 'asset-a',
+                assetName: 'asset-a',
                 maxProgress: 2,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -428,7 +428,7 @@ describe(AssetLoader.name, () => {
                 },
             });
             const asset2 = defineAsset({
-                name: 'asset-b',
+                assetName: 'asset-b',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -497,7 +497,7 @@ describe(AssetLoader.name, () => {
             });
 
             const asset = defineAsset({
-                name: 'entity:asset',
+                assetName: 'entity:asset',
                 maxProgress: 2,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -532,7 +532,7 @@ describe(AssetLoader.name, () => {
 
             function createOrderedAsset(assetName: string): Asset<string> {
                 return {
-                    name: assetName,
+                    assetName,
                     maxProgress: 1,
                     load({incrementProgressCallback}) {
                         loadOrder.push(assetName);
@@ -624,7 +624,7 @@ describe(AssetLoader.name, () => {
             });
 
             const asset = defineAsset({
-                name: 'custom-increment',
+                assetName: 'custom-increment',
                 maxProgress: 5,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback(3);
@@ -689,7 +689,7 @@ describe(AssetLoader.name, () => {
         const resolution = 4;
 
         const asset = {
-            name: 'test',
+            assetName: 'test',
             maxProgress: 2,
             load({incrementProgressCallback}) {
                 const spritesheetData = {
@@ -802,7 +802,7 @@ describe(AssetLoader.name, () => {
             });
 
             const asset = defineAsset({
-                name: 'failing-cleanup',
+                assetName: 'failing-cleanup',
                 maxProgress: 1,
                 load({incrementProgressCallback}) {
                     incrementProgressCallback();
@@ -836,7 +836,7 @@ describe(AssetLoader.name, () => {
             });
 
             const asset = defineAsset({
-                name: 'no-progress',
+                assetName: 'no-progress',
                 maxProgress: 5,
                 load() {
                     /** Intentionally do not call incrementProgressCallback. */

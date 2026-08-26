@@ -13,7 +13,7 @@ import {type AnthaDemo} from '../demo.js';
 const maxProgress = 100;
 
 const slowAsset = defineAsset({
-    name: 'slow asset',
+    assetName: 'slow asset',
     maxProgress,
     async load({incrementProgressCallback}) {
         for (let step = 0; step < maxProgress; step++) {

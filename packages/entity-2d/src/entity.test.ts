@@ -748,7 +748,7 @@ describe('EntityStore', () => {
             entities: [],
             otherAssets: [
                 {
-                    name: 'Other asset',
+                    assetName: 'Other asset',
                     maxProgress: 1,
                     load({incrementProgressCallback}) {
                         otherAssetLoadCalled = true;

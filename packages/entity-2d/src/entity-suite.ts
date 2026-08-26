@@ -332,7 +332,7 @@ export function defineEntitySuite2d<State extends AnyObject>(): EntitySuite2d<St
                         key,
                         rawAsset,
                     ]) => {
-                        (rawAsset as typeof rawAsset & Pick<Asset, 'name'>).name = [
+                        (rawAsset as typeof rawAsset & Pick<Asset, 'assetName'>).assetName = [
                             params.key,
                             key,
                         ].join(':');

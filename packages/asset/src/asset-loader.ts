@@ -70,7 +70,7 @@ export type AssetValue<SpecificAsset extends Pick<Asset, 'load'>> = Awaited<
  * @category Asset
  */
 export type Asset<AssetValue = any> = {
-    name: string;
+    assetName: string;
     maxProgress: number;
     load: AssetLoaderCallback<AssetValue>;
 };
@@ -364,7 +364,7 @@ export class AssetLoader {
 
         loadSession?.reportProgress({
             current: 0,
-            currentResourceName: asset.name,
+            currentResourceName: asset.assetName,
             total: asset.maxProgress,
         });
 
@@ -373,7 +373,7 @@ export class AssetLoader {
                 incrementProgressCallback?.(progressParams);
                 loadSession?.incrementProgress({
                     amount: progressParams,
-                    currentResourceName: asset.name,
+                    currentResourceName: asset.assetName,
                 });
             },
         });
@@ -395,7 +395,7 @@ export class AssetLoader {
                     this.log.error(
                         ensureErrorAndPrependMessage(
                             error,
-                            `Failed to cleanup asset: ${asset.name}`,
+                            `Failed to cleanup asset: ${asset.assetName}`,
                         ),
                     );
                 }
@@ -450,7 +450,7 @@ export class AssetLoader {
                 progress: {
                     current: currentProgress,
                     total: maxProgress,
-                    currentResourceName: assetsToLoad[0]?.name,
+                    currentResourceName: assetsToLoad[0]?.assetName,
                 },
             });
         }
@@ -467,7 +467,7 @@ export class AssetLoader {
             progress: {
                 current: currentProgress,
                 total: maxProgress,
-                currentResourceName: assetsToLoad[0]?.name,
+                currentResourceName: assetsToLoad[0]?.assetName,
             },
         });
 
@@ -487,7 +487,7 @@ export class AssetLoader {
                     progress: {
                         current: currentProgress,
                         total: maxProgress,
-                        currentResourceName: asset.name,
+                        currentResourceName: asset.assetName,
                     },
                 });
             };
@@ -506,7 +506,7 @@ export class AssetLoader {
                             progress: {
                                 current: currentProgress,
                                 total: maxProgress,
-                                currentResourceName: asset.name,
+                                currentResourceName: asset.assetName,
                             },
                         });
 
@@ -527,7 +527,7 @@ export class AssetLoader {
                         currentProgress,
                         maxProgress,
                         assetCount: assetsToLoad.length,
-                        assetNames: assetsToLoad.map((entry) => entry.name).filter(Boolean),
+                        assetNames: assetsToLoad.map((entry) => entry.assetName).filter(Boolean),
                     },
                     tags: {
                         mod: '@antha/asset',

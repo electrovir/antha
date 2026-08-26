@@ -26,7 +26,7 @@ type GameState = AnthaAssetModState & {
 };
 
 const titleAsset = defineAsset({
-    name: 'title',
+    assetName: 'title',
     maxProgress: 1,
     load({incrementProgressCallback}) {
         incrementProgressCallback();

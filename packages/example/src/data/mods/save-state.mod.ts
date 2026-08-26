@@ -21,7 +21,7 @@ const fontDefinitions = [
 ] as const;
 
 const fontsAsset: Asset<ReadonlyArray<FontFace | FontFace[]>> = {
-    name: 'Fonts',
+    assetName: 'Fonts',
     maxProgress: fontDefinitions.length,
     async load({incrementProgressCallback}) {
         const fonts = await Promise.all(
@@ -69,7 +69,7 @@ function createSaveStateAsset({
     state: Partial<FullExampleGameState>;
 }>): Asset<SaveState> {
     return {
-        name: 'Save data',
+        assetName: 'Save data',
         maxProgress: 1,
         async load({incrementProgressCallback}) {
             const saveState = (await saveStateStore.loadState()) || emptySaveState;

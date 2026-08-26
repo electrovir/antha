@@ -46,8 +46,8 @@ export type BaseEntityAssetDefinitions = Record<
     string,
     Omit<
         Asset,
-        /** Name will be the value's key in this object. */
-        'name'
+        /** Asset names are derived from the entity and asset keys. */
+        'assetName'
     >
 >;
 
@@ -67,7 +67,7 @@ export type MappedEntityAssets<Definitions extends BaseEntityAssetDefinitions | 
     Definitions extends undefined
         ? EmptyObject
         : {
-              [Key in keyof Definitions]: Definitions[Key] & {name: string};
+              [Key in keyof Definitions]: Definitions[Key] & {assetName: string};
           };
 
 /**
