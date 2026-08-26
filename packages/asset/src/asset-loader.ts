@@ -1,4 +1,4 @@
-import {type AnthaLogger, browserAnthaLogger} from '@antha/engine';
+import {type AnthaLogger, browserAnthaLogger, type EngineTime} from '@antha/engine';
 import {
     type ArrayElement,
     awaitedBlockingMap,
@@ -129,7 +129,7 @@ export type AssetLoadProgress = {
 
 /** State of the active asset load. */
 export type AssetLoadState = AssetLoadProgress & {
-    completedAt: DOMHighResTimeStamp | undefined;
+    completedAt: EngineTime | undefined;
     isLoading: boolean;
 };
 
@@ -247,7 +247,7 @@ export class AssetLoadSessionController {
         totalMs,
     }: Readonly<{
         currentTick: number;
-        totalMs: DOMHighResTimeStamp;
+        totalMs: EngineTime;
     }>) {
         this.latestEngineTick = currentTick + 1;
 
@@ -333,7 +333,7 @@ export class AssetLoader {
         totalMs,
     }: Readonly<{
         currentTick: number;
-        totalMs: DOMHighResTimeStamp;
+        totalMs: EngineTime;
     }>) {
         this.loadSessionController.advance({
             currentTick,

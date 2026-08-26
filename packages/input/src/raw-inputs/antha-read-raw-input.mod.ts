@@ -1,4 +1,4 @@
-import {defineAnthaMod} from '@antha/engine';
+import {defineAnthaMod, type EngineTime} from '@antha/engine';
 import {
     defaultGamepadLayouts,
     defaultGamepadModelMap,
@@ -61,8 +61,8 @@ export type AnthaReadRawInputModState = {
     deviceHandler: Pick<InputDeviceHandler, 'readAllDevices'>;
     rawInputs: RawInputs;
     currentInputDevices: SimpleInputDevicesMap;
-    /** If true, the mod doesn't read raw inputs. */
-    disableInputs: boolean;
+    /** The engine time when a timed input lock expires. */
+    inputDisableEndsAt: EngineTime | undefined;
     /**
      * If no model map is provided, the built-in defaults from
      * [gamepad-type](https://www.npmjs.com/package/gamepad-type) are used. If a model map is
@@ -100,8 +100,16 @@ export function createAnthaReadRawInputMod(options: Readonly<AnthaReadRawInputMo
         modName: 'antha-read-raw-input',
         initState: {
             debugRawInputs: !!options.debugRawInputs,
+            inputDisableEndsAt: undefined,
         },
-        execute({state, msSinceLastExecute}) {
+        execute({engine, state, msSinceLastExecute}) {
+            if (
+                state.inputDisableEndsAt != undefined &&
+                state.inputDisableEndsAt <= engine.totalMs
+            ) {
+                state.inputDisableEndsAt = undefined;
+            }
+
             if (!state.deviceHandler) {
                 state.deviceHandler =
                     options.deviceHandler ||
@@ -111,10 +119,7 @@ export function createAnthaReadRawInputMod(options: Readonly<AnthaReadRawInputMo
                     });
             }
 
-            if (state.disableInputs) {
-                state.rawInputs = {};
-                state.currentInputDevices = {};
-            } else {
+            if (state.inputDisableEndsAt == undefined) {
                 const {currentDevices, rawInputs} = readRawInputs(
                     state as SetRequired<typeof state, 'deviceHandler'>,
                     {
@@ -124,6 +129,9 @@ export function createAnthaReadRawInputMod(options: Readonly<AnthaReadRawInputMo
 
                 state.rawInputs = rawInputs;
                 state.currentInputDevices = currentDevices;
+            } else {
+                state.rawInputs = {};
+                state.currentInputDevices = {};
             }
 
             if (state.debugRawInputs) {

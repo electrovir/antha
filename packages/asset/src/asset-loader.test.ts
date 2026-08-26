@@ -1,4 +1,4 @@
-import {emptyAnthaLogger} from '@antha/engine';
+import {createEngineTime, emptyAnthaLogger} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {type SpritesheetData} from 'pixi.js';
@@ -86,12 +86,12 @@ describe(AssetLoader.name, () => {
 
         loader.advanceLoadState({
             currentTick: 0,
-            totalMs: 0,
+            totalMs: createEngineTime(0),
         });
         loadSession.complete();
         loader.advanceLoadState({
             currentTick: 1,
-            totalMs: 10,
+            totalMs: createEngineTime(10),
         });
 
         const incompleteLoadState = loader.loadState;
@@ -99,7 +99,7 @@ describe(AssetLoader.name, () => {
 
         loader.advanceLoadState({
             currentTick: 2,
-            totalMs: 20,
+            totalMs: createEngineTime(20),
         });
 
         const completedLoadState = loader.loadState;
@@ -107,7 +107,7 @@ describe(AssetLoader.name, () => {
             current: 0,
             currentResourceName: undefined,
             total: 0,
-            completedAt: 20,
+            completedAt: createEngineTime(20),
             isLoading: false,
         } satisfies AssetLoadState);
     });

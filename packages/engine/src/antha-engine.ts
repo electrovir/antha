@@ -27,6 +27,14 @@ import {browserAnthaLogger} from './logger/browser-antha-logger.js';
  */
 export type ModInstanceId = Branded<string, 'antha-mod-instance-id'>;
 
+/** A timestamp measured from the start of an {@link AnthaEngine}. */
+export type EngineTime = Branded<number, 'antha-engine-time'>;
+
+/** Creates an {@link EngineTime} from a millisecond offset from an engine's start. */
+export function createEngineTime(time: number): EngineTime {
+    return applyBrand<EngineTime>(time);
+}
+
 /**
  * Parameters passed to the execute callback in {@link AnthaMod}.
  *
@@ -349,7 +357,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
      */
     public readonly state: Partial<State>;
     /** Total milliseconds elapsed since the engine started. Updated each tick. */
-    public totalMs: DOMHighResTimeStamp = 0;
+    public totalMs: EngineTime = createEngineTime(0);
     /** When the engine started running its loop. */
     public engineStartTime: DOMHighResTimeStamp = performance.now();
     /**
@@ -444,7 +452,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
         /** Clear the array as we're about to populate it. */
         this.currentTemplateArray.length = 0;
         const executionStart = performance.now();
-        this.totalMs = executionStart - this.engineStartTime;
+        this.totalMs = createEngineTime(executionStart - this.engineStartTime);
 
         /**
          * Use a plain `for` loop instead of `awaitedForEach` so that synchronous mods execute
