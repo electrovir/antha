@@ -1,6 +1,6 @@
 {
     "name": "@antha/entity-2d",
-    "version": "0.5.0",
+    "version": "0.6.0",
     "description": "An Antha mod for handling 2D entities.",
     "keywords": [
         "vir",
@@ -39,8 +39,8 @@
         "@augment-vir/common": "^32.2.3"
     },
     "devDependencies": {
-        "@antha/engine": "^0.5.0",
-        "@antha/web-test-runner-plugin-pixi": "^0.5.0",
+        "@antha/engine": "^0.6.0",
+        "@antha/web-test-runner-plugin-pixi": "^0.6.0",
         "@augment-vir/test": "^32.2.3",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
@@ -52,9 +52,9 @@
         "typed-event-target": "^4.3.3"
     },
     "peerDependencies": {
-        "@antha/asset": "^0.5.0",
-        "@antha/engine": "^0.5.0",
-        "@antha/graphics-2d": "^0.5.0",
+        "@antha/asset": "^0.6.0",
+        "@antha/engine": "^0.6.0",
+        "@antha/graphics-2d": "^0.6.0",
         "detect-collisions": ">=10",
         "element-vir": ">=26",
         "object-shape-tester": ">=6",

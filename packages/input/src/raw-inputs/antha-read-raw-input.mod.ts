@@ -61,6 +61,8 @@ export type AnthaReadRawInputModState = {
     deviceHandler: Pick<InputDeviceHandler, 'readAllDevices'>;
     rawInputs: RawInputs;
     currentInputDevices: SimpleInputDevicesMap;
+    /** If true, the mod doesn't read raw inputs. */
+    disableInputs: boolean;
     /**
      * If no model map is provided, the built-in defaults from
      * [gamepad-type](https://www.npmjs.com/package/gamepad-type) are used. If a model map is
@@ -109,15 +111,20 @@ export function createAnthaReadRawInputMod(options: Readonly<AnthaReadRawInputMo
                     });
             }
 
-            const {currentDevices, rawInputs} = readRawInputs(
-                state as SetRequired<typeof state, 'deviceHandler'>,
-                {
-                    msSinceLastExecute,
-                },
-            );
+            if (state.disableInputs) {
+                state.rawInputs = {};
+                state.currentInputDevices = {};
+            } else {
+                const {currentDevices, rawInputs} = readRawInputs(
+                    state as SetRequired<typeof state, 'deviceHandler'>,
+                    {
+                        msSinceLastExecute,
+                    },
+                );
 
-            state.rawInputs = rawInputs;
-            state.currentInputDevices = currentDevices;
+                state.rawInputs = rawInputs;
+                state.currentInputDevices = currentDevices;
+            }
 
             if (state.debugRawInputs) {
                 return html`
