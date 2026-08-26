@@ -11,6 +11,7 @@ import {
     EntityEvent,
     EntityHitboxSystem,
     entityPositionParamsShape,
+    loadEntityAssets,
     position2dParamsMap,
     type BaseEntity2d,
     type EntityStore2d,
@@ -199,7 +200,9 @@ describe('EntityStore', () => {
         }
 
         class FirstEntity extends suite.defineEntity({
-            collidesWith: [IgnoredEntity],
+            collidesWith: {
+                collidesWithOtherEntities: [IgnoredEntity],
+            },
             key: 'FirstCollisionObserver',
             paramsShape: undefined,
         }) {
@@ -215,7 +218,9 @@ describe('EntityStore', () => {
         }
 
         class SecondEntity extends suite.defineEntity({
-            collidesWith: [IgnoredEntity],
+            collidesWith: {
+                collidesWithOtherEntities: [IgnoredEntity],
+            },
             key: 'SecondCollisionObserver',
             paramsShape: undefined,
         }) {
@@ -261,7 +266,9 @@ describe('EntityStore', () => {
         }
 
         class ObserverEntity extends suite.defineEntity({
-            collidesWith: [TargetEntity],
+            collidesWith: {
+                collidesWithOtherEntities: [TargetEntity],
+            },
             key: 'CollisionObserver',
             paramsShape: undefined,
         }) {
@@ -281,8 +288,6 @@ describe('EntityStore', () => {
         const targetEntity = await store.addEntity(TargetEntity);
         const observerEntity = await store.addEntity(ObserverEntity);
 
-        makeWritable(TargetEntity).collidesWithSet = undefined;
-        makeWritable(ObserverEntity).collidesWithSet = undefined;
         assert.isDefined(targetEntity.hitbox);
         assert.isDefined(observerEntity.hitbox);
         assert.isTrue(
@@ -322,7 +327,9 @@ describe('EntityStore', () => {
         }
 
         class ObserverEntity extends suite.defineEntity({
-            collidesWith: [CollisionTargetEntity],
+            collidesWith: {
+                collidesWithOtherEntities: [CollisionTargetEntity],
+            },
             key: 'MultiTargetCollisionObserver',
             paramsShape: undefined,
         }) {
@@ -340,6 +347,38 @@ describe('EntityStore', () => {
         await store.addEntity(ObserverEntity);
         await store.addEntity(CollisionTargetEntity);
         await store.addEntity(CollisionTargetEntity);
+        await store.updateAllEntities({
+            msSinceLastUpdate: 0,
+        });
+
+        assert.strictEquals(collisionCount, 2);
+    });
+
+    it('checks collisions between instances of the same class when requested', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        let collisionCount = 0;
+
+        class SelfCollidingEntity extends suite.defineEntity({
+            collidesWith: {
+                collidesWithSelf: true,
+            },
+            key: 'SelfCollidingEntity',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+
+            public override createView(): ViewCreation2d {
+                return createCollisionView();
+            }
+
+            public override collide(): void {
+                collisionCount += 1;
+            }
+        }
+
+        await store.addEntity(SelfCollidingEntity);
+        await store.addEntity(SelfCollidingEntity);
         await store.updateAllEntities({
             msSinceLastUpdate: 0,
         });
@@ -700,9 +739,6 @@ describe('EntityStore', () => {
     it('loads entity assets via loadEntityAssets', async () => {
         const suite = createTestSuite();
         const assetLoader = new AssetLoader();
-        const store = createTestStore(suite, {
-            assetLoader,
-        });
         let loadCalled = false;
 
         class AssetEntity extends suite.defineEntity({
@@ -729,23 +765,28 @@ describe('EntityStore', () => {
             }
         }
 
-        await store.loadEntityAssets({
-            entities: [
-                AssetEntity,
-            ],
+        await loadEntityAssets({
+            assetLoader,
+            entities: [AssetEntity],
         });
         assert.isTrue(loadCalled);
     });
 
     it('loads other assets via loadEntityAssets', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite, {
-            assetLoader: new AssetLoader(),
-        });
+        const assetLoader = new AssetLoader();
         let otherAssetLoadCalled = false;
 
-        await store.loadEntityAssets({
-            entities: [],
+        class NoAssetsEntity extends suite.defineLogicEntity({
+            key: 'NoAssetsEntityLoad',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        await loadEntityAssets({
+            assetLoader,
+            entities: [NoAssetsEntity],
             otherAssets: [
                 {
                     assetName: 'Other asset',
@@ -783,7 +824,9 @@ describe('EntityStore', () => {
         }
 
         class AsyncCollideEntity extends suite.defineEntity({
-            collidesWith: [CollisionTargetEntity],
+            collidesWith: {
+                collidesWithOtherEntities: [CollisionTargetEntity],
+            },
             key: 'AsyncCollide',
             paramsShape: undefined,
         }) {
@@ -800,7 +843,9 @@ describe('EntityStore', () => {
             }
         }
 
-        makeWritable(CollisionTargetEntity).collidesWith = [AsyncCollideEntity];
+        makeWritable(CollisionTargetEntity).collidesWith = {
+            collidesWithOtherEntities: [AsyncCollideEntity],
+        };
         makeWritable(CollisionTargetEntity).collidesWithSet = new Set([AsyncCollideEntity]);
 
         await store.addEntity(CollisionTargetEntity);

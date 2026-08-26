@@ -1,5 +1,6 @@
 import {type Asset} from '@antha/asset';
 import {defineAnthaMod, SkipExecution} from '@antha/engine';
+import {loadEntityAssets} from '@antha/entity-2d';
 import {Assets} from '@antha/graphics-2d';
 import {Store} from 'indexed-vir';
 import {HangarEntity} from '../entities/hangar.entity.js';
@@ -86,7 +87,9 @@ function createSaveStateAsset({
 export const saveStateMod = defineAnthaMod<FullExampleGameState>({
     modName: 'save-state',
     execute({state}) {
-        if (!state.entityStore || !state.assetLoader) {
+        const assetLoader = state.assetLoader;
+
+        if (!assetLoader) {
             return SkipExecution;
         }
 
@@ -96,31 +99,30 @@ export const saveStateMod = defineAnthaMod<FullExampleGameState>({
 
         if (!state.saveState && !state.loadPromise) {
             const saveStateStore = state.saveStateStore;
-            const loadSession = state.assetLoader.createLoadSession();
+            const loadSession = assetLoader.createLoadSession();
 
-            state.loadPromise = state.entityStore
-                .loadEntityAssets(
-                    {
-                        entities: [
-                            HangarEntity,
-                            PlayerShipEntity,
-                        ],
-                        otherAssets: [
-                            fontsAsset,
-                            createSaveStateAsset({
-                                saveStateStore,
-                                state,
-                            }),
-                        ],
-                    },
-                    {
-                        maxParallelism: 1,
-                        loadSession,
-                    },
-                )
-                .then(() => {
-                    loadSession.complete();
-                });
+            state.loadPromise = loadEntityAssets(
+                {
+                    assetLoader,
+                    entities: [
+                        HangarEntity,
+                        PlayerShipEntity,
+                    ],
+                    otherAssets: [
+                        fontsAsset,
+                        createSaveStateAsset({
+                            saveStateStore,
+                            state,
+                        }),
+                    ],
+                },
+                {
+                    maxParallelism: 1,
+                    loadSession,
+                },
+            ).then(() => {
+                loadSession.complete();
+            });
         }
 
         return undefined;

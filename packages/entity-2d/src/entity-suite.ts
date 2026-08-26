@@ -13,6 +13,7 @@ import {
     type BaseEntityAssetDefinitions,
     type Entity2dConstructor,
     type Entity2dConstructorParams,
+    type EntityCollisionDefinition,
     entityPositionParamsShape,
     EntityStore2d,
     type EntityStore2dConstructorParams,
@@ -32,7 +33,7 @@ export type DefineEntity2dArgs<
     EntityAssets extends BaseEntityAssetDefinitions | undefined,
 > = {
     /** Entity classes this entity observes collisions with. Omit to observe none. */
-    collidesWith?: ReadonlyArray<Entity2dConstructor> | undefined;
+    collidesWith?: EntityCollisionDefinition | undefined;
     /**
      * This key is used for deserialization of entities to track which class needs to be
      * constructed. Do not use duplicate key strings across multiple entity classes.
@@ -134,9 +135,9 @@ export type StaticEntity2dParts<
     EntityAssets extends BaseEntityAssetDefinitions | undefined = any,
 > = {
     /** Entity classes this entity observes collisions with. Omit to observe none. */
-    collidesWith: ReadonlyArray<Entity2dConstructor> | undefined;
+    collidesWith: EntityCollisionDefinition | undefined;
     /** Cached entity classes this entity observes collisions with. */
-    collidesWithSet: ReadonlySet<Entity2dConstructor> | undefined;
+    collidesWithSet: ReadonlySet<Entity2dConstructor>;
     /**
      * This key is used for deserialization of entities to track which class needs to be
      * constructed. You cannot have duplicate keys loaded at the same time.
@@ -357,10 +358,12 @@ export function defineEntitySuite2d<State extends AnyObject>(): EntitySuite2d<St
             // @ts-expect-error: abstract methods are intentionally not implemented here
             [key]: class extends entityParent {
                 public static override readonly collidesWith = collidesWith;
-                public static override readonly collidesWithSet = new Set(collidesWith);
+                public static override readonly collidesWithSet = new Set(
+                    collidesWith?.collidesWithOtherEntities,
+                );
                 public static override readonly entityKey = key;
                 public static override readonly paramsShape = paramsShape;
-                public static override readonly assets = assets;
+                public static override readonly assets = assets || {};
 
                 public static override readonly paramsMap = paramsMap;
                 public static override readonly reverseParamsMap = reverseParamsMap(paramsMap);

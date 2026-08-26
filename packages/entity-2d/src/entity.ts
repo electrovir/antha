@@ -9,6 +9,7 @@ import {assert, check} from '@augment-vir/assert';
 import {
     ConstructorInstanceMap,
     getObjectTypedEntries,
+    getObjectTypedValues,
     makeWritable,
     mapObjectValues,
     type AbstractConstructor,
@@ -118,7 +119,43 @@ export type EntityStore2dConstructorParams<State extends AnyObject = any> = {
  *
  * @category Internal
  */
-export type Entity2dConstructor = Constructor<BaseEntity2d> & StaticEntity2dParts;
+export type Entity2dConstructor = Constructor<BaseEntity2d> &
+    StaticEntity2dParts<any, any, BaseEntityAssetDefinitions>;
+
+/**
+ * Defines which entity classes this entity observes collisions with.
+ *
+ * @category Internal
+ */
+export type EntityCollisionDefinition = PartialWithUndefined<{
+    /** Whether this entity observes collisions with instances of its own class. */
+    collidesWithSelf: boolean;
+    /** Other entity classes this entity observes collisions with. */
+    collidesWithOtherEntities: ReadonlyArray<Entity2dConstructor>;
+}>;
+
+/** Loads assets declared by the given entity classes. */
+export async function loadEntityAssets(
+    {
+        assetLoader,
+        entities,
+        otherAssets,
+    }: Readonly<{
+        assetLoader: AssetLoader;
+        entities: ReadonlyArray<Entity2dConstructor>;
+        otherAssets?: ReadonlyArray<Readonly<Asset>> | undefined;
+    }>,
+    options?: Readonly<AssetBulkLoaderLoadOptions> | undefined,
+) {
+    const assets: ReadonlyArray<Readonly<Asset>> = [
+        ...(otherAssets || []),
+        ...entities.flatMap((entity) => {
+            return getObjectTypedValues(entity.assets);
+        }),
+    ];
+
+    return await assetLoader.bulkLoadAssets(assets, options);
+}
 
 function extractEntityFromHitbox(hitbox: Hitbox) {
     return hitbox.userData instanceof BaseEntity2d ? hitbox.userData : undefined;
@@ -126,9 +163,8 @@ function extractEntityFromHitbox(hitbox: Hitbox) {
 
 function hasCollisionTargets(entity: BaseEntity2d) {
     return (
-        (entity.entityDefinition.collidesWithSet?.size ??
-            entity.entityDefinition.collidesWith?.length ??
-            0) > 0
+        !!entity.entityDefinition.collidesWith?.collidesWithSelf ||
+        entity.entityDefinition.collidesWithSet.size > 0
     );
 }
 
@@ -140,9 +176,9 @@ function doesEntityCollideWith({
     otherEntity: BaseEntity2d;
 }>) {
     return (
-        entity.entityDefinition.collidesWithSet?.has(otherEntity.entityDefinition) ??
-        entity.entityDefinition.collidesWith?.includes(otherEntity.entityDefinition) ??
-        false
+        (entity.entityDefinition.collidesWith?.collidesWithSelf &&
+            entity.entityDefinition === otherEntity.entityDefinition) ||
+        entity.entityDefinition.collidesWithSet.has(otherEntity.entityDefinition)
     );
 }
 
@@ -353,31 +389,6 @@ export class EntityStore2d<State extends AnyObject = any> {
                 clearPreviousRegistrations: true,
             });
         }
-    }
-
-    /**
-     * Load all the assets for all the given entities. Without this, assets will be loaded on demand
-     * only.
-     */
-    public async loadEntityAssets(
-        {
-            entities,
-            otherAssets,
-        }: Readonly<{
-            entities: ReadonlyArray<Entity2dConstructor>;
-            otherAssets?: ReadonlyArray<Readonly<Asset>> | undefined;
-        }>,
-        options?: Readonly<AssetBulkLoaderLoadOptions> | undefined,
-    ) {
-        const assets: ReadonlyArray<Readonly<Asset>> = [
-            ...(otherAssets || []),
-            ...entities.flatMap((entity) => {
-                return Object.values(entity.assets).map((asset) => {
-                    return asset;
-                });
-            }),
-        ];
-        return await this.assetLoader.bulkLoadAssets(assets, options);
     }
 
     /**
@@ -767,9 +778,9 @@ export abstract class BaseEntity2d<
      */
     public static readonly entityKey: string = 'BaseEntity';
     /** Entity classes this entity observes collisions with. Omit to observe none. */
-    public static readonly collidesWith: ReadonlyArray<Entity2dConstructor> | undefined;
+    public static readonly collidesWith: EntityCollisionDefinition | undefined;
     /** Cached entity classes this entity observes collisions with. */
-    public static readonly collidesWithSet: ReadonlySet<Entity2dConstructor> | undefined;
+    public static readonly collidesWithSet: ReadonlySet<Entity2dConstructor> = new Set();
     /** Shape definition of this entity's parameters. */
     public static readonly paramsShape: Shape<AnyObject> | undefined;
 

@@ -6,6 +6,7 @@ import {
 import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
 import {
     createAnthaEntityMod2d,
+    loadEntityAssets,
     type AnthaEntity2dModState,
     type EntityStore2d,
 } from '@antha/entity-2d';
@@ -305,17 +306,19 @@ const entityAssetDemoMod = defineAnthaMod<
     executeImmediately: true,
     execute({state}) {
         const entityStore = state.entityStore;
+        const assetLoader = state.assetLoader;
 
-        if (!entityStore || !state.assetLoader) {
+        if (!entityStore || !assetLoader) {
             return SkipExecution;
         }
 
         if (!state.assetsLoaded) {
             state.assetsLoaded = true;
-            const loadSession = state.assetLoader.createLoadSession();
+            const loadSession = assetLoader.createLoadSession();
             void (async () => {
-                await entityStore.loadEntityAssets(
+                await loadEntityAssets(
                     {
+                        assetLoader,
                         entities: [
                             RedCircleEntity,
                             state.yellowToggle && YellowCircleEntity,

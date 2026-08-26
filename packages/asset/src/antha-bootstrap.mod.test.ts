@@ -4,6 +4,7 @@ import {DeferredPromise, wait, type AnyObject} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {createAnthaAssetMod, type AnthaAssetModState} from './antha-asset.mod.js';
 import {createAnthaBootstrapMod, type AnthaBootstrapModState} from './antha-bootstrap.mod.js';
+import {defineAsset} from './asset-loader.js';
 
 describe(createAnthaBootstrapMod.name, () => {
     it('loads code through the loading session and installs returned mods', async () => {
@@ -16,7 +17,7 @@ describe(createAnthaBootstrapMod.name, () => {
                 executedLoadedMod = true;
             },
         });
-        const bootstrapMod = createAnthaBootstrapMod<{value: string}>({
+        const bootstrapMod = createAnthaBootstrapMod()({
             bootstrap({module}) {
                 bootstrappedModule = module;
 
@@ -42,7 +43,7 @@ describe(createAnthaBootstrapMod.name, () => {
             current: 0,
             currentResourceName: 'Game code',
             isLoading: true,
-            total: 1,
+            total: 0,
         });
         moduleLoad.resolve({
             value: 'loaded-game-code',
@@ -59,9 +60,61 @@ describe(createAnthaBootstrapMod.name, () => {
         assert.isTrue(executedLoadedMod);
     });
 
+    it('uses the bootstrap session for initial assets', async () => {
+        const initialAsset = defineAsset({
+            assetName: 'Initial game asset',
+            maxProgress: 1,
+            load({incrementProgressCallback}) {
+                incrementProgressCallback();
+
+                return {
+                    value: undefined,
+                };
+            },
+        });
+        const bootstrapMod = createAnthaBootstrapMod()({
+            async bootstrap({assetLoader, loadSession}) {
+                await assetLoader.bulkLoadAssets(
+                    [
+                        initialAsset,
+                    ],
+                    {
+                        loadSession,
+                    },
+                );
+
+                return {
+                    mods: [],
+                };
+            },
+            loadModule() {
+                return {};
+            },
+        });
+        const engine = new AnthaEngine<AnthaAssetModState & AnthaBootstrapModState>({
+            mods: [
+                createAnthaAssetMod(),
+                bootstrapMod,
+            ],
+        });
+
+        await engine.runSingleTick();
+        await wait({
+            milliseconds: 0,
+        });
+
+        assert.deepEquals(assertWrap.isDefined(engine.state.assetLoader).loadState, {
+            completedAt: undefined,
+            current: 1,
+            currentResourceName: 'Initial game asset',
+            isLoading: true,
+            total: 1,
+        });
+    });
+
     it('completes the loading session and logs when module loading fails', async () => {
         const loggedErrors: unknown[] = [];
-        const bootstrapMod = createAnthaBootstrapMod({
+        const bootstrapMod = createAnthaBootstrapMod()({
             bootstrap() {
                 throw new Error('Bootstrap should not execute.');
             },
