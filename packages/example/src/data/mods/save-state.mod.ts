@@ -1,6 +1,6 @@
 import {type Asset} from '@antha/asset';
 import {defineAnthaMod, SkipExecution} from '@antha/engine';
-import {loadEntityAssets} from '@antha/entity-2d';
+import {loadAnthaAssets} from '@antha/entity-2d';
 import {Assets} from '@antha/graphics-2d';
 import {Store} from 'indexed-vir';
 import {HangarEntity} from '../entities/hangar.entity.js';
@@ -101,14 +101,14 @@ export const saveStateMod = defineAnthaMod<FullExampleGameState>({
             const saveStateStore = state.saveStateStore;
             const loadSession = assetLoader.createLoadSession();
 
-            state.loadPromise = loadEntityAssets(
+            state.loadPromise = loadAnthaAssets(
                 {
                     assetLoader,
                     entities: [
                         HangarEntity,
                         PlayerShipEntity,
                     ],
-                    otherAssets: [
+                    assets: [
                         fontsAsset,
                         createSaveStateAsset({
                             saveStateStore,

@@ -18,6 +18,9 @@
             "path": "../asset"
         },
         {
+            "path": "../audio"
+        },
+        {
             "path": "../engine"
         },
         {

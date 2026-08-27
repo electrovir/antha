@@ -11,7 +11,6 @@ import {
     EntityEvent,
     EntityHitboxSystem,
     entityPositionParamsShape,
-    loadEntityAssets,
     position2dParamsMap,
     type BaseEntity2d,
     type EntityStore2d,
@@ -734,75 +733,6 @@ describe('EntityStore', () => {
         assert.throws(() => store.destroy(), {
             matchMessage: 'Entity store is already destroyed.',
         });
-    });
-
-    it('loads entity assets via loadEntityAssets', async () => {
-        const suite = createTestSuite();
-        const assetLoader = new AssetLoader();
-        let loadCalled = false;
-
-        class AssetEntity extends suite.defineEntity({
-            key: 'AssetEntityLoad',
-            paramsShape: undefined,
-            assets: {
-                graphic: {
-                    maxProgress: 1,
-                    load({incrementProgressCallback}) {
-                        loadCalled = true;
-                        incrementProgressCallback();
-                        return {
-                            value: new Graphics().rect(0, 0, 10, 10).fill('red'),
-                        };
-                    },
-                },
-            },
-        }) {
-            public override update(): void {}
-            public override createView(): ViewCreation2d {
-                return {
-                    view: new Graphics().rect(0, 0, 10, 10).fill('red'),
-                };
-            }
-        }
-
-        await loadEntityAssets({
-            assetLoader,
-            entities: [AssetEntity],
-        });
-        assert.isTrue(loadCalled);
-    });
-
-    it('loads other assets via loadEntityAssets', async () => {
-        const suite = createTestSuite();
-        const assetLoader = new AssetLoader();
-        let otherAssetLoadCalled = false;
-
-        class NoAssetsEntity extends suite.defineLogicEntity({
-            key: 'NoAssetsEntityLoad',
-            paramsShape: undefined,
-        }) {
-            public override update(): void {}
-        }
-
-        await loadEntityAssets({
-            assetLoader,
-            entities: [NoAssetsEntity],
-            otherAssets: [
-                {
-                    assetName: 'Other asset',
-                    maxProgress: 1,
-                    load({incrementProgressCallback}) {
-                        otherAssetLoadCalled = true;
-                        incrementProgressCallback();
-                        return {
-                            value: 'other-value',
-                        };
-                    },
-                },
-            ],
-        });
-
-        assert.isTrue(otherAssetLoadCalled);
     });
 
     it('awaits async collision callbacks', async () => {

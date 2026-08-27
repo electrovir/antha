@@ -6,6 +6,31 @@ import {Graphics} from 'pixi.js';
 import {createAnthaEntityMod2d, type AnthaEntity2dModState} from './antha-entity.mod.js';
 import {type ViewCreation2d} from './entity.js';
 
+function createTickEntity({
+    defineEntity,
+    key,
+    onUpdate,
+}: Readonly<{
+    defineEntity: ReturnType<typeof createAnthaEntityMod2d>['defineEntity'];
+    key: string;
+    onUpdate: () => void;
+}>) {
+    return class TickEntity extends defineEntity({
+        key,
+        paramsShape: undefined,
+    }) {
+        public override update(): void {
+            onUpdate();
+        }
+
+        public override createView(): ViewCreation2d {
+            return {
+                view: new Graphics().rect(0, 0, 10, 10).fill('green'),
+            };
+        }
+    };
+}
+
 describe(createAnthaEntityMod2d.name, () => {
     it('skips execution when pixi is not available', async () => {
         const {mod} = createAnthaEntityMod2d({});
@@ -105,21 +130,13 @@ describe(createAnthaEntityMod2d.name, () => {
     it('updates entities on subsequent ticks', async () => {
         const {mod, defineEntity} = createAnthaEntityMod2d({});
         let updateCount = 0;
-
-        class TickEntity extends defineEntity({
+        const TickEntity = createTickEntity({
+            defineEntity,
             key: 'TickEntity',
-            paramsShape: undefined,
-        }) {
-            public override update(): void {
+            onUpdate() {
                 updateCount++;
-            }
-
-            public override createView(): ViewCreation2d {
-                return {
-                    view: new Graphics().rect(0, 0, 10, 10).fill('green'),
-                };
-            }
-        }
+            },
+        });
 
         const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
             mods: [
@@ -138,5 +155,41 @@ describe(createAnthaEntityMod2d.name, () => {
         await engine.runSingleTick();
 
         assert.strictEquals(updateCount, 1);
+    });
+
+    it('skips entity updates while disabled', async () => {
+        const {mod, defineEntity} = createAnthaEntityMod2d({});
+        let updateCount = 0;
+        const TickEntity = createTickEntity({
+            defineEntity,
+            key: 'DisabledTickEntity',
+            onUpdate() {
+                updateCount++;
+            },
+        });
+
+        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
+            mods: [
+                AnthaMockPixiMod,
+                mod,
+            ],
+        });
+
+        await engine.runSingleTick();
+
+        assert.isDefined(engine.state.entityStore);
+        const entityStore = engine.state.entityStore;
+        await entityStore.addEntity(TickEntity);
+        engine.state.disableEntityUpdates = true;
+
+        await engine.runSingleTick();
+
+        assert.strictEquals(updateCount, 0);
+        assert.strictEquals(engine.state.entityStore, entityStore);
+        engine.state.disableEntityUpdates = false;
+
+        await engine.runSingleTick();
+
+        assert.isAbove(updateCount, 0);
     });
 });

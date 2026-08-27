@@ -6,7 +6,7 @@ import {
 import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
 import {
     createAnthaEntityMod2d,
-    loadEntityAssets,
+    loadAnthaAssets,
     type AnthaEntity2dModState,
     type EntityStore2d,
 } from '@antha/entity-2d';
@@ -316,7 +316,7 @@ const entityAssetDemoMod = defineAnthaMod<
             state.assetsLoaded = true;
             const loadSession = assetLoader.createLoadSession();
             void (async () => {
-                await loadEntityAssets(
+                await loadAnthaAssets(
                     {
                         assetLoader,
                         entities: [

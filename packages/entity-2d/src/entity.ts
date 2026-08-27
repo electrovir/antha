@@ -1,15 +1,9 @@
-import {
-    type Asset,
-    type AssetBulkLoaderLoadOptions,
-    type AssetLoader,
-    type AssetValue,
-} from '@antha/asset';
+import {type Asset, type AssetLoader, type AssetValue} from '@antha/asset';
 import {type PixiApplication} from '@antha/graphics-2d';
 import {assert, check} from '@augment-vir/assert';
 import {
     ConstructorInstanceMap,
     getObjectTypedEntries,
-    getObjectTypedValues,
     makeWritable,
     mapObjectValues,
     type AbstractConstructor,
@@ -133,29 +127,6 @@ export type EntityCollisionDefinition = PartialWithUndefined<{
     /** Other entity classes this entity observes collisions with. */
     collidesWithOtherEntities: ReadonlyArray<Entity2dConstructor>;
 }>;
-
-/** Loads assets declared by the given entity classes. */
-export async function loadEntityAssets(
-    {
-        assetLoader,
-        entities,
-        otherAssets,
-    }: Readonly<{
-        assetLoader: AssetLoader;
-        entities: ReadonlyArray<Entity2dConstructor>;
-        otherAssets?: ReadonlyArray<Readonly<Asset>> | undefined;
-    }>,
-    options?: Readonly<AssetBulkLoaderLoadOptions> | undefined,
-) {
-    const assets: ReadonlyArray<Readonly<Asset>> = [
-        ...(otherAssets || []),
-        ...entities.flatMap((entity) => {
-            return getObjectTypedValues(entity.assets);
-        }),
-    ];
-
-    return await assetLoader.bulkLoadAssets(assets, options);
-}
 
 function extractEntityFromHitbox(hitbox: Hitbox) {
     return hitbox.userData instanceof BaseEntity2d ? hitbox.userData : undefined;
@@ -578,7 +549,7 @@ export class EntityStore2d<State extends AnyObject = any> {
 /**
  * Shape definition for {@link EntityPositionParams}.
  *
- * @category Util
+ * @category Main
  */
 export const entityPositionParamsShape = defineShape({
     x: -1,
