@@ -1,6 +1,6 @@
 {
     "name": "@antha/demos",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "private": true,
     "license": "(MIT OR CC0-1.0)",
     "sideEffects": false,
@@ -13,16 +13,16 @@
         "test:coverage": "npm test"
     },
     "dependencies": {
-        "@antha/asset": "^0.7.0",
-        "@antha/audio": "^0.7.0",
-        "@antha/engine": "^0.7.0",
-        "@antha/entity-2d": "^0.7.0",
-        "@antha/fps": "^0.7.0",
-        "@antha/graphics-2d": "^0.7.0",
-        "@antha/input": "^0.7.0",
-        "@antha/multiplayer-core": "^0.7.0",
-        "@antha/multiplayer-p2p-authoritative-host": "^0.7.0",
-        "@antha/multiplayer-p2p-lock-step": "^0.7.0",
+        "@antha/asset": "^0.8.0",
+        "@antha/audio": "^0.8.0",
+        "@antha/engine": "^0.8.0",
+        "@antha/entity-2d": "^0.8.0",
+        "@antha/fps": "^0.8.0",
+        "@antha/graphics-2d": "^0.8.0",
+        "@antha/input": "^0.8.0",
+        "@antha/multiplayer-core": "^0.8.0",
+        "@antha/multiplayer-p2p-authoritative-host": "^0.8.0",
+        "@antha/multiplayer-p2p-lock-step": "^0.8.0",
         "@augment-vir/assert": "^32.2.3",
         "@augment-vir/common": "^32.2.3",
         "@electrovir/color": "^1.7.11",
@@ -30,11 +30,11 @@
         "detect-collisions": "^10.10.2025",
         "element-vir": "^26.17.3",
         "object-shape-tester": "^6.15.0",
-        "pixi.js": "^8.19.0",
+        "pixi.js": "^8.20.0",
         "spa-router-vir": "^6.8.0",
         "theme-vir": "^28.25.1",
         "url-vir": "^2.2.1",
-        "vira": "^31.31.5"
+        "vira": "^31.31.6"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.2.3",
@@ -44,7 +44,7 @@
         "@web/test-runner-playwright": "^1.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
         "typescript": "^6.0.3",
-        "vite": "^8.2.1"
+        "vite": "^8.2.2"
     },
     "engines": {
         "node": ">=22"

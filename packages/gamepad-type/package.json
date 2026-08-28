@@ -1,6 +1,6 @@
 {
     "name": "@antha/gamepad-type",
-    "version": "0.7.0",
+    "version": "0.8.0",
     "description": "Gamepad type detection and gamepad helper elements for the web.",
     "keywords": [
         "gamepad",
@@ -55,8 +55,8 @@
         "sentry-vir": "^4.5.1",
         "typedoc": "^0.28.20",
         "typescript": "^6.0.3",
-        "vira": "^31.31.5",
-        "vite": "^8.2.1"
+        "vira": "^31.31.6",
+        "vite": "^8.2.2"
     },
     "engines": {
         "node": ">=22"
