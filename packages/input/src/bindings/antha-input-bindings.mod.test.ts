@@ -42,6 +42,7 @@ describe(createAnthaInputBindingsMod.name, () => {
         engine.state.rawInputs = {
             keyboard: {
                 'button-keyW': {
+                    consumedBy: undefined,
                     inputName: 'button-keyW',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -80,7 +81,9 @@ describe(createAnthaInputBindingsMod.name, () => {
         assert.isLengthExactly(activeBinding.rawInputs, 1);
         assert.strictEquals(
             activeBinding.rawInputs[0],
-            assertWrap.isDefined(engine.state.rawInputs.keyboard?.['button-keyW']),
+            assertWrap.isDefined(
+                assertWrap.isDefined(engine.state.rawInputs).keyboard?.['button-keyW'],
+            ),
         );
         assert.strictEquals(activeBinding.value, 1);
         assert.strictEquals(activeBinding.holdDuration.milliseconds, 0);
@@ -98,6 +101,7 @@ describe(createAnthaInputBindingsMod.name, () => {
         engine.state.rawInputs = {
             keyboard: {
                 'button-keyW': {
+                    consumedBy: undefined,
                     inputName: 'button-keyW',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -150,6 +154,7 @@ describe(createAnthaInputBindingsMod.name, () => {
         engine.state.rawInputs = {
             keyboard: {
                 'button-keyW': {
+                    consumedBy: undefined,
                     inputName: 'button-keyW',
                     inputValue: -1,
                     direction: InputDirection.Negative,
@@ -231,6 +236,7 @@ describe(createAnthaInputBindingsMod.name, () => {
         engine.state.rawInputs = {
             [GamepadInputDeviceKey.Gamepad1]: {
                 'button-0': {
+                    consumedBy: undefined,
                     inputName: 'button-0',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -281,6 +287,7 @@ describe(createAnthaInputBindingsMod.name, () => {
         engine.state.rawInputs = {
             [GamepadInputDeviceKey.Gamepad1]: {
                 'd-pad-left': {
+                    consumedBy: undefined,
                     inputName: 'd-pad-left',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -297,6 +304,7 @@ describe(createAnthaInputBindingsMod.name, () => {
                     },
                 },
                 'left-stick-x': {
+                    consumedBy: undefined,
                     inputName: 'left-stick-x',
                     inputValue: -1,
                     direction: InputDirection.Negative,
@@ -351,6 +359,7 @@ describe(createAnthaInputBindingsMod.name, () => {
         engine.state.rawInputs = {
             [GamepadInputDeviceKey.Gamepad2]: {
                 'button-0': {
+                    consumedBy: undefined,
                     inputName: 'button-0',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -404,6 +413,7 @@ describe(createAnthaInputBindingsMod.name, () => {
         engine.state.rawInputs = {
             [GamepadInputDeviceKey.Gamepad1]: {
                 'button-0': {
+                    consumedBy: undefined,
                     inputName: 'button-0',
                     inputValue: 1,
                     direction: InputDirection.Positive,

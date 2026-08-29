@@ -1,5 +1,13 @@
-import {type GamepadInputDeviceKey, type InputDeviceKey} from 'input-device-handler';
-import {type InputDirection, type RawInput} from '../raw-inputs/raw-input.js';
+import {InputDeviceKey, type GamepadInputDeviceKey} from 'input-device-handler';
+import {
+    defineShape,
+    enumShape,
+    nonEmptyStringShape,
+    optionalShape,
+    recordShape,
+    typedStringShape,
+} from 'object-shape-tester';
+import {InputDirection, type RawInput} from '../raw-inputs/raw-input.js';
 
 /**
  * A mapping of gamepad keys that simply allows them to be interpreted as different keys. This is
@@ -54,6 +62,36 @@ export type BindingAssignment = {
  * @category Internal
  */
 export type PlayerPosition = `${number}`;
+
+/**
+ * Shape definition for {@link BindingAssignment}.
+ *
+ * @category Internal
+ */
+export const bindingAssignmentShape = defineShape({
+    deviceKey: enumShape({
+        ...InputDeviceKey,
+        AnyGamepad,
+    }),
+    direction: enumShape(InputDirection),
+    gamepadBrand: optionalShape(nonEmptyStringShape()),
+    inputName: nonEmptyStringShape(),
+});
+
+/**
+ * Shape definition for {@link PlayersBindingAssignments}.
+ *
+ * @category Internal
+ */
+export const playersBindingAssignmentsShape = recordShape({
+    keys: typedStringShape<PlayerPosition>(),
+    partial: true,
+    values: recordShape({
+        keys: '',
+        partial: true,
+        values: [bindingAssignmentShape],
+    }),
+});
 
 /**
  * A collection of bindings for a single player. Used in `createAnthaReadBindingsMod` and
