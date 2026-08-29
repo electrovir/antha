@@ -41,6 +41,7 @@ function createActiveBinding({
         holdDuration: {
             milliseconds: holdDurationMs,
         },
+        rawInputs: [],
         value,
         actCount,
         lastActDuration: {
@@ -116,11 +117,13 @@ function createRecordingNavController() {
 
 async function runMenuNav({
     activeBindings,
+    allowedPlayerMenuNavigation,
     blockPerpendicularNavigation = false,
     navController = createRecordingNavController(),
     isInMenu = true,
 }: Readonly<{
     activeBindings?: PlayersActiveBindings | undefined;
+    allowedPlayerMenuNavigation?: MenuNavModState['allowedPlayerMenuNavigation'];
     blockPerpendicularNavigation?: boolean | undefined;
     navController?: RecordingNavController | undefined;
     isInMenu?: boolean | undefined;
@@ -129,6 +132,7 @@ async function runMenuNav({
         initState: {
             isInMenu,
             navController,
+            allowedPlayerMenuNavigation,
             ...(activeBindings && {
                 activeBindings,
             }),
@@ -168,6 +172,81 @@ async function runMenuNav({
 }
 
 describe(createAnthaMenuNavMod.name, () => {
+    it('allows menu navigation only for explicitly allowed players', async () => {
+        const navController = createRecordingNavController();
+        const allowedBinding = createActiveBinding();
+        const deniedBinding = createActiveBinding();
+
+        await runMenuNav({
+            activeBindings: {
+                '1': {
+                    [MenuNavBinding.MenuRight]: allowedBinding,
+                },
+                '2': {
+                    [MenuNavBinding.MenuLeft]: deniedBinding,
+                },
+            },
+            allowedPlayerMenuNavigation: {
+                '1': true,
+            },
+            navController,
+        });
+
+        assert.deepEquals(
+            {
+                calls: navController.calls,
+                allowedBinding,
+                deniedBinding,
+            },
+            {
+                calls: [
+                    `navigate-${NavDirection.Right}`,
+                ],
+                allowedBinding: createActiveBinding({
+                    actCount: 1,
+                    lastActDurationMs: 0,
+                }),
+                deniedBinding: createActiveBinding(),
+            },
+        );
+    });
+
+    it('does not consume inactive menu controls for denied players', async () => {
+        const navController = createRecordingNavController();
+        const deniedEnterBinding = createActiveBinding({
+            holdDurationMs: 120,
+        });
+        const {engine} = await runMenuNav({
+            activeBindings: {
+                '2': {
+                    [MenuNavBinding.MenuEnter]: deniedEnterBinding,
+                },
+            },
+            allowedPlayerMenuNavigation: {
+                '1': true,
+            },
+            isInMenu: false,
+            navController,
+        });
+
+        engine.state.isInMenu = true;
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(
+            {
+                calls: navController.calls,
+                deniedEnterBinding,
+            },
+            {
+                calls: [],
+                deniedEnterBinding: createActiveBinding({
+                    holdDurationMs: 120,
+                }),
+            },
+        );
+    });
+
     it('forwards perpendicular navigation settings', async () => {
         const navController = createRecordingNavController();
 
@@ -220,6 +299,7 @@ describe(createAnthaMenuNavMod.name, () => {
                     holdDuration: {
                         milliseconds: 120,
                     },
+                    rawInputs: [],
                     value: 1,
                     actCount: 0,
                     lastActDuration: {
@@ -239,6 +319,7 @@ describe(createAnthaMenuNavMod.name, () => {
             holdDuration: {
                 milliseconds: 120,
             },
+            rawInputs: [],
             value: 1,
             actCount: 1,
             lastActDuration: {
@@ -286,6 +367,7 @@ describe(createAnthaMenuNavMod.name, () => {
                             holdDuration: {
                                 milliseconds: 0,
                             },
+                            rawInputs: [],
                             value: 1,
                             actCount: 0,
                             lastActDuration: {

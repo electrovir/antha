@@ -1,13 +1,14 @@
 import {defineAnthaMod} from '@antha/engine';
 import {KnownInput} from '@antha/gamepad-type';
 import {check} from '@augment-vir/assert';
-import {getObjectTypedEntries, getObjectTypedValues} from '@augment-vir/common';
+import {getObjectTypedEntries} from '@augment-vir/common';
 import {type AnyDuration, convertDuration} from 'date-vir';
 import {NavController, type NavControllerOptions, NavDirection, NavValue} from 'device-navigation';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
     AnyGamepad,
     type BindingAssignments,
+    type PlayerPosition,
     type PlayersActiveBindings,
 } from './player-bindings.js';
 
@@ -282,6 +283,11 @@ export type MenuNavOptions = Readonly<
 export type MenuNavModState = {
     /** Set to true to enable menu navigation. */
     isInMenu: boolean;
+    /**
+     * When defined, only players explicitly set to true may use menu navigation. Omit this or set
+     * to `undefined` to allow every player to run menu navigation.
+     */
+    allowedPlayerMenuNavigation: Partial<Record<PlayerPosition, boolean>> | undefined;
     /** Omit or set to `undefined` to disable menu nav. */
     menuNavOptions: Required<MenuNavOptions> | undefined;
     /** All active bindings for all players. */
@@ -332,6 +338,7 @@ export function createAnthaMenuNavMod(
             } else if (!state.isInMenu) {
                 consumeInactiveMenuActivationBindings({
                     activeBindings: state.activeBindings,
+                    allowedPlayerMenuNavigation: state.allowedPlayerMenuNavigation,
                 });
 
                 return;
@@ -348,35 +355,50 @@ export function createAnthaMenuNavMod(
             const bindingsToAct: Partial<Record<MenuNavBinding, boolean>> = {};
             const activeMenuBindings: Partial<Record<MenuNavBinding, boolean>> = {};
 
-            getObjectTypedValues(state.activeBindings).forEach((playerActiveBindings) => {
-                getObjectTypedEntries(playerActiveBindings).forEach(
-                    ([
-                        bindingName,
-                        activeBinding,
-                    ]) => {
-                        if (!check.isEnumValue(bindingName, MenuNavBinding)) {
-                            return;
-                        }
+            getObjectTypedEntries(state.activeBindings).forEach(
+                ([
+                    playerPosition,
+                    playerActiveBindings,
+                ]) => {
+                    if (
+                        !isPlayerMenuNavigationAllowed({
+                            allowedPlayerMenuNavigation: state.allowedPlayerMenuNavigation,
+                            playerPosition,
+                        })
+                    ) {
+                        return;
+                    }
 
-                        activeMenuBindings[bindingName] = true;
+                    getObjectTypedEntries(playerActiveBindings).forEach(
+                        ([
+                            bindingName,
+                            activeBinding,
+                        ]) => {
+                            if (!check.isEnumValue(bindingName, MenuNavBinding)) {
+                                return;
+                            }
 
-                        if (
-                            (!directionalMenuNavBindings.includes(bindingName) ||
-                                activeBinding.value >= minimumDirectionalInputValue) &&
-                            (!activeBinding.actCount ||
-                                (directionalMenuNavBindings.includes(bindingName) &&
-                                    activeBinding.holdDuration.milliseconds >= repeatThreshold &&
-                                    activeBinding.holdDuration.milliseconds -
-                                        activeBinding.lastActDuration.milliseconds >
-                                        repeatInterval))
-                        ) {
-                            bindingsToAct[bindingName] = true;
-                            activeBinding.actCount++;
-                            activeBinding.lastActDuration = activeBinding.holdDuration;
-                        }
-                    },
-                );
-            });
+                            activeMenuBindings[bindingName] = true;
+
+                            if (
+                                (!directionalMenuNavBindings.includes(bindingName) ||
+                                    activeBinding.value >= minimumDirectionalInputValue) &&
+                                (!activeBinding.actCount ||
+                                    (directionalMenuNavBindings.includes(bindingName) &&
+                                        activeBinding.holdDuration.milliseconds >=
+                                            repeatThreshold &&
+                                        activeBinding.holdDuration.milliseconds -
+                                            activeBinding.lastActDuration.milliseconds >
+                                            repeatInterval))
+                            ) {
+                                bindingsToAct[bindingName] = true;
+                                activeBinding.actCount++;
+                                activeBinding.lastActDuration = activeBinding.holdDuration;
+                            }
+                        },
+                    );
+                },
+            );
 
             if (bindingsToAct[MenuNavBinding.MenuEnter]) {
                 state.navController.enterInto({
@@ -449,24 +471,57 @@ export function createAnthaMenuNavMod(
 
 function consumeInactiveMenuActivationBindings({
     activeBindings,
+    allowedPlayerMenuNavigation,
 }: Readonly<{
     activeBindings: PlayersActiveBindings;
+    allowedPlayerMenuNavigation: MenuNavModState['allowedPlayerMenuNavigation'];
 }>) {
-    getObjectTypedValues(activeBindings).forEach((playerActiveBindings) => {
-        [
-            MenuNavBinding.MenuEnter,
-            MenuNavBinding.MenuExit,
-        ].forEach((bindingName) => {
-            const activeBinding = playerActiveBindings[bindingName];
-
-            if (!activeBinding || activeBinding.actCount) {
+    getObjectTypedEntries(activeBindings).forEach(
+        ([
+            playerPosition,
+            playerActiveBindings,
+        ]) => {
+            if (
+                !isPlayerMenuNavigationAllowed({
+                    allowedPlayerMenuNavigation,
+                    playerPosition,
+                })
+            ) {
                 return;
             }
 
-            activeBinding.actCount++;
-            activeBinding.lastActDuration = activeBinding.holdDuration;
-        });
-    });
+            [
+                MenuNavBinding.MenuEnter,
+                MenuNavBinding.MenuExit,
+            ].forEach((bindingName) => {
+                const activeBinding = playerActiveBindings[bindingName];
+
+                if (!activeBinding || activeBinding.actCount) {
+                    return;
+                }
+
+                activeBinding.actCount++;
+                activeBinding.lastActDuration = activeBinding.holdDuration;
+            });
+        },
+    );
+}
+
+/**
+ * Checks whether the given player may use menu navigation under the current allowlist.
+ *
+ * @category Internal
+ */
+export function isPlayerMenuNavigationAllowed({
+    allowedPlayerMenuNavigation,
+    playerPosition,
+}: Readonly<{
+    allowedPlayerMenuNavigation: MenuNavModState['allowedPlayerMenuNavigation'];
+    playerPosition: PlayerPosition;
+}>) {
+    return (
+        allowedPlayerMenuNavigation == undefined || !!allowedPlayerMenuNavigation[playerPosition]
+    );
 }
 
 /**
