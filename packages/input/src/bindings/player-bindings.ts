@@ -1,5 +1,5 @@
 import {type GamepadInputDeviceKey, type InputDeviceKey} from 'input-device-handler';
-import {type InputDirection} from '../raw-inputs/raw-input.js';
+import {type InputDirection, type RawInput} from '../raw-inputs/raw-input.js';
 
 /**
  * A mapping of gamepad keys that simply allows them to be interpreted as different keys. This is
@@ -82,6 +82,8 @@ export type PlayersBindingAssignments<BindingNames extends string = string> = Re
  * @category Internal
  */
 export type ActiveBinding = {
+    /** The currently active raw inputs that contribute to this binding. */
+    rawInputs: RawInput[];
     /**
      * The full duration for which the current binding has been active in its current direction.
      * When an active is first pressed, this will be 0 milliseconds.

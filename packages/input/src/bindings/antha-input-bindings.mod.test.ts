@@ -1,5 +1,5 @@
 import {AnthaEngine} from '@antha/engine';
-import {assert} from '@augment-vir/assert';
+import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {GamepadInputDeviceKey, InputDeviceKey, InputDeviceType} from 'input-device-handler';
 import {InputDirection} from '../raw-inputs/raw-input.js';
@@ -73,16 +73,17 @@ describe(createAnthaInputBindingsMod.name, () => {
 
         await engine.runSingleTick();
 
-        assert.isDefined(engine.state.activeBindings?.[GamepadInputDeviceKey.Gamepad2]?.moveUp);
-        assert.strictEquals(
-            engine.state.activeBindings[GamepadInputDeviceKey.Gamepad2]?.moveUp?.value,
-            1,
+        const activeBinding = assertWrap.isDefined(
+            engine.state.activeBindings?.[GamepadInputDeviceKey.Gamepad2]?.moveUp,
         );
+
+        assert.isLengthExactly(activeBinding.rawInputs, 1);
         assert.strictEquals(
-            engine.state.activeBindings[GamepadInputDeviceKey.Gamepad2]?.moveUp?.holdDuration
-                .milliseconds,
-            0,
+            activeBinding.rawInputs[0],
+            assertWrap.isDefined(engine.state.rawInputs.keyboard?.['button-keyW']),
         );
+        assert.strictEquals(activeBinding.value, 1);
+        assert.strictEquals(activeBinding.holdDuration.milliseconds, 0);
     });
 
     it('accumulates hold duration on subsequent ticks', async () => {

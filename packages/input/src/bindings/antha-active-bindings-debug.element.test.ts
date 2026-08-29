@@ -25,6 +25,7 @@ describe(AnthaActiveBindingsDebug.tagName, () => {
                             holdDuration: {
                                 milliseconds: 100,
                             },
+                            rawInputs: [],
                             value: 1,
                             lastActDuration: {
                                 milliseconds: 0,

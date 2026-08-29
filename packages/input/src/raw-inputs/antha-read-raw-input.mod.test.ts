@@ -314,6 +314,7 @@ describe(readRawInputs.name, () => {
         const previousRawInputs: RawInputs = {
             keyboard: {
                 'button-keyW': {
+                    consumedBy: 'menu',
                     direction: InputDirection.Positive,
                     duration: {
                         milliseconds: 100,
@@ -345,7 +346,18 @@ describe(readRawInputs.name, () => {
         const keyboard = result.rawInputs.keyboard;
 
         assert.isDefined(keyboard);
-        assert.strictEquals(keyboard['button-keyW']?.duration.milliseconds, 116);
+        assert.deepEquals(
+            selectFrom(assertWrap.isDefined(keyboard['button-keyW']), {
+                consumedBy: true,
+                duration: true,
+            }),
+            {
+                consumedBy: 'menu',
+                duration: {
+                    milliseconds: 116,
+                },
+            },
+        );
     });
 
     it('resets duration when direction changes', () => {
@@ -373,6 +385,7 @@ describe(readRawInputs.name, () => {
         const previousRawInputs: RawInputs = {
             keyboard: {
                 'button-keyW': {
+                    consumedBy: 'menu',
                     direction: InputDirection.Positive,
                     duration: {
                         milliseconds: 100,
@@ -405,6 +418,7 @@ describe(readRawInputs.name, () => {
 
         assert.isDefined(keyboard);
         assert.strictEquals(keyboard['button-keyW']?.duration.milliseconds, 0);
+        assert.isUndefined(keyboard['button-keyW'].consumedBy);
     });
 
     it('handles gamepad devices with layout mappings', () => {

@@ -40,6 +40,8 @@ export function calculateInputDirection(inputValue: number): InputDirection {
  * @category Internal
  */
 export type RawInput = Omit<InputValueWrapper<InputDeviceKey, any>, 'details'> & {
+    /** An identifier set by a game when it claims this input. */
+    consumedBy: string | undefined;
     mapped: SelectFrom<
         InputValueWrapper<InputDeviceKey, any>,
         {

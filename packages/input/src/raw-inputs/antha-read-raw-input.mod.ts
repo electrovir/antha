@@ -188,18 +188,18 @@ export function readRawInputs(
         Object.values(device.currentInputs).forEach((currentInput) => {
             const direction = calculateInputDirection(currentInput.inputValue);
 
-            const previousRawInput = state.rawInputs?.[deviceKey]?.[currentInput.inputName];
+            const potentialPreviousRawInput =
+                state.rawInputs?.[deviceKey]?.[currentInput.inputName];
+            const previousRawInput =
+                potentialPreviousRawInput?.direction === direction
+                    ? potentialPreviousRawInput
+                    : undefined;
 
-            const duration =
-                previousRawInput?.direction === direction
-                    ? {
-                          milliseconds: Math.round(
-                              previousRawInput.duration.milliseconds + msSinceLastExecute,
-                          ),
-                      }
-                    : {
-                          milliseconds: 0,
-                      };
+            const duration = {
+                milliseconds: previousRawInput
+                    ? Math.round(previousRawInput.duration.milliseconds + msSinceLastExecute)
+                    : 0,
+            };
 
             const layout = isGamepadDeviceKey(deviceKey)
                 ? findMatchingGamepadLayout({
@@ -229,6 +229,7 @@ export function readRawInputs(
             });
 
             const rawInput: RawInput = {
+                consumedBy: previousRawInput?.consumedBy,
                 mapped: {
                     deviceName: model?.gamepadModel || device.deviceName,
                     gamepadBrand: model?.gamepadBrand,

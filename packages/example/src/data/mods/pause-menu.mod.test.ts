@@ -9,6 +9,7 @@ function createActiveBinding(): ActiveBinding {
         holdDuration: {
             milliseconds: 0,
         },
+        rawInputs: [],
         value: 1,
         actCount: 0,
         lastActDuration: {

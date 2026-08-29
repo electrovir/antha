@@ -225,6 +225,7 @@ function readPlayerBindings<BindingNames extends string>({
                     holdDuration: {
                         milliseconds: Math.round(durationMs),
                     },
+                    rawInputs: matchingInputs,
                     value,
                     actCount: previousActiveBinding?.actCount || 0,
                     lastActDuration: previousActiveBinding?.lastActDuration || {
