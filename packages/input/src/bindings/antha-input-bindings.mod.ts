@@ -143,6 +143,7 @@ function filterRawInput(
 ): entry is RawInput {
     return (
         entry?.direction === binding.direction &&
+        !entry.isIgnoredByConsumer &&
         (binding.gamepadBrand ? binding.gamepadBrand === entry.mapped.gamepadBrand : true)
     );
 }

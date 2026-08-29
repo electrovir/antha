@@ -26,6 +26,29 @@ function createMockDeviceHandler(devices: AllDevices = {}) {
     };
 }
 
+function createMockKeyboardDevices(): AllDevices {
+    return {
+        keyboard: {
+            deviceKey: InputDeviceKey.Keyboard,
+            deviceName: 'keyboard',
+            deviceType: InputDeviceType.Keyboard,
+            deviceDetails: undefined,
+            currentInputs: {
+                'button-keyW': {
+                    inputName: 'button-keyW',
+                    inputValue: 1,
+                    details: {
+                        keyboardEvent: mockKeyboardEvent,
+                    },
+                    deviceKey: InputDeviceKey.Keyboard,
+                    deviceName: 'keyboard',
+                    deviceType: InputDeviceType.Keyboard,
+                },
+            },
+        },
+    };
+}
+
 const mockKeyboardEvent = {} as KeyboardEvent;
 const mockSerializedGamepad = {} as SerializedGamepad;
 
@@ -289,6 +312,91 @@ describe(readRawInputs.name, () => {
         assert.strictEquals(keyboard['button-keyA']?.direction, InputDirection.Flat);
     });
 
+    it('claims a raw input only when it starts with a consumer', () => {
+        const mockDevices = createMockKeyboardDevices();
+        const initialResult = readRawInputs(
+            {
+                deviceHandler: createMockDeviceHandler(mockDevices),
+                rawInputConsumer: 'menu',
+            },
+            {
+                msSinceLastExecute: 16,
+            },
+        );
+
+        assert.deepEquals(
+            selectFrom(assertWrap.isDefined(initialResult.rawInputs.keyboard?.['button-keyW']), {
+                consumedBy: true,
+                isIgnoredByConsumer: true,
+            }),
+            {
+                consumedBy: 'menu',
+                isIgnoredByConsumer: false,
+            },
+        );
+
+        const changedConsumerResult = readRawInputs(
+            {
+                deviceHandler: createMockDeviceHandler(mockDevices),
+                rawInputConsumer: 'game',
+                rawInputs: initialResult.rawInputs,
+            },
+            {
+                msSinceLastExecute: 16,
+            },
+        );
+
+        assert.deepEquals(
+            selectFrom(
+                assertWrap.isDefined(changedConsumerResult.rawInputs.keyboard?.['button-keyW']),
+                {
+                    consumedBy: true,
+                    isIgnoredByConsumer: true,
+                },
+            ),
+            {
+                consumedBy: 'menu',
+                isIgnoredByConsumer: true,
+            },
+        );
+    });
+
+    it('does not claim an input after it has already started', () => {
+        const mockDevices = createMockKeyboardDevices();
+        const initialResult = readRawInputs(
+            {
+                deviceHandler: createMockDeviceHandler(mockDevices),
+            },
+            {
+                msSinceLastExecute: 16,
+            },
+        );
+        const changedConsumerResult = readRawInputs(
+            {
+                deviceHandler: createMockDeviceHandler(mockDevices),
+                rawInputConsumer: 'game',
+                rawInputs: initialResult.rawInputs,
+            },
+            {
+                msSinceLastExecute: 16,
+            },
+        );
+
+        assert.deepEquals(
+            selectFrom(
+                assertWrap.isDefined(changedConsumerResult.rawInputs.keyboard?.['button-keyW']),
+                {
+                    consumedBy: true,
+                    isIgnoredByConsumer: true,
+                },
+            ),
+            {
+                consumedBy: undefined,
+                isIgnoredByConsumer: false,
+            },
+        );
+    });
+
     it('accumulates duration when direction is maintained', () => {
         const mockDevices: AllDevices = {
             keyboard: {
@@ -315,6 +423,7 @@ describe(readRawInputs.name, () => {
             keyboard: {
                 'button-keyW': {
                     consumedBy: 'menu',
+                    isIgnoredByConsumer: false,
                     direction: InputDirection.Positive,
                     duration: {
                         milliseconds: 100,
@@ -386,6 +495,7 @@ describe(readRawInputs.name, () => {
             keyboard: {
                 'button-keyW': {
                     consumedBy: 'menu',
+                    isIgnoredByConsumer: false,
                     direction: InputDirection.Positive,
                     duration: {
                         milliseconds: 100,

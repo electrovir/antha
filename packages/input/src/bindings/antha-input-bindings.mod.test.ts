@@ -43,6 +43,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             keyboard: {
                 'button-keyW': {
                     consumedBy: undefined,
+                    isIgnoredByConsumer: false,
                     inputName: 'button-keyW',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -89,6 +90,53 @@ describe(createAnthaInputBindingsMod.name, () => {
         assert.strictEquals(activeBinding.holdDuration.milliseconds, 0);
     });
 
+    it('ignores raw inputs claimed by another consumer', async () => {
+        const mod = createAnthaInputBindingsMod<'moveUp'>();
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'moveUp'>>({
+            mods: [
+                mod,
+            ],
+        });
+
+        engine.state.rawInputs = {
+            keyboard: {
+                'button-keyW': {
+                    consumedBy: 'menu',
+                    isIgnoredByConsumer: true,
+                    inputName: 'button-keyW',
+                    inputValue: 1,
+                    direction: InputDirection.Positive,
+                    duration: {
+                        milliseconds: 0,
+                    },
+                    deviceKey: InputDeviceKey.Keyboard,
+                    deviceName: 'keyboard',
+                    deviceType: InputDeviceType.Keyboard,
+                    mapped: {
+                        deviceName: 'keyboard',
+                        inputName: 'button-keyW',
+                        gamepadBrand: undefined,
+                    },
+                },
+            },
+        };
+        engine.state.bindingAssignments = {
+            [GamepadInputDeviceKey.Gamepad2]: {
+                moveUp: [
+                    {
+                        deviceKey: InputDeviceKey.Keyboard,
+                        inputName: 'button-keyW',
+                        direction: InputDirection.Positive,
+                    },
+                ],
+            },
+        };
+
+        await engine.runSingleTick();
+
+        assert.isUndefined(engine.state.activeBindings?.[GamepadInputDeviceKey.Gamepad2]?.moveUp);
+    });
+
     it('accumulates hold duration on subsequent ticks', async () => {
         const mod = createAnthaInputBindingsMod<'moveUp'>();
 
@@ -102,6 +150,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             keyboard: {
                 'button-keyW': {
                     consumedBy: undefined,
+                    isIgnoredByConsumer: false,
                     inputName: 'button-keyW',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -155,6 +204,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             keyboard: {
                 'button-keyW': {
                     consumedBy: undefined,
+                    isIgnoredByConsumer: false,
                     inputName: 'button-keyW',
                     inputValue: -1,
                     direction: InputDirection.Negative,
@@ -237,6 +287,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             [GamepadInputDeviceKey.Gamepad1]: {
                 'button-0': {
                     consumedBy: undefined,
+                    isIgnoredByConsumer: false,
                     inputName: 'button-0',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -288,6 +339,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             [GamepadInputDeviceKey.Gamepad1]: {
                 'd-pad-left': {
                     consumedBy: undefined,
+                    isIgnoredByConsumer: false,
                     inputName: 'd-pad-left',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -305,6 +357,7 @@ describe(createAnthaInputBindingsMod.name, () => {
                 },
                 'left-stick-x': {
                     consumedBy: undefined,
+                    isIgnoredByConsumer: false,
                     inputName: 'left-stick-x',
                     inputValue: -1,
                     direction: InputDirection.Negative,
@@ -360,6 +413,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             [GamepadInputDeviceKey.Gamepad2]: {
                 'button-0': {
                     consumedBy: undefined,
+                    isIgnoredByConsumer: false,
                     inputName: 'button-0',
                     inputValue: 1,
                     direction: InputDirection.Positive,
@@ -414,6 +468,7 @@ describe(createAnthaInputBindingsMod.name, () => {
             [GamepadInputDeviceKey.Gamepad1]: {
                 'button-0': {
                     consumedBy: undefined,
+                    isIgnoredByConsumer: false,
                     inputName: 'button-0',
                     inputValue: 1,
                     direction: InputDirection.Positive,

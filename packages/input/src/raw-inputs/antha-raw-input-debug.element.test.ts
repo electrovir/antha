@@ -25,6 +25,7 @@ describe(AnthaRawInputDebug.tagName, () => {
                     keyboard: {
                         'button-keyW': {
                             consumedBy: undefined,
+                            isIgnoredByConsumer: false,
                             inputName: 'button-keyW',
                             inputValue: 1,
                             direction: InputDirection.Positive,

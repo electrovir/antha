@@ -50,6 +50,7 @@ export type AnthaReadRawInputModOptions = PartialWithUndefined<{
      */
     deviceHandlerOptions: Omit<InputDeviceHandlerOptions, 'startLoopImmediately'>;
     debugRawInputs: AnthaReadRawInputModState['debugRawInputs'];
+    startRawInputConsumer: AnthaReadRawInputModState['rawInputConsumer'];
 }>;
 
 /**
@@ -60,6 +61,8 @@ export type AnthaReadRawInputModOptions = PartialWithUndefined<{
 export type AnthaReadRawInputModState = {
     deviceHandler: Pick<InputDeviceHandler, 'readAllDevices'>;
     rawInputs: RawInputs;
+    /** Identifies the part of the game that owns newly started raw inputs. */
+    rawInputConsumer: string | undefined;
     currentInputDevices: SimpleInputDevicesMap;
     /** The engine time when a timed input lock expires. */
     inputDisableEndsAt: EngineTime | undefined;
@@ -101,6 +104,7 @@ export function createAnthaReadRawInputMod(options: Readonly<AnthaReadRawInputMo
         initState: {
             debugRawInputs: !!options.debugRawInputs,
             inputDisableEndsAt: undefined,
+            rawInputConsumer: options.startRawInputConsumer,
         },
         execute({engine, state, msSinceLastExecute}) {
             if (
@@ -166,6 +170,7 @@ export function readRawInputs(
             Partial<AnthaReadRawInputModState>,
             {
                 rawInputs: true;
+                rawInputConsumer: true;
                 deviceHandler: true;
                 gamepadLayouts: true;
                 gamepadBrandMap: true;
@@ -194,6 +199,9 @@ export function readRawInputs(
                 potentialPreviousRawInput?.direction === direction
                     ? potentialPreviousRawInput
                     : undefined;
+            const consumedBy = previousRawInput
+                ? previousRawInput.consumedBy
+                : state.rawInputConsumer;
 
             const duration = {
                 milliseconds: previousRawInput
@@ -229,7 +237,7 @@ export function readRawInputs(
             });
 
             const rawInput: RawInput = {
-                consumedBy: previousRawInput?.consumedBy,
+                consumedBy,
                 mapped: {
                     deviceName: model?.gamepadModel || device.deviceName,
                     gamepadBrand: model?.gamepadBrand,
@@ -242,6 +250,10 @@ export function readRawInputs(
                 duration,
                 inputName: currentInput.inputName,
                 inputValue: currentInput.inputValue,
+                isIgnoredByConsumer:
+                    !!state.rawInputConsumer &&
+                    !!consumedBy &&
+                    consumedBy !== state.rawInputConsumer,
             };
 
             if (mappedInputName) {
