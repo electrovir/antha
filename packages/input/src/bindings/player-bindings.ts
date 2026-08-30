@@ -1,3 +1,4 @@
+import {getObjectTypedEntries, pickObjectKeys} from '@augment-vir/common';
 import {InputDeviceKey, type GamepadInputDeviceKey} from 'input-device-handler';
 import {
     defineShape,
@@ -113,6 +114,37 @@ export type PlayersBindingAssignments<BindingNames extends string = string> = Re
     PlayerPosition,
     BindingAssignments<BindingNames>
 >;
+
+/**
+ * Returns assignments limited to the binding names supported by the consuming game.
+ *
+ * @category Internal
+ */
+export function filterToAllowedActions<BindingNames extends string>({
+    allowedBindingNames,
+    bindingAssignments,
+}: Readonly<{
+    allowedBindingNames: ReadonlyArray<BindingNames>;
+    bindingAssignments: Readonly<Partial<Record<PlayerPosition, Readonly<BindingAssignments>>>>;
+}>) {
+    return getObjectTypedEntries(bindingAssignments).reduce<
+        PlayersBindingAssignments<BindingNames>
+    >(
+        (
+            filteredBindingAssignments,
+            [
+                playerPosition,
+                playerBindingAssignments,
+            ],
+        ) => {
+            return {
+                ...filteredBindingAssignments,
+                [playerPosition]: pickObjectKeys(playerBindingAssignments, allowedBindingNames),
+            };
+        },
+        {},
+    );
+}
 
 /**
  * An individual active binding. Used in `createAnthaReadBindingsMod` and {@link ActiveBindings}.
