@@ -1,4 +1,4 @@
-import {AnthaEngine} from '@antha/engine';
+import {AnthaEngine, createEngineTime} from '@antha/engine';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {GamepadInputDeviceKey, InputDeviceKey, InputDeviceType} from 'input-device-handler';
@@ -88,6 +88,63 @@ describe(createAnthaInputBindingsMod.name, () => {
         );
         assert.strictEquals(activeBinding.value, 1);
         assert.strictEquals(activeBinding.holdDuration.milliseconds, 0);
+    });
+
+    it('clears active bindings while a timed input lock is active', async () => {
+        const mod = createAnthaInputBindingsMod<'moveUp'>();
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'moveUp'>>({
+            mods: [mod],
+        });
+
+        engine.state.rawInputs = {
+            keyboard: {
+                'button-keyW': {
+                    consumedBy: undefined,
+                    isIgnoredByConsumer: false,
+                    inputName: 'button-keyW',
+                    inputValue: 1,
+                    direction: InputDirection.Positive,
+                    duration: {
+                        milliseconds: 0,
+                    },
+                    deviceKey: InputDeviceKey.Keyboard,
+                    deviceName: 'keyboard',
+                    deviceType: InputDeviceType.Keyboard,
+                    mapped: {
+                        deviceName: 'keyboard',
+                        inputName: 'button-keyW',
+                        gamepadBrand: undefined,
+                    },
+                },
+            },
+        };
+        engine.state.bindingAssignments = {
+            [GamepadInputDeviceKey.Gamepad2]: {
+                moveUp: [
+                    {
+                        deviceKey: InputDeviceKey.Keyboard,
+                        inputName: 'button-keyW',
+                        direction: InputDirection.Positive,
+                    },
+                ],
+            },
+        };
+
+        await engine.runSingleTick();
+
+        engine.state.inputDisableEndsAt = createEngineTime(engine.totalMs + 1000);
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(engine.state.activeBindings, {});
+
+        engine.engineStartTime =
+            performance.now() - assertWrap.isDefined(engine.state.inputDisableEndsAt) - 1;
+
+        await engine.runSingleTick();
+
+        assert.isUndefined(engine.state.inputDisableEndsAt);
+        assert.isDefined(engine.state.activeBindings[GamepadInputDeviceKey.Gamepad2]?.moveUp);
     });
 
     it('ignores raw inputs claimed by another consumer', async () => {

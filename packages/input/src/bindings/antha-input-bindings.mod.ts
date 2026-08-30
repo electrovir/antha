@@ -1,4 +1,4 @@
-import {defineAnthaMod} from '@antha/engine';
+import {defineAnthaMod, type EngineTime} from '@antha/engine';
 import {check} from '@augment-vir/assert';
 import {
     filterMap,
@@ -54,6 +54,8 @@ export type AnthaInputBindingsModState<BindingNames extends string = string> = P
     AnthaReadRawInputModState,
     'rawInputs'
 > & {
+    /** The engine time when active bindings become available again. */
+    inputDisableEndsAt: EngineTime | undefined;
     /** Maps gamepads to different gamepad slots. See `GamepadKeyMap` for more information. */
     gamepadKeyMap: GamepadKeyMap;
     /** Bindings for all players. */
@@ -78,9 +80,23 @@ export function createAnthaInputBindingsMod<const BindingNames extends string = 
 ) {
     return defineAnthaMod<AnthaInputBindingsModState<BindingNames>>({
         modName: 'antha-input-bindings',
-        initState: options,
-        execute({state, msSinceLastExecute}) {
-            if (!state.bindingAssignments || !state.rawInputs) {
+        initState: {
+            inputDisableEndsAt: undefined,
+            ...options,
+        },
+        execute({engine, state, msSinceLastExecute}) {
+            if (
+                state.inputDisableEndsAt != undefined &&
+                state.inputDisableEndsAt <= engine.totalMs
+            ) {
+                state.inputDisableEndsAt = undefined;
+            }
+
+            if (
+                state.inputDisableEndsAt != undefined ||
+                !state.bindingAssignments ||
+                !state.rawInputs
+            ) {
                 /** Nothing to do if there are no bindings or inputs. */
                 state.activeBindings = {};
             } else {

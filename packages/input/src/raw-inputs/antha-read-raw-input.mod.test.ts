@@ -1,4 +1,4 @@
-import {AnthaEngine, createEngineTime} from '@antha/engine';
+import {AnthaEngine} from '@antha/engine';
 import {KnownInput, PredefinedGamepadModel} from '@antha/gamepad-type';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {selectFrom} from '@augment-vir/common';
@@ -90,61 +90,6 @@ describe(createAnthaReadRawInputMod.name, () => {
         await engine.runSingleTick();
 
         assert.strictEquals(engine.state.deviceHandler, mockHandler);
-    });
-
-    it('clears inputs without reading devices while inputs are temporarily disabled', async () => {
-        let readAllDevicesCallCount = 0;
-        const mod = createAnthaReadRawInputMod({
-            deviceHandler: {
-                readAllDevices() {
-                    readAllDevicesCallCount += 1;
-                    return {};
-                },
-            },
-        });
-        const engine = new AnthaEngine<AnthaReadRawInputModState>({
-            mods: [mod],
-        });
-
-        await engine.runSingleTick();
-        readAllDevicesCallCount = 0;
-        engine.state.inputDisableEndsAt = createEngineTime(engine.totalMs + 1000);
-
-        await engine.runSingleTick();
-
-        assert.strictEquals(readAllDevicesCallCount, 0);
-        assert.deepEquals(
-            selectFrom(engine.state, {
-                currentInputDevices: true,
-                rawInputs: true,
-            }),
-            {
-                currentInputDevices: {},
-                rawInputs: {},
-            },
-        );
-    });
-
-    it('re-enables inputs when a timed input lock expires', async () => {
-        const mod = createAnthaReadRawInputMod({
-            deviceHandler: createMockDeviceHandler(),
-        });
-        const engine = new AnthaEngine<AnthaReadRawInputModState>({
-            mods: [mod],
-        });
-
-        await engine.runSingleTick();
-        engine.state.inputDisableEndsAt = createEngineTime(engine.totalMs + 1000);
-
-        await engine.runSingleTick();
-
-        assert.isDefined(engine.state.inputDisableEndsAt);
-        engine.engineStartTime =
-            performance.now() - assertWrap.isDefined(engine.state.inputDisableEndsAt) - 1;
-
-        await engine.runSingleTick();
-
-        assert.isUndefined(engine.state.inputDisableEndsAt);
     });
 
     it('returns undefined template when debugRawInputs is false', async () => {

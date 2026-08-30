@@ -1,4 +1,4 @@
-import {defineAnthaMod, type EngineTime} from '@antha/engine';
+import {defineAnthaMod} from '@antha/engine';
 import {
     defaultGamepadLayouts,
     defaultGamepadModelMap,
@@ -9,7 +9,7 @@ import {
     type GamepadLayout,
     type GamepadModelMap,
 } from '@antha/gamepad-type';
-import {check} from '@augment-vir/assert';
+import {assertWrap, check} from '@augment-vir/assert';
 import {
     mapObject,
     type PartialWithUndefined,
@@ -64,8 +64,6 @@ export type AnthaReadRawInputModState = {
     /** Identifies the part of the game that owns newly started raw inputs. */
     rawInputConsumer: string | undefined;
     currentInputDevices: SimpleInputDevicesMap;
-    /** The engine time when a timed input lock expires. */
-    inputDisableEndsAt: EngineTime | undefined;
     /**
      * If no model map is provided, the built-in defaults from
      * [gamepad-type](https://www.npmjs.com/package/gamepad-type) are used. If a model map is
@@ -103,17 +101,9 @@ export function createAnthaReadRawInputMod(options: Readonly<AnthaReadRawInputMo
         modName: 'antha-read-raw-input',
         initState: {
             debugRawInputs: !!options.debugRawInputs,
-            inputDisableEndsAt: undefined,
             rawInputConsumer: options.startRawInputConsumer,
         },
-        execute({engine, state, msSinceLastExecute}) {
-            if (
-                state.inputDisableEndsAt != undefined &&
-                state.inputDisableEndsAt <= engine.totalMs
-            ) {
-                state.inputDisableEndsAt = undefined;
-            }
-
+        execute({state, msSinceLastExecute}) {
             if (!state.deviceHandler) {
                 state.deviceHandler =
                     options.deviceHandler ||
@@ -123,20 +113,17 @@ export function createAnthaReadRawInputMod(options: Readonly<AnthaReadRawInputMo
                     });
             }
 
-            if (state.inputDisableEndsAt == undefined) {
-                const {currentDevices, rawInputs} = readRawInputs(
-                    state as SetRequired<typeof state, 'deviceHandler'>,
-                    {
-                        msSinceLastExecute,
-                    },
-                );
-
-                state.rawInputs = rawInputs;
-                state.currentInputDevices = currentDevices;
-            } else {
-                state.rawInputs = {};
-                state.currentInputDevices = {};
-            }
+            const {currentDevices, rawInputs} = readRawInputs(
+                {
+                    ...state,
+                    deviceHandler: assertWrap.isDefined(state.deviceHandler),
+                },
+                {
+                    msSinceLastExecute,
+                },
+            );
+            state.rawInputs = rawInputs;
+            state.currentInputDevices = currentDevices;
 
             if (state.debugRawInputs) {
                 return html`
