@@ -48,7 +48,7 @@
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
-        "pixi.js": "^8.20.0",
+        "pixi.js": "^8.20.1",
         "vira": "31.31.6"
     },
     "peerDependencies": {

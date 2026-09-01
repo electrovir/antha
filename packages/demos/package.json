@@ -30,10 +30,10 @@
         "detect-collisions": "^10.10.2025",
         "element-vir": "^26.17.3",
         "object-shape-tester": "^6.15.0",
-        "pixi.js": "^8.20.0",
+        "pixi.js": "^8.20.1",
         "spa-router-vir": "^6.8.0",
         "theme-vir": "^28.25.1",
-        "url-vir": "^2.2.1",
+        "url-vir": "^2.2.2",
         "vira": "^31.31.6"
     },
     "devDependencies": {

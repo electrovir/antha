@@ -48,7 +48,7 @@
         "detect-collisions": "^10.10.2025",
         "istanbul-smart-text-reporter": "^1.1.5",
         "object-shape-tester": "^6.15.0",
-        "pixi.js": "^8.20.0",
+        "pixi.js": "^8.20.1",
         "typed-event-target": "^4.3.3"
     },
     "peerDependencies": {
