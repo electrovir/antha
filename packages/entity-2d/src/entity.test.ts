@@ -902,6 +902,36 @@ describe('BaseEntity', () => {
         assert.isTrue(destroyEventReceived);
     });
 
+    it('immediately destroys all current entities', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class DestroyMe extends suite.defineLogicEntity({
+            key: 'DestroyAllMe',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        const firstInstance = await store.addEntity(DestroyMe);
+        const secondInstance = await store.addEntity(DestroyMe);
+
+        store.destroyAllEntities();
+
+        assert.deepEquals(
+            {
+                entityCount: store.currentEntityInstances.size,
+                firstInstanceIsDestroyed: firstInstance.isDestroyed,
+                secondInstanceIsDestroyed: secondInstance.isDestroyed,
+            },
+            {
+                entityCount: 0,
+                firstInstanceIsDestroyed: true,
+                secondInstanceIsDestroyed: true,
+            },
+        );
+    });
+
     it('serializes params to JSON', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);

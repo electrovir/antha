@@ -534,6 +534,14 @@ export class EntityStore2d<State extends AnyObject = any> {
         return child as InstanceType<NewEntityConstructor>;
     }
 
+    /** Immediately destroys every current entity while leaving the entity store usable. */
+    public destroyAllEntities() {
+        if (this.isDestroyed) {
+            throw new Error('Cannot operate on a destroyed entity store.');
+        }
+        this.currentEntityInstances.forEach((entity) => entity.immediatelyDestroy());
+    }
+
     /** Destroys the entity store and all entities contained inside it. */
     public destroy() {
         if (this.isDestroyed) {
