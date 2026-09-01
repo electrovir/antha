@@ -47,6 +47,8 @@ export type SaveGameSuiteOptions<RuntimeGameState, StoredSaveStateShape extends 
     /** Used when saved data does not exist yet. */
     fallbackState: SaveGameFallbackState<RuntimeGameState>;
 } & PartialWithUndefined<{
+    /** Identifies the LocalDbClient store used for saved game data. Defaults to `'Game Save Data'`. */
+    storeName: string;
     /**
      * Converts saved game state into runtime game state. When omitted or `undefined`, the saved
      * state is returned directly with no transform.
@@ -132,6 +134,7 @@ export function createSaveGameSuite<RuntimeSaveState, StoredSaveStateShape exten
     storedSaveStateShape,
     deserialize,
     serialize,
+    storeName,
 }: Readonly<
     SaveGameSuiteOptions<RuntimeSaveState, StoredSaveStateShape>
 >): SaveGameSuite<RuntimeSaveState> {
@@ -146,7 +149,7 @@ export function createSaveGameSuite<RuntimeSaveState, StoredSaveStateShape exten
     async function getLoadDbClient(): Promise<LocalDbClient<typeof localDbClientShapes>> {
         if (!cachedLocalDbClient) {
             cachedLocalDbClient = await LocalDbClient.createClient(localDbClientShapes, {
-                storeName: 'Game Save',
+                storeName: storeName || 'Game Save Data',
             });
         }
         return cachedLocalDbClient;

@@ -10,7 +10,7 @@ type SaveState = {
     value: number;
 };
 
-const saveDataStoreName = 'Game Save';
+const saveDataStoreName = 'Save Game Suite Test';
 const storedSaveStateShape = defineShape({
     storedValue: 0,
 });
@@ -19,8 +19,10 @@ const identityStoredSaveStateShape = defineShape({
 });
 
 function createTestLocalDbClient<StoredSaveStateShape extends Shape>({
+    storeName = saveDataStoreName,
     storedSaveStateShape,
 }: Readonly<{
+    storeName?: string | undefined;
     storedSaveStateShape: StoredSaveStateShape;
 }>) {
     return LocalDbClient.createClient(
@@ -36,11 +38,14 @@ function createTestLocalDbClient<StoredSaveStateShape extends Shape>({
 }
 
 async function clearTestStorage<StoredSaveStateShape extends Shape>({
+    storeName,
     storedSaveStateShape,
 }: Readonly<{
+    storeName?: string | undefined;
     storedSaveStateShape: StoredSaveStateShape;
 }>) {
     const localDbClient = await createTestLocalDbClient({
+        storeName,
         storedSaveStateShape,
     });
 
@@ -62,6 +67,7 @@ function createTransformedTestSuite() {
                 storedValue: saveState.value,
             };
         },
+        storeName: saveDataStoreName,
         storedSaveStateShape,
     });
 }
@@ -71,6 +77,7 @@ function createIdentityTestSuite() {
         fallbackState: {
             value: 0,
         },
+        storeName: saveDataStoreName,
         storedSaveStateShape: identityStoredSaveStateShape,
     });
 }
@@ -105,10 +112,35 @@ async function runAutosave(engine: AnthaEngine<AutosaveModState<SaveState>>) {
 }
 
 describe(createSaveGameSuite.name, () => {
-    it('creates a Save Data asset', () => {
-        const suite = createIdentityTestSuite();
+    it('creates a Save Data asset with its default store', async () => {
+        await clearTestStorage({
+            storeName: 'Game Save Data',
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
 
-        assert.strictEquals(suite.loadSaveDataAsset.assetName, 'Save Data');
+        const suite = createSaveGameSuite({
+            fallbackState: {
+                value: 0,
+            },
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+        const assetLoader = new AssetLoader();
+        const loadedSaveGame = await assetLoader.loadIndividualAsset({
+            asset: suite.loadSaveDataAsset,
+        });
+
+        assert.deepEquals(
+            {
+                assetName: suite.loadSaveDataAsset.assetName,
+                saveState: loadedSaveGame.saveState,
+            },
+            {
+                assetName: 'Save Data',
+                saveState: {
+                    value: 0,
+                },
+            },
+        );
     });
 
     it('loads its fallback state and saves directly when transforms are omitted', async () => {
@@ -186,6 +218,7 @@ describe(createSaveGameSuite.name, () => {
                     value: 1,
                 });
             },
+            storeName: saveDataStoreName,
             storedSaveStateShape: identityStoredSaveStateShape,
         });
         const assetLoader = new AssetLoader();
@@ -217,6 +250,7 @@ describe(createSaveGameSuite.name, () => {
             deserialize(): SaveState {
                 throw new Error('Expected deserialization failure.');
             },
+            storeName: saveDataStoreName,
             storedSaveStateShape: identityStoredSaveStateShape,
         });
         const assetLoader = new AssetLoader();
@@ -366,6 +400,7 @@ describe(createSaveGameSuite.name, () => {
             serialize() {
                 throw new Error('Expected serialization failure.');
             },
+            storeName: saveDataStoreName,
             storedSaveStateShape: identityStoredSaveStateShape,
         });
         const engine = createTestEngine({

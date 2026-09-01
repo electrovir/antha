@@ -932,6 +932,16 @@ describe('BaseEntity', () => {
         );
     });
 
+    it('throws when immediately destroying all entities from a destroyed store', () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        store.destroy();
+
+        assert.throws(() => store.destroyAllEntities(), {
+            matchMessage: 'Cannot operate on a destroyed entity store.',
+        });
+    });
+
     it('serializes params to JSON', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
