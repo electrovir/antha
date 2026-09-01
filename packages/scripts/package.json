@@ -16,7 +16,7 @@
         "element-vir": "^26.17.3"
     },
     "devDependencies": {
-        "@types/node": "^26.2.0"
+        "@types/node": "^26.3.0"
     },
     "engines": {
         "node": ">=22"

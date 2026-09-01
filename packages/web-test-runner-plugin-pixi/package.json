@@ -42,7 +42,7 @@
         "@augment-vir/assert": "^32.2.3",
         "@augment-vir/common": "^32.2.3",
         "@augment-vir/test": "^32.2.3",
-        "@types/node": "^26.2.0",
+        "@types/node": "^26.3.0",
         "@web/dev-server": "^1.0.0",
         "@web/dev-server-core": "^1.0.1",
         "@web/dev-server-esbuild": "^2.0.0",

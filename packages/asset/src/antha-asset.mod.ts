@@ -195,7 +195,7 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
 
             state.assetLoader.advanceLoadState({
                 currentTick: engine.currentTick,
-                totalMs: engine.totalMs,
+                totalMs: engine.engineTime,
             });
 
             if (options.hideLoadingScreen) {
@@ -207,7 +207,7 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
             if (
                 loadState &&
                 (loadState.completedAt == undefined ||
-                    engine.totalMs <= loadState.completedAt + configuredLoadingScreenFadeMs)
+                    engine.engineTime <= loadState.completedAt + configuredLoadingScreenFadeMs)
             ) {
                 const progressPercent =
                     loadState.total > 0 ? (loadState.current / loadState.total) * 100 : 0;
@@ -215,7 +215,7 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
                 return html`
                     <${AnthaAssetLoadingScreen.assign({
                         progressPercent,
-                        dotCount: Math.floor(engine.totalMs / 500) % 4,
+                        dotCount: Math.floor(engine.engineTime / 500) % 4,
                         completed: loadState.completedAt != undefined,
                         currentResourceName: loadState.currentResourceName,
                         loadingScreenFadeMs: configuredLoadingScreenFadeMs,

@@ -37,6 +37,8 @@
         "@augment-vir/assert": "^32.2.3",
         "@augment-vir/common": "^32.2.3",
         "lit-css-vars": "^3.6.3",
+        "local-db-client": "^2.0.1",
+        "object-shape-tester": "^6.15.0",
         "typed-event-target": "^4.3.3"
     },
     "devDependencies": {
