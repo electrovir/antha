@@ -70,7 +70,7 @@ export const assetLoadingDemo: AnthaDemo = {
                             (!state.loadStarted ||
                                 (state.assetLoader.loadState?.completedAt &&
                                     state.assetLoader.loadState.completedAt + 10_000 <
-                                        engine.totalMs))
+                                        engine.engineTime))
                         ) {
                             if (state.loadStarted) {
                                 console.info('reloading assets');

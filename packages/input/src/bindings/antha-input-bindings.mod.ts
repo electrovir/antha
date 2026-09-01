@@ -87,7 +87,7 @@ export function createAnthaInputBindingsMod<const BindingNames extends string = 
         execute({engine, state, msSinceLastExecute}) {
             if (
                 state.inputDisableEndsAt != undefined &&
-                state.inputDisableEndsAt <= engine.totalMs
+                state.inputDisableEndsAt <= engine.engineTime
             ) {
                 state.inputDisableEndsAt = undefined;
             }

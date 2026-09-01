@@ -233,7 +233,11 @@ function markHitboxPairAsChecked({
     }
 }
 
-/** A collision system that skips pairs no entity observes before running SAT collision checks. */
+/**
+ * A collision system that skips pairs no entity observes before running SAT collision checks.
+ *
+ * @category Internal
+ */
 export class EntityHitboxSystem extends HitboxSystem {
     protected checkedHitboxPairs: WeakMap<Hitbox, WeakSet<Hitbox>> | undefined;
 
@@ -606,6 +610,8 @@ export type MatchingKeys<
  * - `true`: indicates that the property is mapped directly from params to that view or hitbox object.
  * - Omitted: the property is not mapped at all.
  * - A string: specifies the params key that this view or hitbox property is mapped to.
+ *
+ * @category Internal
  */
 export type ParamsMap<Params extends Record<string, any> | undefined = AnyObject> =
     IsEqual<Params, undefined> extends true

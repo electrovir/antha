@@ -195,7 +195,7 @@ export function createAnthaAssetMod(options: Readonly<AnthaAssetModOptions> = {}
 
             state.assetLoader.advanceLoadState({
                 currentTick: engine.currentTick,
-                totalMs: engine.engineTime,
+                engineTime: engine.engineTime,
             });
 
             if (options.hideLoadingScreen) {

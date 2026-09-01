@@ -120,20 +120,32 @@ export type AssetLoaderOptions = PartialWithUndefined<{
     logger: AnthaLogger;
 }>;
 
-/** Progress tracked by an {@link AssetLoadSession}. */
+/**
+ * Progress tracked by an {@link AssetLoadSession}.
+ *
+ * @category Internal
+ */
 export type AssetLoadProgress = {
     current: number;
     total: number;
     currentResourceName?: string | undefined;
 };
 
-/** State of the active asset load. */
+/**
+ * State of the active asset load.
+ *
+ * @category Internal
+ */
 export type AssetLoadState = AssetLoadProgress & {
     completedAt: EngineTime | undefined;
     isLoading: boolean;
 };
 
-/** Event dispatched when an {@link AssetLoadSession} progresses or completes. */
+/**
+ * Event dispatched when an {@link AssetLoadSession} progresses or completes.
+ *
+ * @category Internal
+ */
 export class AssetLoadSessionUpdateEvent extends defineTypedCustomEvent<
     AssetLoadProgress & {
         /** Indicates that the caller explicitly requested load completion. */
@@ -141,7 +153,11 @@ export class AssetLoadSessionUpdateEvent extends defineTypedCustomEvent<
     }
 >()('antha-asset-load-session-update-event') {}
 
-/** Manages the progress and explicit completion of an asset load. */
+/**
+ * Manages the progress and explicit completion of an asset load.
+ *
+ * @category Internal
+ */
 export class AssetLoadSession extends ListenTarget<AssetLoadSessionUpdateEvent> {
     protected currentProgress: AssetLoadProgress = {
         current: 0,
@@ -244,10 +260,10 @@ export class AssetLoadSessionController {
     /** Advances asset-load completion after an engine render. */
     public advance({
         currentTick,
-        totalMs,
+        engineTime,
     }: Readonly<{
         currentTick: number;
-        totalMs: EngineTime;
+        engineTime: EngineTime;
     }>) {
         this.latestEngineTick = currentTick + 1;
 
@@ -259,7 +275,7 @@ export class AssetLoadSessionController {
             this.completionRequestedAtTick = undefined;
             this.loadStateInternal = {
                 ...this.loadStateInternal,
-                completedAt: totalMs,
+                completedAt: engineTime,
                 isLoading: false,
             };
         }
@@ -330,14 +346,14 @@ export class AssetLoader {
     /** Advances asset-load completion after an engine render. */
     public advanceLoadState({
         currentTick,
-        totalMs,
+        engineTime,
     }: Readonly<{
         currentTick: number;
-        totalMs: EngineTime;
+        engineTime: EngineTime;
     }>) {
         this.loadSessionController.advance({
             currentTick,
-            totalMs,
+            engineTime,
         });
     }
 

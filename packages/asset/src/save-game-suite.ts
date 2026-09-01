@@ -7,7 +7,6 @@ import {
 } from '@antha/engine';
 import {check} from '@augment-vir/assert';
 import {
-    ensureError,
     ensureErrorAndPrependMessage,
     log,
     type MaybePromise,
@@ -92,6 +91,11 @@ export type AutosaveModState<RuntimeSaveState> = {
     lastAutosaveSuccess: {duration: EngineTime; at: EngineTime} | undefined;
 };
 
+/**
+ * Parameters for {@link SaveGameSuite.persistSaveState}.
+ *
+ * @category Internal
+ */
 export type PersistSaveStateParams<RuntimeSaveState> = {
     engine: AnthaEngine;
     saveState: RuntimeSaveState;
@@ -103,8 +107,14 @@ export type PersistSaveStateParams<RuntimeSaveState> = {
  * @category Internal
  */
 export type SaveGameSuite<RuntimeSaveState> = {
+    /** A mod that auto saves your runtime save state periodically. */
     anthaAutosaveMod: AnthaMod<AutosaveModState<RuntimeSaveState>>;
+    /**
+     * The asset that loads your initial saved game state. If you use this, it should be loaded at
+     * the very beginning of your game's loading screen.
+     */
     loadSaveDataAsset: Asset<SaveGameLoadResult<RuntimeSaveState>>;
+    /** Saves your runtime save state from engine state at any time. */
     persistSaveState: (
         this: void,
         params: Readonly<PersistSaveStateParams<RuntimeSaveState>>,
@@ -226,25 +236,26 @@ export function createSaveGameSuite<RuntimeSaveState, StoredSaveStateShape exten
             void persistSaveState({
                 engine,
                 saveState: state.saveState,
-            })
-                .then(() => {
-                    const finishTime = engine.engineTime;
+            }).then((didSave) => {
+                state.savingStaredAt = undefined;
+                const finishTime = engine.engineTime;
+                const duration = createEngineTime({
+                    milliseconds: finishTime - startEngineTime,
+                });
+
+                if (didSave) {
                     state.lastAutosaveSuccess = {
                         at: finishTime,
-                        duration: createEngineTime(finishTime - startEngineTime),
+                        duration,
                     };
-                })
-                .catch((error: unknown) => {
-                    const errorTime = engine.engineTime;
+                } else {
                     state.lastAutosaveFailure = {
-                        at: errorTime,
-                        duration: createEngineTime(errorTime - startEngineTime),
-                        error: ensureError(error),
+                        at: finishTime,
+                        duration,
+                        error: new Error('Failed to save game data.'),
                     };
-                })
-                .finally(() => {
-                    state.savingStaredAt = undefined;
-                });
+                }
+            });
         },
     });
 

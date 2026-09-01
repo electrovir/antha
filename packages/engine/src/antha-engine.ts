@@ -13,6 +13,7 @@ import {
     type RequireExactlyOne,
 } from '@augment-vir/common';
 import {createId} from '@paralleldrive/cuid2';
+import {type Duration, type DurationUnit} from 'date-vir';
 import {css, html, type HtmlInterpolation} from 'element-vir';
 import {Observable} from 'observavir';
 import {AnthaUi} from './antha-ui.element.js';
@@ -34,9 +35,15 @@ export type ModInstanceId = Branded<string, 'antha-mod-instance-id'>;
  */
 export type EngineTime = Branded<number, 'antha-engine-time'>;
 
-/** Creates an {@link EngineTime} from a millisecond offset from an engine's start. */
-export function createEngineTime(time: number): EngineTime {
-    return applyBrand<EngineTime>(time);
+/**
+ * Brands a millisecond time as {@link EngineTime}.
+ *
+ * @category Util
+ */
+export function createEngineTime({
+    milliseconds,
+}: Readonly<Duration<DurationUnit.Milliseconds>>): EngineTime {
+    return applyBrand<EngineTime>(milliseconds);
 }
 
 /**
@@ -361,7 +368,9 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
      */
     public readonly state: Partial<State>;
     /** Total milliseconds elapsed since the engine started. Updated each tick. */
-    public engineTime: EngineTime = createEngineTime(0);
+    public engineTime: EngineTime = createEngineTime({
+        milliseconds: 0,
+    });
     /** When the engine started running its loop. */
     public engineStartTime: DOMHighResTimeStamp = performance.now();
     /**
@@ -456,7 +465,9 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
         /** Clear the array as we're about to populate it. */
         this.currentTemplateArray.length = 0;
         const executionStart = performance.now();
-        this.engineTime = createEngineTime(executionStart - this.engineStartTime);
+        this.engineTime = createEngineTime({
+            milliseconds: executionStart - this.engineStartTime,
+        });
 
         /**
          * Use a plain `for` loop instead of `awaitedForEach` so that synchronous mods execute

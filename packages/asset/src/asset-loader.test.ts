@@ -86,12 +86,16 @@ describe(AssetLoader.name, () => {
 
         loader.advanceLoadState({
             currentTick: 0,
-            totalMs: createEngineTime(0),
+            engineTime: createEngineTime({
+                milliseconds: 0,
+            }),
         });
         loadSession.complete();
         loader.advanceLoadState({
             currentTick: 1,
-            totalMs: createEngineTime(10),
+            engineTime: createEngineTime({
+                milliseconds: 10,
+            }),
         });
 
         const incompleteLoadState = loader.loadState;
@@ -99,7 +103,9 @@ describe(AssetLoader.name, () => {
 
         loader.advanceLoadState({
             currentTick: 2,
-            totalMs: createEngineTime(20),
+            engineTime: createEngineTime({
+                milliseconds: 20,
+            }),
         });
 
         const completedLoadState = loader.loadState;
@@ -107,7 +113,9 @@ describe(AssetLoader.name, () => {
             current: 0,
             currentResourceName: undefined,
             total: 0,
-            completedAt: createEngineTime(20),
+            completedAt: createEngineTime({
+                milliseconds: 20,
+            }),
             isLoading: false,
         } satisfies AssetLoadState);
     });

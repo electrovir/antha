@@ -8,12 +8,20 @@ import {
 import {type AnthaAssetModState} from './antha-asset.mod.js';
 import {type AssetLoader, type AssetLoadSession} from './asset-loader.js';
 
-/** State used internally by {@link createAnthaBootstrapMod}. */
+/**
+ * State used internally by {@link createAnthaBootstrapMod}.
+ *
+ * @category Internal
+ */
 export type AnthaBootstrapModState = {
     hasStartedBootstrap: boolean;
 };
 
-/** Parameters passed to {@link AnthaBootstrapModOptions.bootstrap}. */
+/**
+ * Parameters passed to the bootstrap callback.
+ *
+ * @category Internal
+ */
 export type AnthaBootstrapParams<State extends AnyObject, Module> = {
     assetLoader: AssetLoader;
     engine: AnthaEngine;
@@ -22,13 +30,21 @@ export type AnthaBootstrapParams<State extends AnyObject, Module> = {
     state: Partial<State & AnthaAssetModState & AnthaBootstrapModState>;
 };
 
-/** Result returned by {@link AnthaBootstrapModOptions.bootstrap}. */
+/**
+ * Result returned by the bootstrap callback.
+ *
+ * @category Internal
+ */
 export type AnthaBootstrapResult = {
     /** Mods that Antha installs after bootstrapping finishes. */
     mods: ReadonlyArray<AnthaMod>;
 };
 
-/** Options for {@link createAnthaBootstrapMod}. */
+/**
+ * Options for {@link createAnthaBootstrapMod}.
+ *
+ * @category Internal
+ */
 export type AnthaBootstrapModOptions<State extends AnyObject, Module> = {
     /**
      * Bootstraps the loaded module and returns the mods that should be installed for it. Await any

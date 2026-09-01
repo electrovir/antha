@@ -1,5 +1,5 @@
-import {AnthaEngine, emptyAnthaLogger} from '@antha/engine';
-import {assert, waitUntil} from '@augment-vir/assert';
+import {AnthaEngine, createEngineTime, emptyAnthaLogger} from '@antha/engine';
+import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {LocalDbClient} from 'local-db-client';
 import {defineShape, type Shape} from 'object-shape-tester';
@@ -152,6 +152,87 @@ describe(createSaveGameSuite.name, () => {
         );
     });
 
+    it('loads stored state directly when deserialization is omitted', async () => {
+        await clearTestStorage({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+
+        const localDbClient = await createTestLocalDbClient({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+        await localDbClient.set.saveState({
+            value: 1,
+        });
+
+        const suite = createIdentityTestSuite();
+        const assetLoader = new AssetLoader();
+        const loadedSaveGame = await assetLoader.loadIndividualAsset({
+            asset: suite.loadSaveDataAsset,
+        });
+
+        assert.deepEquals(loadedSaveGame.saveState, {
+            value: 1,
+        });
+    });
+
+    it('uses an asynchronous fallback state factory', async () => {
+        await clearTestStorage({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+
+        const suite = createSaveGameSuite({
+            fallbackState() {
+                return Promise.resolve({
+                    value: 1,
+                });
+            },
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+        const assetLoader = new AssetLoader();
+        const loadedSaveGame = await assetLoader.loadIndividualAsset({
+            asset: suite.loadSaveDataAsset,
+        });
+
+        assert.deepEquals(loadedSaveGame.saveState, {
+            value: 1,
+        });
+    });
+
+    it('throws when stored state cannot be deserialized', async () => {
+        await clearTestStorage({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+
+        const localDbClient = await createTestLocalDbClient({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+        await localDbClient.set.saveState({
+            value: 1,
+        });
+
+        const suite = createSaveGameSuite({
+            fallbackState: {
+                value: 0,
+            },
+            deserialize(): SaveState {
+                throw new Error('Expected deserialization failure.');
+            },
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+        const assetLoader = new AssetLoader();
+
+        await assert.throws(
+            () => {
+                return assetLoader.loadIndividualAsset({
+                    asset: suite.loadSaveDataAsset,
+                });
+            },
+            {
+                matchMessage: 'Expected deserialization failure.',
+            },
+        );
+    });
+
     it('deserializes loaded state and serializes the final save state', async () => {
         await clearTestStorage({
             storedSaveStateShape,
@@ -192,6 +273,121 @@ describe(createSaveGameSuite.name, () => {
                 storedSaveState: {
                     storedValue: 2,
                 },
+            },
+        );
+    });
+
+    it('respects configured and default autosave intervals', async () => {
+        await clearTestStorage({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+
+        const suite = createIdentityTestSuite();
+        const engine = createTestEngine({
+            saveState: {
+                value: 0,
+            },
+            suite,
+        });
+        await runAutosave(engine);
+
+        engine.state.autosaveInterval = {
+            milliseconds: Number.MAX_SAFE_INTEGER,
+        };
+        engine.state.saveState = {
+            value: 1,
+        };
+        await engine.runSingleTick();
+
+        delete engine.state.autosaveInterval;
+        await engine.runSingleTick();
+
+        const localDbClient = await createTestLocalDbClient({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+
+        assert.deepEquals(await localDbClient.load.saveState(), {
+            value: 0,
+        });
+    });
+
+    it('does nothing when a save is already in progress', async () => {
+        await clearTestStorage({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+
+        const suite = createIdentityTestSuite();
+        const engine = createTestEngine({
+            saveState: {
+                value: 1,
+            },
+            suite,
+        });
+        engine.state.savingStaredAt = createEngineTime({
+            milliseconds: 1,
+        });
+
+        await engine.runSingleTick();
+        await engine.reset();
+
+        const localDbClient = await createTestLocalDbClient({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+
+        assert.isUndefined(await localDbClient.load.saveState());
+    });
+
+    it('does nothing when engine state has no save state', async () => {
+        const suite = createIdentityTestSuite();
+        const engine = new AnthaEngine<AutosaveModState<SaveState>>({
+            engineOptions: {
+                logger: emptyAnthaLogger,
+            },
+            mods: [
+                suite.anthaAutosaveMod,
+            ],
+        });
+
+        await engine.runSingleTick();
+        await engine.reset();
+
+        assert.deepEquals(engine.state, {});
+    });
+
+    it('records failed autosaves as failures', async () => {
+        await clearTestStorage({
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+
+        const suite = createSaveGameSuite({
+            fallbackState: {
+                value: 0,
+            },
+            serialize() {
+                throw new Error('Expected serialization failure.');
+            },
+            storedSaveStateShape: identityStoredSaveStateShape,
+        });
+        const engine = createTestEngine({
+            saveState: {
+                value: 1,
+            },
+            suite,
+        });
+
+        await engine.runSingleTick();
+        await waitUntil.isDefined(() => engine.state.lastAutosaveFailure);
+
+        assert.deepEquals(
+            {
+                errorMessage: assertWrap.isDefined(engine.state.lastAutosaveFailure).error.message,
+                lastAutosaveSuccess: engine.state.lastAutosaveSuccess,
+                savingStartedAt: engine.state.savingStaredAt,
+            },
+            {
+                errorMessage: 'Failed to save game data.',
+                lastAutosaveSuccess: undefined,
+                savingStartedAt: undefined,
             },
         );
     });

@@ -8,7 +8,11 @@ import {type AudioPlayer, type AudioSetupParams} from '@antha/audio';
 import {getObjectTypedValues, type PartialWithUndefined} from '@augment-vir/common';
 import {type Entity2dConstructor} from './entity.js';
 
-/** Audio files and their player to include in {@link loadAnthaAssets}. */
+/**
+ * Audio files and their player to include in {@link loadAnthaAssets}.
+ *
+ * @category Internal
+ */
 export type AnthaAudioFilesToLoad = {
     audioPlayer: Pick<AudioPlayer, 'loadFiles'>;
     files: ReadonlyArray<Readonly<AudioSetupParams>>;
@@ -19,7 +23,11 @@ export type AnthaAudioFilesToLoad = {
     serial: boolean;
 }>;
 
-/** Inputs for {@link loadAnthaAssets}. */
+/**
+ * Inputs for {@link loadAnthaAssets}.
+ *
+ * @category Internal
+ */
 export type LoadAnthaAssetsParams = {
     assetLoader: AssetLoader;
 } & PartialWithUndefined<{

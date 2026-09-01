@@ -132,7 +132,9 @@ describe(createAnthaInputBindingsMod.name, () => {
 
         await engine.runSingleTick();
 
-        engine.state.inputDisableEndsAt = createEngineTime(engine.totalMs + 1000);
+        engine.state.inputDisableEndsAt = createEngineTime({
+            milliseconds: engine.engineTime + 1000,
+        });
 
         await engine.runSingleTick();
 
