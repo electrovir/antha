@@ -767,7 +767,7 @@ export abstract class BaseEntity2d<
     /** Cached entity classes this entity observes collisions with. */
     public static readonly collidesWithSet: ReadonlySet<Entity2dConstructor> = new Set();
     /** Shape definition of this entity's parameters. */
-    public static readonly paramsShape: Shape<AnyObject> | undefined;
+    public static readonly paramsShape: Shape | undefined;
 
     public static readonly assets:
         | MappedEntityAssets<BaseEntityAssetDefinitions | undefined>
