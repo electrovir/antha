@@ -8,7 +8,8 @@ import {
     defaultAnthaEngineOptions,
     defineAnthaMod,
     type AnthaMod,
-    type AnthaModeState,
+    type AnthaModState,
+    type AnthaModsState,
     type LastExecution,
     type ModCleanupParams,
     type ModInstanceId,
@@ -25,7 +26,7 @@ describe(defineAnthaMod.name, () => {
             },
         };
 
-        assert.strictEquals(defineAnthaMod<AnthaModeState<typeof mod>>(mod), mod);
+        assert.strictEquals(defineAnthaMod<AnthaModState<typeof mod>>(mod), mod);
     });
     it('requires explicit state type', () => {
         defineAnthaMod({
@@ -35,6 +36,26 @@ describe(defineAnthaMod.name, () => {
                 state.count = 5;
             },
         });
+    });
+});
+
+describe('AnthaModsState', () => {
+    it('combines state from a readonly mod array', () => {
+        const mods = [
+            defineAnthaMod<{count: number}>({
+                modName: 'counter',
+                execute() {},
+            }),
+            defineAnthaMod<{name: string}>({
+                modName: 'name',
+                execute() {},
+            }),
+        ] as const;
+
+        assert.tsType<AnthaModsState<typeof mods>>().matches<{
+            count: number;
+            name: string;
+        }>();
     });
 });
 

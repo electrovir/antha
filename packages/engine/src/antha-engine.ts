@@ -6,11 +6,13 @@ import {
     makeWritable,
     mergeDefinedProperties,
     type AnyObject,
+    type ArrayElement,
     type Branded,
     type MaybePromise,
     type PartialWithUndefined,
     type RequiredAndNotNull,
     type RequireExactlyOne,
+    type UnionToIntersection,
     type UnknownObject,
 } from '@augment-vir/common';
 import {createId} from '@paralleldrive/cuid2';
@@ -183,8 +185,16 @@ export type AnthaMod<State extends AnyObject = any> = {
  *
  * @category Internal
  */
-export type AnthaModeState<Mod extends AnthaMod> =
-    Mod extends AnthaMod<infer State> ? State : never;
+export type AnthaModState<Mod extends AnthaMod> = Mod extends AnthaMod<infer State> ? State : never;
+
+/**
+ * Combines the state requirements of an array of mods into the complete engine state type.
+ *
+ * @category Internal
+ */
+export type AnthaModsState<Mods extends ReadonlyArray<AnthaMod>> = UnionToIntersection<
+    AnthaModState<ArrayElement<Mods>>
+>;
 
 /**
  * A helper for defining {@link AnthaMod} inline. This is _not_ required in order to define an
