@@ -18,6 +18,7 @@ import {spawn, type ChildProcess} from 'node:child_process';
 import {mkdir, mkdtemp, rm, writeFile} from 'node:fs/promises';
 import {join, resolve} from 'node:path';
 import {fileURLToPath} from 'node:url';
+import {parseUrl} from 'url-vir';
 
 const monoRepoDirPath = resolve(import.meta.dirname, '..', '..', '..', '..');
 const packageDirPath = resolve(import.meta.dirname, '..', '..');
@@ -137,9 +138,15 @@ describe('multiplayer server CLI', () => {
         try {
             const {serverOrigin} = await serverReady.promise;
             await waitUntil.isTrue(
-                () => cliOutputChunks.join('').includes('Multiplayer signal server started.'),
+                () => {
+                    return cliOutputChunks
+                        .join('')
+                        .includes(
+                            `Multiplayer signal server started at ${parseUrl(serverOrigin).hostname}:${parseUrl(serverOrigin).port}.`,
+                        );
+                },
                 undefined,
-                'The CLI should log when the multiplayer signal server has started.',
+                'The CLI should log the multiplayer signal server host and port after it has started.',
             );
             const apiClient = await createMultiplayerApiClient({
                 backendOrigin: serverOrigin,
