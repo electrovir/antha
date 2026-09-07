@@ -37,6 +37,7 @@ export async function runMultiplayerServerCli(configFilePath: string) {
     assert.isDefined(config, 'No config loaded.');
 
     await startMultiplayerServer(config);
+    log.info('Multiplayer signal server started.');
 }
 
 async function loadServerCliConfig(

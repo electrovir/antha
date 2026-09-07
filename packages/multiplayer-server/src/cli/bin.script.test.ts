@@ -136,6 +136,11 @@ describe('multiplayer server CLI', () => {
 
         try {
             const {serverOrigin} = await serverReady.promise;
+            await waitUntil.isTrue(
+                () => cliOutputChunks.join('').includes('Multiplayer signal server started.'),
+                undefined,
+                'The CLI should log when the multiplayer signal server has started.',
+            );
             const apiClient = await createMultiplayerApiClient({
                 backendOrigin: serverOrigin,
                 portScanOptions: false,
