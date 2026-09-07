@@ -59,7 +59,7 @@ export type AnthaReadRawInputModOptions = PartialWithUndefined<{
  * @category Internal
  */
 export type AnthaReadRawInputModState = {
-    deviceHandler: Pick<InputDeviceHandler, 'readAllDevices'>;
+    deviceHandler: InputDeviceHandler;
     rawInputs: RawInputs;
     /** Identifies the part of the game that owns newly started raw inputs. */
     rawInputConsumer: string | undefined;

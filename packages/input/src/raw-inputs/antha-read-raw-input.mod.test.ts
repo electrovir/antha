@@ -6,6 +6,7 @@ import {describe, it} from '@augment-vir/test';
 import {
     DeviceInputType,
     GamepadInputDeviceKey,
+    InputDeviceHandler,
     InputDeviceKey,
     InputDeviceType,
     type AllDevices,
@@ -18,12 +19,20 @@ import {
 } from './antha-read-raw-input.mod.js';
 import {InputDirection, type RawInputs} from './raw-input.js';
 
-function createMockDeviceHandler(devices: AllDevices = {}) {
-    return {
-        readAllDevices() {
-            return devices;
-        },
-    };
+class MockInputDeviceHandler extends InputDeviceHandler {
+    constructor(protected readonly mockDevices: AllDevices = {}) {
+        super({
+            startLoopImmediately: false,
+        });
+    }
+
+    public override readAllDevices() {
+        return this.mockDevices;
+    }
+}
+
+function createMockDeviceHandler(mockDevices: AllDevices = {}) {
+    return new MockInputDeviceHandler(mockDevices);
 }
 
 function createMockKeyboardDevices(): AllDevices {
