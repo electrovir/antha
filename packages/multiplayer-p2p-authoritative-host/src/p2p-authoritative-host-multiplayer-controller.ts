@@ -1,14 +1,14 @@
 import {
     type ApiAndRoomConnectionState,
     type ClientId,
-    ControllerClientEvent,
-    ControllerConnectionEvent,
-    ControllerMessageEvent,
-    ControllerRoomListEvent,
-    type ControllerRoomListListener,
     createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
+    MultiplayerControllerClientEvent,
+    MultiplayerControllerConnectionEvent,
+    MultiplayerControllerMessageEvent,
+    MultiplayerControllerRoomListEvent,
+    type MultiplayerControllerRoomListListener,
     type MultiplayerInitParams,
     type MultiplayerRoomConnection,
     MultiplayerRoomController,
@@ -54,7 +54,7 @@ export type P2pAuthoritativeHostStateSnapshot<MultiplayerGameState extends JsonC
 }>;
 
 /**
- * Data received from {@link ControllerStateEvent}.
+ * Data received from {@link MultiplayerControllerStateEvent}.
  *
  * @category Internal
  */
@@ -150,7 +150,7 @@ export type P2pAuthoritativeHostMultiplayerControllerParams<
         acceptConnection?:
             | ((
                   connectingClientId: ClientId,
-                  controller: P2pAuthoritativeHostMultiplayerController<
+                  multiplayerController: P2pAuthoritativeHostMultiplayerController<
                       Input,
                       MultiplayerGameState
                   >,
@@ -163,10 +163,10 @@ export type P2pAuthoritativeHostMultiplayerControllerParams<
  *
  * @category Events
  */
-export class ControllerStateEvent<
+export class MultiplayerControllerStateEvent<
     MultiplayerGameState extends JsonCompatibleValue,
     Input extends JsonCompatibleValue = any,
-> extends defineTypedCustomEvent<any>()('controller-state') {
+> extends defineTypedCustomEvent<any>()('multiplayer-controller-state') {
     public declare detail: Readonly<StateEventDetail<Input, MultiplayerGameState>>;
 
     constructor(
@@ -187,10 +187,10 @@ export type AllP2pAuthoritativeHostMultiplayerControllerEvents<
     Input extends JsonCompatibleValue,
     MultiplayerGameState extends JsonCompatibleValue,
 > =
-    | ControllerStateEvent<MultiplayerGameState, Input>
-    | ControllerRoomListEvent
-    | ControllerClientEvent
-    | ControllerConnectionEvent;
+    | MultiplayerControllerStateEvent<MultiplayerGameState, Input>
+    | MultiplayerControllerRoomListEvent
+    | MultiplayerControllerClientEvent
+    | MultiplayerControllerConnectionEvent;
 
 /**
  * An all-in-one controller for singleplayer or p2p-authoritative-host multiplayer game state.
@@ -205,7 +205,7 @@ export class P2pAuthoritativeHostMultiplayerController<
 > {
     /** All events emitted by this controller. */
     public static readonly events = {
-        ControllerStateEvent,
+        MultiplayerControllerStateEvent,
     };
     /** All events emitted by this controller. */
     public readonly events = P2pAuthoritativeHostMultiplayerController.events;
@@ -268,13 +268,15 @@ export class P2pAuthoritativeHostMultiplayerController<
      *
      * If a callback is provided, it is called each time the room list is updated.
      */
-    public startRoomUpdates(callback: ControllerRoomListListener): RemoveListenerCallback;
+    public startRoomUpdates(
+        callback: MultiplayerControllerRoomListListener,
+    ): RemoveListenerCallback;
     public startRoomUpdates(callback?: undefined): undefined;
     public startRoomUpdates(
-        callback?: ControllerRoomListListener | undefined,
+        callback?: MultiplayerControllerRoomListListener | undefined,
     ): RemoveListenerCallback | undefined;
     public startRoomUpdates(
-        callback?: ControllerRoomListListener | undefined,
+        callback?: MultiplayerControllerRoomListListener | undefined,
     ): RemoveListenerCallback | undefined {
         return this.roomController.startRoomUpdates(callback);
     }
@@ -363,7 +365,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         this.singleplayer = true;
         this.dispatchState(this.createStateEventDetail());
         this.dispatch(
-            new ControllerConnectionEvent({
+            new MultiplayerControllerConnectionEvent({
                 detail: {
                     ...emptyApiAndRoomConnectionState,
                     api: MultiplayerConnectionState.Connected,
@@ -454,17 +456,19 @@ export class P2pAuthoritativeHostMultiplayerController<
 
     /** Forward core room-controller events into this state-sync controller. */
     protected listenToRoomController() {
-        this.roomController.listen(ControllerRoomListEvent, (event) => {
+        this.roomController.listen(MultiplayerControllerRoomListEvent, (event) => {
             this.dispatch(event);
         });
-        this.roomController.listen(ControllerConnectionEvent, (event) => {
+        this.roomController.listen(MultiplayerControllerConnectionEvent, (event) => {
             this.dispatch(event);
         });
-        this.roomController.listen(ControllerClientEvent, (event) => {
+        this.roomController.listen(MultiplayerControllerClientEvent, (event) => {
             this.dispatch(event);
         });
         this.roomController.listen(
-            ControllerMessageEvent<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>,
+            MultiplayerControllerMessageEvent<
+                P2pAuthoritativeHostMessage<Input, MultiplayerGameState>
+            >,
             (event) => {
                 this.handleReceivedMessage(event.sourceClientId, event.detail);
             },
@@ -630,7 +634,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     /** Dispatch the typed state event to local listeners. */
     protected dispatchState(detail: Readonly<StateEventDetail<Input, MultiplayerGameState>>) {
         this.dispatch(
-            new ControllerStateEvent<MultiplayerGameState, Input>({
+            new MultiplayerControllerStateEvent<MultiplayerGameState, Input>({
                 detail,
             }),
         );

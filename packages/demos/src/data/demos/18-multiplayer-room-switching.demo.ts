@@ -3,7 +3,7 @@ import {
     createNewRoom,
     type RoomInput,
 } from '@antha/multiplayer-core';
-import {ControllerFrameEvent} from '@antha/multiplayer-p2p-lock-step';
+import {MultiplayerControllerFrameEvent} from '@antha/multiplayer-p2p-lock-step';
 import {combineErrorMessages, log} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, defineElement, html, listen, nothing} from 'element-vir';
@@ -78,14 +78,17 @@ const DemoMultiplayerRoomSwitching = defineElement()({
     `,
     init({state, updateState}) {
         updateState({
-            cleanup: state.traveler.listen(ControllerFrameEvent<DemoCounterInput>, ({detail}) => {
-                updateState({
-                    currentCount: applyDemoCounterFrame({
-                        actions: detail,
-                        state: state.currentCount,
-                    }),
-                });
-            }),
+            cleanup: state.traveler.listen(
+                MultiplayerControllerFrameEvent<DemoCounterInput>,
+                ({detail}) => {
+                    updateState({
+                        currentCount: applyDemoCounterFrame({
+                            actions: detail,
+                            state: state.currentCount,
+                        }),
+                    });
+                },
+            ),
         });
 
         async function initializeRooms() {

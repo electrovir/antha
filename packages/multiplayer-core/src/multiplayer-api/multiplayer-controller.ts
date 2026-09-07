@@ -123,7 +123,7 @@ export type MultiplayerRoomControllerParams<Message extends JsonCompatibleValue>
     acceptConnection?:
         | ((
               connectingClientId: ClientId,
-              controller: MultiplayerRoomController<Message>,
+              multiplayerController: MultiplayerRoomController<Message>,
           ) => MaybePromise<boolean>)
         | undefined;
 }>;
@@ -172,9 +172,9 @@ export type MultiplayerInitParams = {
  *
  * @category Events
  */
-export class ControllerMessageEvent<
+export class MultiplayerControllerMessageEvent<
     Message extends JsonCompatibleValue,
-> extends defineTypedCustomEvent<any>()('controller-message') {
+> extends defineTypedCustomEvent<any>()('multiplayer-controller-message') {
     public declare detail: Message;
 
     constructor(
@@ -194,16 +194,16 @@ export class ControllerMessageEvent<
  *
  * @category Events
  */
-export class ControllerRoomListEvent extends defineTypedCustomEvent<
+export class MultiplayerControllerRoomListEvent extends defineTypedCustomEvent<
     Readonly<MultiplayerClientRooms>
->()('controller-room-list') {}
+>()('multiplayer-controller-room-list') {}
 
 /**
  * Callback fired whenever the room list is fetched from the multiplayer API.
  *
  * @category Internal
  */
-export type ControllerRoomListListener = (
+export type MultiplayerControllerRoomListListener = (
     rooms: Readonly<MultiplayerClientRooms>,
 ) => MaybePromise<void>;
 
@@ -217,17 +217,17 @@ export type ControllerRoomListListener = (
  *
  * @category Events
  */
-export class ControllerClientEvent extends defineTypedCustomEvent<
+export class MultiplayerControllerClientEvent extends defineTypedCustomEvent<
     Readonly<MultiplayerConnectionUpdate>
->()('controller-client') {}
+>()('multiplayer-controller-client') {}
 
 /**
  * Fires when the controller's connection state is updated.
  *
  * @category Events
  */
-export class ControllerConnectionEvent extends defineTypedCustomEvent<ApiAndRoomConnectionState>()(
-    'controller-connection',
+export class MultiplayerControllerConnectionEvent extends defineTypedCustomEvent<ApiAndRoomConnectionState>()(
+    'multiplayer-controller-connection',
 ) {}
 
 /**
@@ -236,10 +236,10 @@ export class ControllerConnectionEvent extends defineTypedCustomEvent<ApiAndRoom
  * @category Internal
  */
 export type AllMultiplayerRoomControllerEvents<Message extends JsonCompatibleValue> =
-    | ControllerMessageEvent<Message>
-    | ControllerRoomListEvent
-    | ControllerClientEvent
-    | ControllerConnectionEvent;
+    | MultiplayerControllerMessageEvent<Message>
+    | MultiplayerControllerRoomListEvent
+    | MultiplayerControllerClientEvent
+    | MultiplayerControllerConnectionEvent;
 
 /**
  * A generic multiplayer room controller. It manages API connectivity, room discovery, WebRTC
@@ -252,10 +252,10 @@ export class MultiplayerRoomController<
 > extends ListenTarget<AllMultiplayerRoomControllerEvents<Message>> {
     /** All events emitted by this controller. */
     public static readonly events = {
-        ControllerMessageEvent,
-        ControllerRoomListEvent,
-        ControllerClientEvent,
-        ControllerConnectionEvent,
+        MultiplayerControllerMessageEvent,
+        MultiplayerControllerRoomListEvent,
+        MultiplayerControllerClientEvent,
+        MultiplayerControllerConnectionEvent,
     };
     /** All events emitted by this controller. */
     public readonly events = MultiplayerRoomController.events;
@@ -371,19 +371,21 @@ export class MultiplayerRoomController<
      *
      * If a callback is provided, it is called each time the room list is updated.
      */
-    public startRoomUpdates(callback: ControllerRoomListListener): RemoveListenerCallback;
+    public startRoomUpdates(
+        callback: MultiplayerControllerRoomListListener,
+    ): RemoveListenerCallback;
     public startRoomUpdates(callback?: undefined): undefined;
     public startRoomUpdates(
-        callback?: ControllerRoomListListener | undefined,
+        callback?: MultiplayerControllerRoomListListener | undefined,
     ): RemoveListenerCallback | undefined;
     public startRoomUpdates(
-        callback?: ControllerRoomListListener | undefined,
+        callback?: MultiplayerControllerRoomListListener | undefined,
     ): RemoveListenerCallback | undefined {
         this.isListeningToRoomUpdates = true;
         this.startRoomInterval();
 
         if (callback) {
-            return this.listen(ControllerRoomListEvent, async (event) => {
+            return this.listen(MultiplayerControllerRoomListEvent, async (event) => {
                 await callback(event.detail);
             });
         } else {
@@ -458,11 +460,13 @@ export class MultiplayerRoomController<
         );
 
         currentConnection.listen(WebrtcMultiplayerMessageEvent<Message>, (event) => {
-            this.dispatch(new ControllerMessageEvent(event.sourceClientId, event.detail));
+            this.dispatch(
+                new MultiplayerControllerMessageEvent(event.sourceClientId, event.detail),
+            );
         });
         currentConnection.listen(WebrtcMultiplayerConnectionUpdateEvent, (event) => {
             this.dispatch(
-                new ControllerClientEvent({
+                new MultiplayerControllerClientEvent({
                     detail: event.detail,
                 }),
             );
@@ -537,7 +541,7 @@ export class MultiplayerRoomController<
             makeWritable(this).roomConnectionState = state.room;
         }
         this.dispatch(
-            new ControllerConnectionEvent({
+            new MultiplayerControllerConnectionEvent({
                 detail: {
                     room: this.roomConnectionState,
                     api: this.apiConnectionState,
@@ -574,7 +578,7 @@ export class MultiplayerRoomController<
                 });
                 if (output.Ok) {
                     this.dispatch(
-                        new ControllerRoomListEvent({
+                        new MultiplayerControllerRoomListEvent({
                             detail: output.Ok.responseData,
                         }),
                     );

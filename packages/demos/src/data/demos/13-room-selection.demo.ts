@@ -1,6 +1,6 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod} from '@antha/engine';
 import {
-    ControllerConnectionEvent,
+    MultiplayerControllerConnectionEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
     type ApiAndRoomConnectionState,
@@ -43,7 +43,7 @@ const DemoRoomLobby = defineElement<{
     init({inputs, updateState, state}) {
         const cleanupCallbacks = [
             inputs.p2pLockStepMultiplayer.multiplayerController.listen(
-                ControllerConnectionEvent,
+                MultiplayerControllerConnectionEvent,
                 (event) => {
                     updateState({
                         connectionState: event.detail,

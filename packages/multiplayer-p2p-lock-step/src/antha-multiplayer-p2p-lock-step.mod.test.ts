@@ -1,9 +1,9 @@
 import {AnthaEngine} from '@antha/engine';
 import {
-    ControllerConnectionEvent,
-    ControllerRoomListEvent,
     createNewRoom,
     MultiplayerConnectionState,
+    MultiplayerControllerConnectionEvent,
+    MultiplayerControllerRoomListEvent,
     type MultiplayerClientRooms,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
@@ -41,13 +41,16 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
 
         assert.strictEquals(mod.modName, 'antha-multiplayer-p2p-lock-step');
 
-        multiplayerState.multiplayerController.listen(ControllerRoomListEvent, ({detail}) => {
-            availableRooms = detail;
-        });
+        multiplayerState.multiplayerController.listen(
+            MultiplayerControllerRoomListEvent,
+            ({detail}) => {
+                availableRooms = detail;
+            },
+        );
 
         multiplayerState.multiplayerController.startSingleplayer();
         multiplayerState.multiplayerController.dispatch(
-            new ControllerRoomListEvent({
+            new MultiplayerControllerRoomListEvent({
                 detail: {
                     [room.roomId]: {
                         clientCount: 1,
@@ -97,7 +100,7 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         delete engine.state.multiplayerP2pLockStep;
 
         multiplayerState.multiplayerController.dispatch(
-            new ControllerConnectionEvent({
+            new MultiplayerControllerConnectionEvent({
                 detail: {
                     api: MultiplayerConnectionState.Connected,
                     room: MultiplayerConnectionState.Disconnected,
@@ -105,7 +108,7 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             }),
         );
         multiplayerState.multiplayerController.dispatch(
-            new ControllerRoomListEvent({
+            new MultiplayerControllerRoomListEvent({
                 detail: {},
             }),
         );

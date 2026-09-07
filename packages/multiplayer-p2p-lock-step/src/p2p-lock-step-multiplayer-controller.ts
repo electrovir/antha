@@ -1,14 +1,14 @@
 import {
     type ApiAndRoomConnectionState,
     type ClientId,
-    ControllerClientEvent,
-    ControllerConnectionEvent,
-    ControllerMessageEvent,
-    ControllerRoomListEvent,
-    type ControllerRoomListListener,
     createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
+    MultiplayerControllerClientEvent,
+    MultiplayerControllerConnectionEvent,
+    MultiplayerControllerMessageEvent,
+    MultiplayerControllerRoomListEvent,
+    type MultiplayerControllerRoomListListener,
     type MultiplayerInitParams,
     type MultiplayerRoomConnection,
     MultiplayerRoomController,
@@ -42,7 +42,7 @@ export enum P2pLockStepMessageType {
 }
 
 /**
- * Data received from {@link ControllerFrameEvent}.
+ * Data received from {@link MultiplayerControllerFrameEvent}.
  *
  * @category Internal
  */
@@ -92,7 +92,7 @@ export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatible
     acceptConnection?:
         | ((
               connectingClientId: ClientId,
-              controller: P2pLockStepMultiplayerController<Action>,
+              multiplayerController: P2pLockStepMultiplayerController<Action>,
           ) => MaybePromise<boolean>)
         | undefined;
 
@@ -113,9 +113,9 @@ export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatible
  *
  * @category Events
  */
-export class ControllerFrameEvent<
+export class MultiplayerControllerFrameEvent<
     MultiplayerPacket extends JsonCompatibleValue,
-> extends defineTypedCustomEvent<any>()('controller-frame') {
+> extends defineTypedCustomEvent<any>()('multiplayer-controller-frame') {
     public declare detail: ReadonlyArray<FrameEventDetail<MultiplayerPacket>>;
 
     constructor(
@@ -132,18 +132,18 @@ export class ControllerFrameEvent<
 export type AllP2pLockStepMultiplayerControllerEvents<
     MultiplayerPacket extends JsonCompatibleValue,
 > =
-    | ControllerFrameEvent<MultiplayerPacket>
-    | ControllerRoomListEvent
-    | ControllerClientEvent
-    | ControllerConnectionEvent;
+    | MultiplayerControllerFrameEvent<MultiplayerPacket>
+    | MultiplayerControllerRoomListEvent
+    | MultiplayerControllerClientEvent
+    | MultiplayerControllerConnectionEvent;
 
 /**
  * Listener callback for p2p-lock-step frame events.
  *
  * @category Internal
  */
-export type ControllerFrameListener<MultiplayerPacket extends JsonCompatibleValue> = (
-    event: Readonly<ControllerFrameEvent<MultiplayerPacket>>,
+export type MultiplayerControllerFrameListener<MultiplayerPacket extends JsonCompatibleValue> = (
+    event: Readonly<MultiplayerControllerFrameEvent<MultiplayerPacket>>,
 ) => MaybePromise<void>;
 
 const defaultFrameDuration: AnyDuration = {
@@ -162,7 +162,7 @@ export class P2pLockStepMultiplayerController<
     public readonly currentFps: number = 0;
     /** All events emitted by this controller. */
     public static readonly events = {
-        ControllerFrameEvent,
+        MultiplayerControllerFrameEvent,
     };
     /** All events emitted by this controller. */
     public readonly events = P2pLockStepMultiplayerController.events;
@@ -229,13 +229,15 @@ export class P2pLockStepMultiplayerController<
      *
      * If a callback is provided, it is called each time the room list is updated.
      */
-    public startRoomUpdates(callback: ControllerRoomListListener): RemoveListenerCallback;
+    public startRoomUpdates(
+        callback: MultiplayerControllerRoomListListener,
+    ): RemoveListenerCallback;
     public startRoomUpdates(callback?: undefined): undefined;
     public startRoomUpdates(
-        callback?: ControllerRoomListListener | undefined,
+        callback?: MultiplayerControllerRoomListListener | undefined,
     ): RemoveListenerCallback | undefined;
     public startRoomUpdates(
-        callback?: ControllerRoomListListener | undefined,
+        callback?: MultiplayerControllerRoomListListener | undefined,
     ): RemoveListenerCallback | undefined {
         return this.roomController.startRoomUpdates(callback);
     }
@@ -322,7 +324,7 @@ export class P2pLockStepMultiplayerController<
         this.singleplayer = true;
         this.finishFrame();
         this.dispatch(
-            new ControllerConnectionEvent({
+            new MultiplayerControllerConnectionEvent({
                 detail: {
                     ...emptyApiAndRoomConnectionState,
                     api: MultiplayerConnectionState.Connected,
@@ -477,16 +479,16 @@ export class P2pLockStepMultiplayerController<
 
     /** Forward core room-controller events into this frame-sync controller. */
     protected listenToRoomController() {
-        this.roomController.listen(ControllerRoomListEvent, (event) => {
+        this.roomController.listen(MultiplayerControllerRoomListEvent, (event) => {
             this.dispatch(event);
         });
-        this.roomController.listen(ControllerConnectionEvent, (event) => {
+        this.roomController.listen(MultiplayerControllerConnectionEvent, (event) => {
             this.debugLog(
                 `connection event received: api=${String(event.detail.api)} room=${String(event.detail.room)}`,
             );
             this.dispatch(event);
         });
-        this.roomController.listen(ControllerClientEvent, (event) => {
+        this.roomController.listen(MultiplayerControllerClientEvent, (event) => {
             this.debugLog(`client event received: ${JSON.stringify(event.detail)}`);
             if ('newMember' in event.detail) {
                 this.syncNewMember(event.detail.newMember);
@@ -496,7 +498,7 @@ export class P2pLockStepMultiplayerController<
             this.dispatch(event);
         });
         this.roomController.listen(
-            ControllerMessageEvent<P2pLockStepMessage<MultiplayerPacket>>,
+            MultiplayerControllerMessageEvent<P2pLockStepMessage<MultiplayerPacket>>,
             (event) => {
                 this.debugLog(
                     `message event received from ${event.sourceClientId}: type=${event.detail.type}`,
@@ -598,7 +600,7 @@ export class P2pLockStepMultiplayerController<
                 type: P2pLockStepMessageType.Actions,
             });
             this.dispatch(
-                new ControllerFrameEvent({
+                new MultiplayerControllerFrameEvent({
                     detail: message.actions,
                 }),
             );
@@ -632,7 +634,7 @@ export class P2pLockStepMultiplayerController<
             actions: currentFrameActions,
         });
         this.dispatch(
-            new ControllerFrameEvent({
+            new MultiplayerControllerFrameEvent({
                 detail: currentFrameActions,
             }),
         );

@@ -1,9 +1,9 @@
 import {AnthaEngine} from '@antha/engine';
 import {
-    ControllerConnectionEvent,
-    ControllerRoomListEvent,
     createNewRoom,
     MultiplayerConnectionState,
+    MultiplayerControllerConnectionEvent,
+    MultiplayerControllerRoomListEvent,
     type MultiplayerClientRooms,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
@@ -12,7 +12,7 @@ import {
     createAnthaMultiplayerP2pAuthoritativeHostMod,
     type AnthaMultiplayerP2pAuthoritativeHostState,
 } from './antha-multiplayer-p2p-authoritative-host.mod.js';
-import {ControllerStateEvent} from './p2p-authoritative-host-multiplayer-controller.js';
+import {MultiplayerControllerStateEvent} from './p2p-authoritative-host-multiplayer-controller.js';
 
 type CounterState = {
     count: number;
@@ -65,9 +65,12 @@ describe(createAnthaMultiplayerP2pAuthoritativeHostMod.name, () => {
         const initialCount: number = multiplayerState.currentState.count;
         assert.strictEquals(initialCount, 0);
 
-        multiplayerState.multiplayerController.listen(ControllerRoomListEvent, ({detail}) => {
-            availableRooms = detail;
-        });
+        multiplayerState.multiplayerController.listen(
+            MultiplayerControllerRoomListEvent,
+            ({detail}) => {
+                availableRooms = detail;
+            },
+        );
 
         multiplayerState.multiplayerController.startSingleplayer();
         multiplayerState.multiplayerController.act(2);
@@ -75,7 +78,7 @@ describe(createAnthaMultiplayerP2pAuthoritativeHostMod.name, () => {
         multiplayerState.multiplayerController.tick(3);
 
         multiplayerState.multiplayerController.dispatch(
-            new ControllerRoomListEvent({
+            new MultiplayerControllerRoomListEvent({
                 detail: {
                     [room.roomId]: {
                         clientCount: 1,
@@ -140,7 +143,7 @@ describe(createAnthaMultiplayerP2pAuthoritativeHostMod.name, () => {
         delete engine.state.multiplayerP2pAuthoritativeHost;
 
         multiplayerState.multiplayerController.dispatch(
-            new ControllerConnectionEvent({
+            new MultiplayerControllerConnectionEvent({
                 detail: {
                     api: MultiplayerConnectionState.Connected,
                     room: MultiplayerConnectionState.Disconnected,
@@ -148,12 +151,12 @@ describe(createAnthaMultiplayerP2pAuthoritativeHostMod.name, () => {
             }),
         );
         multiplayerState.multiplayerController.dispatch(
-            new ControllerRoomListEvent({
+            new MultiplayerControllerRoomListEvent({
                 detail: {},
             }),
         );
         multiplayerState.multiplayerController.dispatch(
-            new ControllerStateEvent<CounterState, number>({
+            new MultiplayerControllerStateEvent<CounterState, number>({
                 detail: {
                     sequence: 1,
                     state: {

@@ -1,5 +1,5 @@
 import {createMockRoomHandlerServerApiClient, createNewRoom} from '@antha/multiplayer-core';
-import {ControllerFrameEvent} from '@antha/multiplayer-p2p-lock-step';
+import {MultiplayerControllerFrameEvent} from '@antha/multiplayer-p2p-lock-step';
 import {combineErrorMessages, log} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, defineElement, html, listen, nothing} from 'element-vir';
@@ -91,16 +91,19 @@ const DemoSingleplayerToMultiplayer = defineElement()({
     init({state, updateState}) {
         state.controller.startSingleplayer();
         updateState({
-            cleanup: state.controller.listen(ControllerFrameEvent<DemoCounterInput>, ({detail}) => {
-                updateState({
-                    count: applyDemoCounterFrame({
-                        actions: detail,
-                        state: state.count,
-                    }),
-                });
-            }),
+            cleanup: state.controller.listen(
+                MultiplayerControllerFrameEvent<DemoCounterInput>,
+                ({detail}) => {
+                    updateState({
+                        count: applyDemoCounterFrame({
+                            actions: detail,
+                            state: state.count,
+                        }),
+                    });
+                },
+            ),
             joiningCleanup: state.joiningController.listen(
-                ControllerFrameEvent<DemoCounterInput>,
+                MultiplayerControllerFrameEvent<DemoCounterInput>,
                 ({detail}) => {
                     updateState({
                         joiningCount: applyDemoCounterFrame({

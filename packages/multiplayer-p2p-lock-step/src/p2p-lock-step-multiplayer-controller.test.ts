@@ -1,13 +1,13 @@
 import {
     type ClientId,
-    ControllerClientEvent,
-    ControllerConnectionEvent,
-    ControllerMessageEvent,
-    ControllerRoomListEvent,
     createMockRoomHandlerServerApiClient,
     createMultiplayerId,
     createNewRoom,
     MultiplayerConnectionState,
+    MultiplayerControllerClientEvent,
+    MultiplayerControllerConnectionEvent,
+    MultiplayerControllerMessageEvent,
+    MultiplayerControllerRoomListEvent,
     type MultiplayerRoomConnection,
     multiplayerRoomsEndpoint,
 } from '@antha/multiplayer-core';
@@ -15,8 +15,8 @@ import {assert, assertWrap} from '@augment-vir/assert';
 import {type MaybePromise, wait} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {
-    ControllerFrameEvent,
     type FrameEventDetail,
+    MultiplayerControllerFrameEvent,
     type P2pLockStepMessage,
     P2pLockStepMessageType,
     P2pLockStepMultiplayerController,
@@ -296,7 +296,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             gameId: 'singleplayer-test',
         });
 
-        controller.listen(ControllerFrameEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
             if (detail.length) {
                 state.frames = [
                     ...state.frames,
@@ -375,7 +375,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 roomConnectionState: MultiplayerConnectionState.Disconnected,
                 roomId: undefined,
                 staticEvents: [
-                    'ControllerFrameEvent',
+                    'MultiplayerControllerFrameEvent',
                 ],
                 staticKnownErrors: controller.knownErrors,
             },
@@ -418,7 +418,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 frames: [],
             };
 
-            controller.listen(ControllerFrameEvent, ({detail}) => {
+            controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
                 if (detail.length) {
                     state.frames = [
                         ...state.frames,
@@ -521,26 +521,26 @@ describe(P2pLockStepMultiplayerController.name, () => {
             roomListEvents: [],
         };
 
-        controller.listen(ControllerClientEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerClientEvent, ({detail}) => {
             state.clientEvents.push(detail);
         });
-        controller.listen(ControllerConnectionEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerConnectionEvent, ({detail}) => {
             state.connectionEvents.push(detail);
         });
-        controller.listen(ControllerFrameEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
             state.frames = [
                 ...state.frames,
                 detail,
             ];
         });
-        controller.listen(ControllerRoomListEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerRoomListEvent, ({detail}) => {
             state.roomListEvents.push(detail);
         });
 
         controller.setRoomConnectionForTest(fakeConnection);
         assert.strictEquals(controller.clientId, fakeConnection.clientId);
         controller.roomController.dispatch(
-            new ControllerRoomListEvent({
+            new MultiplayerControllerRoomListEvent({
                 detail: {
                     [room.roomId]: {
                         clientCount: 1,
@@ -552,7 +552,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             }),
         );
         controller.roomController.dispatch(
-            new ControllerConnectionEvent({
+            new MultiplayerControllerConnectionEvent({
                 detail: {
                     api: MultiplayerConnectionState.Connected,
                     room: MultiplayerConnectionState.Connected,
@@ -560,7 +560,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             }),
         );
         controller.roomController.dispatch(
-            new ControllerClientEvent({
+            new MultiplayerControllerClientEvent({
                 detail: {
                     newMember: memberClientId,
                 },
@@ -569,7 +569,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         controller.act('host-action');
         controller.setFrameTickReadyForTest(true);
         controller.roomController.dispatch(
-            new ControllerMessageEvent(
+            new MultiplayerControllerMessageEvent(
                 memberClientId,
                 createActionsMessage({
                     actions: [
@@ -580,7 +580,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             ),
         );
         controller.roomController.dispatch(
-            new ControllerMessageEvent(
+            new MultiplayerControllerMessageEvent(
                 memberClientId,
                 createActionsMessage({
                     actions: [
@@ -592,7 +592,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         );
         controller.setRoomConnectionForTest(undefined);
         controller.roomController.dispatch(
-            new ControllerMessageEvent(
+            new MultiplayerControllerMessageEvent(
                 memberClientId,
                 createActionsMessage({
                     actions: [
@@ -686,7 +686,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             frames: [],
         };
 
-        controller.listen(ControllerFrameEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
             state.frames = [
                 ...state.frames,
                 detail,
@@ -699,7 +699,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             'member-two',
         ]);
         controller.roomController.dispatch(
-            new ControllerMessageEvent(
+            new MultiplayerControllerMessageEvent(
                 hostClientId,
                 createFrameMessage([
                     {
@@ -710,7 +710,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             ),
         );
         controller.roomController.dispatch(
-            new ControllerMessageEvent(
+            new MultiplayerControllerMessageEvent(
                 hostClientId,
                 createActionsMessage({
                     actions: [
@@ -759,7 +759,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         fakeConnection.setHost(true);
 
         controller.roomController.dispatch(
-            new ControllerClientEvent({
+            new MultiplayerControllerClientEvent({
                 detail: {
                     newHost: controller.localClientIdForTest,
                 },
@@ -783,7 +783,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             frames: [],
         };
 
-        controller.listen(ControllerFrameEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
             if (detail.length) {
                 state.frames = [
                     ...state.frames,
@@ -890,13 +890,13 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 memberFrames: [],
             };
 
-            host.listen(ControllerFrameEvent, ({detail}) => {
+            host.listen(MultiplayerControllerFrameEvent, ({detail}) => {
                 state.hostFrames = [
                     ...state.hostFrames,
                     detail,
                 ];
             });
-            member.listen(ControllerFrameEvent, ({detail}) => {
+            member.listen(MultiplayerControllerFrameEvent, ({detail}) => {
                 state.memberFrames = [
                     ...state.memberFrames,
                     detail,
@@ -918,7 +918,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
 
             host.setFrameTickReadyForTest(true);
             host.roomController.dispatch(
-                new ControllerMessageEvent(
+                new MultiplayerControllerMessageEvent(
                     memberClientId,
                     createActionsMessage({
                         actions: [
@@ -929,7 +929,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 ),
             );
             member.roomController.dispatch(
-                new ControllerMessageEvent(
+                new MultiplayerControllerMessageEvent(
                     hostClientId,
                     createFrameMessage([
                         {

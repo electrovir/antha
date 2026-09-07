@@ -1,7 +1,7 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod, type AnthaMod} from '@antha/engine';
 import {
-    ControllerClientEvent,
-    ControllerConnectionEvent,
+    MultiplayerControllerClientEvent,
+    MultiplayerControllerConnectionEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
     type ApiAndRoomConnectionState,
@@ -10,7 +10,7 @@ import {
     type RoomInput,
 } from '@antha/multiplayer-core';
 import {
-    ControllerFrameEvent,
+    MultiplayerControllerFrameEvent,
     createAnthaMultiplayerP2pLockStepMod,
     type AnthaMultiplayerP2pLockStepState,
     type FrameEventDetail,
@@ -134,13 +134,13 @@ const DemoModeRoomLobby = defineElement<{
 
         const cleanupCallbacks = [
             inputs.gameState.multiplayerP2pLockStep.multiplayerController.listen(
-                ControllerClientEvent,
+                MultiplayerControllerClientEvent,
                 () => {
                     updateConnectedClientCount();
                 },
             ),
             inputs.gameState.multiplayerP2pLockStep.multiplayerController.listen(
-                ControllerConnectionEvent,
+                MultiplayerControllerConnectionEvent,
                 (event) => {
                     updateState({
                         connectionState: event.detail,
@@ -514,7 +514,7 @@ function createRoomModeSelectionMod(
                 state.multiplayerInit.set(state.multiplayerP2pLockStep.multiplayerController, true);
 
                 state.multiplayerP2pLockStep.multiplayerController.listen(
-                    ControllerFrameEvent,
+                    MultiplayerControllerFrameEvent,
                     async (event) => {
                         await awaitedBlockingMap(event.detail, async (detail) => {
                             await multiplayerActionReactions[detail.packet.type]({
@@ -526,7 +526,7 @@ function createRoomModeSelectionMod(
                 );
 
                 state.multiplayerP2pLockStep.multiplayerController.listen(
-                    ControllerClientEvent,
+                    MultiplayerControllerClientEvent,
                     (event) => {
                         if (
                             state.multiplayerP2pLockStep?.multiplayerController.isHost() &&

@@ -1,12 +1,12 @@
 import {
-    ControllerClientEvent,
-    ControllerConnectionEvent,
-    ControllerMessageEvent,
-    ControllerRoomListEvent,
     createMockRoomHandlerServerApiClient,
     createMultiplayerId,
     createNewRoom,
     MultiplayerConnectionState,
+    MultiplayerControllerClientEvent,
+    MultiplayerControllerConnectionEvent,
+    MultiplayerControllerMessageEvent,
+    MultiplayerControllerRoomListEvent,
     multiplayerRoomsEndpoint,
     type MultiplayerRoomConnection,
 } from '@antha/multiplayer-core';
@@ -14,7 +14,7 @@ import {assert, assertWrap} from '@augment-vir/assert';
 import {type MaybePromise} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {
-    ControllerStateEvent,
+    MultiplayerControllerStateEvent,
     P2pAuthoritativeHostMessageType,
     P2pAuthoritativeHostMultiplayerController,
     type P2pAuthoritativeHostMessage,
@@ -312,7 +312,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             },
         });
 
-        controller.listen(ControllerStateEvent<CounterState, number>, ({detail}) => {
+        controller.listen(MultiplayerControllerStateEvent<CounterState, number>, ({detail}) => {
             state.updates = [
                 ...state.updates,
                 detail,
@@ -423,7 +423,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
                 roomConnectionState: MultiplayerConnectionState.Disconnected,
                 roomId: undefined,
                 staticEvents: [
-                    'ControllerStateEvent',
+                    'MultiplayerControllerStateEvent',
                 ],
                 staticKnownErrors: controller.knownErrors,
             },
@@ -536,7 +536,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             },
         });
 
-        controller.listen(ControllerStateEvent<CounterState, number>, ({detail}) => {
+        controller.listen(MultiplayerControllerStateEvent<CounterState, number>, ({detail}) => {
             state.updates = [
                 ...state.updates,
                 detail,
@@ -582,13 +582,13 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             roomListEvents: [],
         };
 
-        controller.listen(ControllerClientEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerClientEvent, ({detail}) => {
             state.clientEvents.push(detail);
         });
-        controller.listen(ControllerConnectionEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerConnectionEvent, ({detail}) => {
             state.connectionEvents.push(detail);
         });
-        controller.listen(ControllerRoomListEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerRoomListEvent, ({detail}) => {
             state.roomListEvents.push(detail);
         });
 
@@ -598,7 +598,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             roomName: 'Room Name',
         });
         controller.roomController.dispatch(
-            new ControllerRoomListEvent({
+            new MultiplayerControllerRoomListEvent({
                 detail: {
                     [room.roomId]: {
                         clientCount: 1,
@@ -610,7 +610,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             }),
         );
         controller.roomController.dispatch(
-            new ControllerConnectionEvent({
+            new MultiplayerControllerConnectionEvent({
                 detail: {
                     api: MultiplayerConnectionState.Connected,
                     room: MultiplayerConnectionState.Connected,
@@ -618,28 +618,27 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             }),
         );
         controller.roomController.dispatch(
-            new ControllerClientEvent({
+            new MultiplayerControllerClientEvent({
                 detail: {
                     newMember: clientId,
                 },
             }),
         );
         controller.roomController.dispatch(
-            new ControllerMessageEvent<P2pAuthoritativeHostMessage<number, CounterState>>(
-                clientId,
-                {
-                    type: P2pAuthoritativeHostMessageType.StateRequest,
-                    stateSyncId,
-                },
-            ),
+            new MultiplayerControllerMessageEvent<
+                P2pAuthoritativeHostMessage<number, CounterState>
+            >(clientId, {
+                type: P2pAuthoritativeHostMessageType.StateRequest,
+                stateSyncId,
+            }),
         );
         controller.roomController.dispatch(
-            new ControllerMessageEvent(clientId, createInputMessage(4)),
+            new MultiplayerControllerMessageEvent(clientId, createInputMessage(4)),
         );
 
         controller.setRoomConnectionForTest(undefined);
         controller.roomController.dispatch(
-            new ControllerMessageEvent(clientId, createInputMessage(4)),
+            new MultiplayerControllerMessageEvent(clientId, createInputMessage(4)),
         );
 
         assert.deepEquals(
@@ -716,7 +715,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             updates: [],
         };
 
-        controller.listen(ControllerStateEvent<CounterState, number>, ({detail}) => {
+        controller.listen(MultiplayerControllerStateEvent<CounterState, number>, ({detail}) => {
             state.updates = [
                 ...state.updates,
                 detail,
@@ -726,7 +725,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
         controller.setRoomConnectionForTest(fakeConnection);
         controller.act(5);
         controller.roomController.dispatch(
-            new ControllerMessageEvent(
+            new MultiplayerControllerMessageEvent(
                 sourceClientId,
                 createSnapshotMessage({
                     count: 9,
@@ -735,7 +734,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             ),
         );
         controller.roomController.dispatch(
-            new ControllerMessageEvent(
+            new MultiplayerControllerMessageEvent(
                 sourceClientId,
                 createSnapshotMessage({
                     count: 3,
@@ -744,7 +743,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             ),
         );
         controller.roomController.dispatch(
-            new ControllerMessageEvent(sourceClientId, createInputMessage(100)),
+            new MultiplayerControllerMessageEvent(sourceClientId, createInputMessage(100)),
         );
 
         assert.deepEquals(
@@ -799,13 +798,13 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
                 memberUpdates: [],
             };
 
-            host.listen(ControllerStateEvent<CounterState, number>, ({detail}) => {
+            host.listen(MultiplayerControllerStateEvent<CounterState, number>, ({detail}) => {
                 state.hostUpdates = [
                     ...state.hostUpdates,
                     detail,
                 ];
             });
-            member.listen(ControllerStateEvent<CounterState, number>, ({detail}) => {
+            member.listen(MultiplayerControllerStateEvent<CounterState, number>, ({detail}) => {
                 state.memberUpdates = [
                     ...state.memberUpdates,
                     detail,
@@ -826,10 +825,10 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             const memberClientId = assertWrap.isDefined(member.getClientId());
 
             host.roomController.dispatch(
-                new ControllerMessageEvent(memberClientId, createInputMessage(7)),
+                new MultiplayerControllerMessageEvent(memberClientId, createInputMessage(7)),
             );
             member.roomController.dispatch(
-                new ControllerMessageEvent(
+                new MultiplayerControllerMessageEvent(
                     hostClientId,
                     createSnapshotMessage({
                         count: 7,

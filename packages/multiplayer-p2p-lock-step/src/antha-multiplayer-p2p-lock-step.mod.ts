@@ -1,8 +1,8 @@
 import {defineAnthaMod} from '@antha/engine';
 import {
     type ApiAndRoomConnectionState,
-    ControllerConnectionEvent,
     emptyApiAndRoomConnectionState,
+    MultiplayerControllerConnectionEvent,
 } from '@antha/multiplayer-core';
 import {
     type JsonCompatibleValue,
@@ -26,7 +26,7 @@ export type AnthaMultiplayerP2pLockStepState<MultiplayerPacket extends JsonCompa
         debugMultiplayer?: boolean | undefined;
         /** P2p-lock-step controller state. */
         multiplayerP2pLockStep: {
-            /** Controller used to drive singleplayer or multiplayer frame sync. */
+            /** Multiplayer controller used to drive singleplayer or multiplayer frame sync. */
             multiplayerController: P2pLockStepMultiplayerController<MultiplayerPacket>;
             /** Current backend API and room connection state. */
             connectionState: ApiAndRoomConnectionState;
@@ -82,7 +82,7 @@ export function createAnthaMultiplayerP2pLockStepMod<
                 };
 
                 state.multiplayerP2pLockStep.multiplayerController.listen(
-                    ControllerConnectionEvent,
+                    MultiplayerControllerConnectionEvent,
                     ({detail: newConnectionState}) => {
                         if (!state.multiplayerP2pLockStep) {
                             return;

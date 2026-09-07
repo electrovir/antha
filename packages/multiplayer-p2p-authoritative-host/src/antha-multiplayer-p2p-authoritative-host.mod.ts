@@ -1,7 +1,7 @@
 import {defineAnthaMod} from '@antha/engine';
 import {
     type ApiAndRoomConnectionState,
-    ControllerConnectionEvent,
+    MultiplayerControllerConnectionEvent,
     emptyApiAndRoomConnectionState,
 } from '@antha/multiplayer-core';
 import {
@@ -10,7 +10,7 @@ import {
     type SelectFrom,
 } from '@augment-vir/common';
 import {
-    ControllerStateEvent,
+    MultiplayerControllerStateEvent,
     P2pAuthoritativeHostMultiplayerController,
     type P2pAuthoritativeHostMultiplayerControllerParams,
 } from './p2p-authoritative-host-multiplayer-controller.js';
@@ -26,7 +26,7 @@ export type AnthaMultiplayerP2pAuthoritativeHostState<
 > = {
     /** P2p-authoritative-host controller state. */
     multiplayerP2pAuthoritativeHost: {
-        /** Controller used to drive singleplayer or multiplayer state sync. */
+        /** Multiplayer controller used to drive singleplayer or multiplayer state sync. */
         multiplayerController: P2pAuthoritativeHostMultiplayerController<
             Input,
             MultiplayerGameState
@@ -83,7 +83,7 @@ export function createAnthaMultiplayerP2pAuthoritativeHostMod<
                 state.multiplayerP2pAuthoritativeHost = createP2pAuthoritativeHostState(options);
 
                 state.multiplayerP2pAuthoritativeHost.multiplayerController.listen(
-                    ControllerConnectionEvent,
+                    MultiplayerControllerConnectionEvent,
                     ({detail: newConnectionState}) => {
                         if (!state.multiplayerP2pAuthoritativeHost) {
                             return;
@@ -94,7 +94,7 @@ export function createAnthaMultiplayerP2pAuthoritativeHostMod<
                 );
 
                 state.multiplayerP2pAuthoritativeHost.multiplayerController.listen(
-                    ControllerStateEvent<MultiplayerGameState, Input>,
+                    MultiplayerControllerStateEvent<MultiplayerGameState, Input>,
                     ({detail}) => {
                         if (!state.multiplayerP2pAuthoritativeHost) {
                             return;

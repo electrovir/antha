@@ -11,11 +11,11 @@ import {
 import {type MultiplayerClientRooms} from './multiplayer-api.js';
 import {createMultiplayerApiClient, type MultiplayerApiClient} from './multiplayer-client.js';
 import {
-    ControllerClientEvent,
-    ControllerConnectionEvent,
-    ControllerMessageEvent,
-    ControllerRoomListEvent,
     MultiplayerConnectionState,
+    MultiplayerControllerClientEvent,
+    MultiplayerControllerConnectionEvent,
+    MultiplayerControllerMessageEvent,
+    MultiplayerControllerRoomListEvent,
     MultiplayerRoomController,
     type ApiAndRoomConnectionState,
     type MultiplayerRoomConnection,
@@ -267,10 +267,10 @@ describe(MultiplayerRoomController.name, () => {
                 gameId: 'some id',
             });
 
-            controller.listen(ControllerConnectionEvent, ({detail}) => {
+            controller.listen(MultiplayerControllerConnectionEvent, ({detail}) => {
                 states.push(detail);
             });
-            controller.listen(ControllerRoomListEvent, ({detail}) => {
+            controller.listen(MultiplayerControllerRoomListEvent, ({detail}) => {
                 roomLists.push(detail);
             });
 
@@ -422,7 +422,7 @@ describe(MultiplayerRoomController.name, () => {
                     gameId: 'some id',
                 });
 
-                controller.listen(ControllerRoomListEvent, ({detail}) => {
+                controller.listen(MultiplayerControllerRoomListEvent, ({detail}) => {
                     eventRoomLists.push(detail);
                 });
 
@@ -489,10 +489,10 @@ describe(MultiplayerRoomController.name, () => {
                     gameId: 'some id',
                 });
 
-                controller.listen(ControllerClientEvent, ({detail}) => {
+                controller.listen(MultiplayerControllerClientEvent, ({detail}) => {
                     clientEvents.push(detail);
                 });
-                controller.listen(ControllerMessageEvent, ({sourceClientId, detail}) => {
+                controller.listen(MultiplayerControllerMessageEvent, ({sourceClientId, detail}) => {
                     messages.push({
                         sourceClientId,
                         detail,
@@ -537,10 +537,10 @@ describe(MultiplayerRoomController.name, () => {
                         knownErrors: MultiplayerRoomController.knownErrors,
                         roomId: room.roomId,
                         staticEvents: [
-                            'ControllerClientEvent',
-                            'ControllerConnectionEvent',
-                            'ControllerMessageEvent',
-                            'ControllerRoomListEvent',
+                            'MultiplayerControllerClientEvent',
+                            'MultiplayerControllerConnectionEvent',
+                            'MultiplayerControllerMessageEvent',
+                            'MultiplayerControllerRoomListEvent',
                         ],
                         staticKnownErrors: controller.knownErrors,
                         clientEvents: [
@@ -939,7 +939,7 @@ describe(MultiplayerRoomController.name, () => {
             gameId: 'some id',
         });
 
-        controller.listen(ControllerConnectionEvent, (event) => {
+        controller.listen(MultiplayerControllerConnectionEvent, (event) => {
             externalState = event.detail;
         });
         await assert.throws(
@@ -966,7 +966,7 @@ describe(MultiplayerRoomController.name, () => {
         const controller = new MultiplayerRoomController({
             gameId: 'some id',
         });
-        controller.listen(ControllerConnectionEvent, (event) => {
+        controller.listen(MultiplayerControllerConnectionEvent, (event) => {
             externalState = event.detail;
         });
         await assert.throws(() => {

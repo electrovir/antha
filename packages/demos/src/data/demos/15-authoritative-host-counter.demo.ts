@@ -1,7 +1,7 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod, type AnthaMod} from '@antha/engine';
 import {
-    ControllerClientEvent,
-    ControllerConnectionEvent,
+    MultiplayerControllerClientEvent,
+    MultiplayerControllerConnectionEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
     type ApiAndRoomConnectionState,
@@ -11,7 +11,7 @@ import {
     type RoomInput,
 } from '@antha/multiplayer-core';
 import {
-    ControllerStateEvent,
+    MultiplayerControllerStateEvent,
     createAnthaMultiplayerP2pAuthoritativeHostMod,
     type AnthaMultiplayerP2pAuthoritativeHostState,
 } from '@antha/multiplayer-p2p-authoritative-host';
@@ -98,7 +98,7 @@ const DemoAuthoritativeCounter = defineElement<{
     },
     init({inputs, updateState}) {
         const cleanup = inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-            ControllerStateEvent<CounterState, CounterInput>,
+            MultiplayerControllerStateEvent<CounterState, CounterInput>,
             ({detail}) => {
                 updateState({
                     count: detail.state.count,
@@ -192,13 +192,13 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
 
         const cleanupCallbacks = [
             inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-                ControllerClientEvent,
+                MultiplayerControllerClientEvent,
                 () => {
                     updateConnectedClientCount();
                 },
             ),
             inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-                ControllerConnectionEvent,
+                MultiplayerControllerConnectionEvent,
                 (event) => {
                     updateState({
                         connectionState: event.detail,
