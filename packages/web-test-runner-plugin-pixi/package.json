@@ -36,13 +36,13 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/node": "^32.2.3"
+        "@augment-vir/node": "^32.2.4"
     },
     "devDependencies": {
-        "@augment-vir/assert": "^32.2.3",
-        "@augment-vir/common": "^32.2.3",
-        "@augment-vir/test": "^32.2.3",
-        "@types/node": "^26.4.0",
+        "@augment-vir/assert": "^32.2.4",
+        "@augment-vir/common": "^32.2.4",
+        "@augment-vir/test": "^32.2.4",
+        "@types/node": "^26.4.1",
         "@web/dev-server": "^1.0.0",
         "@web/dev-server-core": "^1.0.1",
         "@web/dev-server-esbuild": "^2.0.0",

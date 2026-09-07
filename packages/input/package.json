@@ -34,16 +34,16 @@
     },
     "dependencies": {
         "@antha/gamepad-type": "^0.13.0",
-        "@augment-vir/assert": "^32.2.3",
-        "@augment-vir/common": "^32.2.3",
+        "@augment-vir/assert": "^32.2.4",
+        "@augment-vir/common": "^32.2.4",
         "date-vir": "^9.1.1",
         "device-navigation": "^4.9.1",
         "input-device-handler": "^9.0.4",
         "object-shape-tester": "^6.15.0",
-        "vira": "^31.31.6"
+        "vira": "^31.31.7"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.3",
+        "@augment-vir/test": "^32.2.4",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
