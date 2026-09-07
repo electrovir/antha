@@ -45,9 +45,9 @@ export enum P2pAuthoritativeHostMessageType {
  *
  * @category Internal
  */
-export type P2pAuthoritativeHostStateSnapshot<State extends JsonCompatibleValue> = {
+export type P2pAuthoritativeHostStateSnapshot<MultiplayerGameState extends JsonCompatibleValue> = {
     sequence: number;
-    state: State;
+    state: MultiplayerGameState;
 } & PartialWithUndefined<{
     /** Identifies the state request that this snapshot fulfills. */
     stateSyncId: SocketMessageId;
@@ -60,8 +60,8 @@ export type P2pAuthoritativeHostStateSnapshot<State extends JsonCompatibleValue>
  */
 export type StateEventDetail<
     Input extends JsonCompatibleValue,
-    State extends JsonCompatibleValue,
-> = P2pAuthoritativeHostStateSnapshot<State> &
+    MultiplayerGameState extends JsonCompatibleValue,
+> = P2pAuthoritativeHostStateSnapshot<MultiplayerGameState> &
     PartialWithUndefined<{
         clientId: ClientId;
         input: Input;
@@ -74,7 +74,7 @@ export type StateEventDetail<
  */
 export type P2pAuthoritativeHostMessage<
     Input extends JsonCompatibleValue,
-    State extends JsonCompatibleValue,
+    MultiplayerGameState extends JsonCompatibleValue,
 > =
     | {
           type: P2pAuthoritativeHostMessageType.Input;
@@ -86,7 +86,7 @@ export type P2pAuthoritativeHostMessage<
       }
     | ({
           type: P2pAuthoritativeHostMessageType.StateSnapshot;
-      } & StateEventDetail<Input, State>);
+      } & StateEventDetail<Input, MultiplayerGameState>);
 
 /**
  * Game-specific logic for an authoritative-host connection.
@@ -95,33 +95,33 @@ export type P2pAuthoritativeHostMessage<
  */
 export type P2pAuthoritativeHostGameDefinition<
     Input extends JsonCompatibleValue,
-    State extends JsonCompatibleValue,
+    MultiplayerGameState extends JsonCompatibleValue,
 > = {
     /** Create the initial game state before singleplayer or multiplayer starts. */
-    createInitialState: () => State;
+    createInitialState: () => MultiplayerGameState;
     /** Apply an accepted input to the current authoritative state. */
     applyInput: (
         params: Readonly<{
             clientId: ClientId;
             input: Readonly<Input>;
-            state: Readonly<State>;
+            state: Readonly<MultiplayerGameState>;
         }>,
-    ) => State;
+    ) => MultiplayerGameState;
     /** Return `false` to reject an input before it changes authoritative state. */
     shouldAcceptInput?: (
         params: Readonly<{
             clientId: ClientId;
             input: Readonly<Input>;
-            state: Readonly<State>;
+            state: Readonly<MultiplayerGameState>;
         }>,
     ) => boolean | undefined;
     /** Advance authoritative state from elapsed time without a player input. */
     tick?: (
         params: Readonly<{
             elapsedMs: number;
-            state: Readonly<State>;
+            state: Readonly<MultiplayerGameState>;
         }>,
-    ) => State;
+    ) => MultiplayerGameState;
 };
 
 /**
@@ -131,7 +131,7 @@ export type P2pAuthoritativeHostGameDefinition<
  */
 export type P2pAuthoritativeHostMultiplayerControllerParams<
     Input extends JsonCompatibleValue,
-    State extends JsonCompatibleValue,
+    MultiplayerGameState extends JsonCompatibleValue,
 > = {
     /**
      * A unique string id that represents your game so that your lobby server can serve multiple
@@ -139,7 +139,7 @@ export type P2pAuthoritativeHostMultiplayerControllerParams<
      * your frontend's origin.
      */
     gameId: string;
-} & P2pAuthoritativeHostGameDefinition<Input, State> &
+} & P2pAuthoritativeHostGameDefinition<Input, MultiplayerGameState> &
     PartialWithUndefined<{
         /**
          * This is fired when a WebRTC peer attempts to connect to the host client. Return `true` to
@@ -150,7 +150,10 @@ export type P2pAuthoritativeHostMultiplayerControllerParams<
         acceptConnection?:
             | ((
                   connectingClientId: ClientId,
-                  controller: P2pAuthoritativeHostMultiplayerController<Input, State>,
+                  controller: P2pAuthoritativeHostMultiplayerController<
+                      Input,
+                      MultiplayerGameState
+                  >,
               ) => MaybePromise<boolean>)
             | undefined;
     }>;
@@ -161,12 +164,16 @@ export type P2pAuthoritativeHostMultiplayerControllerParams<
  * @category Events
  */
 export class ControllerStateEvent<
-    State extends JsonCompatibleValue,
+    MultiplayerGameState extends JsonCompatibleValue,
     Input extends JsonCompatibleValue = any,
 > extends defineTypedCustomEvent<any>()('controller-state') {
-    public declare detail: Readonly<StateEventDetail<Input, State>>;
+    public declare detail: Readonly<StateEventDetail<Input, MultiplayerGameState>>;
 
-    constructor(eventInitDict: TypedCustomEventInit<Readonly<StateEventDetail<Input, State>>>) {
+    constructor(
+        eventInitDict: TypedCustomEventInit<
+            Readonly<StateEventDetail<Input, MultiplayerGameState>>
+        >,
+    ) {
         super(eventInitDict);
     }
 }
@@ -178,9 +185,9 @@ export class ControllerStateEvent<
  */
 export type AllP2pAuthoritativeHostMultiplayerControllerEvents<
     Input extends JsonCompatibleValue,
-    State extends JsonCompatibleValue,
+    MultiplayerGameState extends JsonCompatibleValue,
 > =
-    | ControllerStateEvent<State, Input>
+    | ControllerStateEvent<MultiplayerGameState, Input>
     | ControllerRoomListEvent
     | ControllerClientEvent
     | ControllerConnectionEvent;
@@ -192,8 +199,10 @@ export type AllP2pAuthoritativeHostMultiplayerControllerEvents<
  */
 export class P2pAuthoritativeHostMultiplayerController<
     Input extends JsonCompatibleValue = any,
-    State extends JsonCompatibleValue = any,
-> extends ListenTarget<AllP2pAuthoritativeHostMultiplayerControllerEvents<Input, State>> {
+    MultiplayerGameState extends JsonCompatibleValue = any,
+> extends ListenTarget<
+    AllP2pAuthoritativeHostMultiplayerControllerEvents<Input, MultiplayerGameState>
+> {
     /** All events emitted by this controller. */
     public static readonly events = {
         ControllerStateEvent,
@@ -208,24 +217,27 @@ export class P2pAuthoritativeHostMultiplayerController<
 
     /** Core multiplayer room controller that owns API, room polling, signaling, and transport. */
     public readonly roomController: MultiplayerRoomController<
-        P2pAuthoritativeHostMessage<Input, State>
+        P2pAuthoritativeHostMessage<Input, MultiplayerGameState>
     >;
     protected readonly localClientId = createMultiplayerId.client();
     protected roomConnection:
-        | MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, State>>
+        | MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>
         | undefined;
-    protected currentState: State;
+    protected currentState: MultiplayerGameState;
     protected currentSequence = 0;
     protected pendingStateSyncId: SocketMessageId | undefined;
     protected singleplayer = false;
 
     constructor(
-        protected readonly params: P2pAuthoritativeHostMultiplayerControllerParams<Input, State>,
+        protected readonly params: P2pAuthoritativeHostMultiplayerControllerParams<
+            Input,
+            MultiplayerGameState
+        >,
     ) {
         super();
         this.currentState = params.createInitialState();
         this.roomController = new MultiplayerRoomController<
-            P2pAuthoritativeHostMessage<Input, State>
+            P2pAuthoritativeHostMessage<Input, MultiplayerGameState>
         >({
             gameId: params.gameId,
             clientId: this.localClientId,
@@ -333,7 +345,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     }
 
     /** Get the latest local state view. */
-    public getState(): State {
+    public getState(): MultiplayerGameState {
         return this.currentState;
     }
 
@@ -452,7 +464,7 @@ export class P2pAuthoritativeHostMultiplayerController<
             this.dispatch(event);
         });
         this.roomController.listen(
-            ControllerMessageEvent<P2pAuthoritativeHostMessage<Input, State>>,
+            ControllerMessageEvent<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>,
             (event) => {
                 this.handleReceivedMessage(event.sourceClientId, event.detail);
             },
@@ -462,7 +474,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     /** Attach an established room transport and publish the current state view. */
     protected attachMultiplayerRoomConnection(
         roomConnection: Readonly<
-            MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, State>>
+            MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>
         >,
     ) {
         this.roomConnection = roomConnection;
@@ -476,7 +488,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     /** Apply received inputs on the host or received state snapshots on member clients. */
     protected handleReceivedMessage(
         sourceClientId: ClientId,
-        message: Readonly<P2pAuthoritativeHostMessage<Input, State>>,
+        message: Readonly<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>,
     ) {
         if (!this.roomConnection) {
             return;
@@ -527,7 +539,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     /** Attach and synchronize a candidate room before the core controller commits to it. */
     protected async prepareRoomConnection(
         roomConnection: Readonly<
-            MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, State>>
+            MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>
         >,
     ) {
         const previousRoomConnection = this.roomConnection;
@@ -587,7 +599,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     }
 
     /** Publish a new authoritative state that was not caused by a player input. */
-    protected updateState(state: State) {
+    protected updateState(state: MultiplayerGameState) {
         this.currentState = state;
         this.currentSequence++;
         const detail = this.createStateEventDetail();
@@ -603,7 +615,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     }: Readonly<{
         clientId: ClientId;
         input: Readonly<Input>;
-        state: State;
+        state: MultiplayerGameState;
     }>) {
         this.currentState = state;
         this.currentSequence++;
@@ -616,16 +628,16 @@ export class P2pAuthoritativeHostMultiplayerController<
     }
 
     /** Dispatch the typed state event to local listeners. */
-    protected dispatchState(detail: Readonly<StateEventDetail<Input, State>>) {
+    protected dispatchState(detail: Readonly<StateEventDetail<Input, MultiplayerGameState>>) {
         this.dispatch(
-            new ControllerStateEvent<State, Input>({
+            new ControllerStateEvent<MultiplayerGameState, Input>({
                 detail,
             }),
         );
     }
 
     /** Broadcast a state snapshot when the local client is the host. */
-    protected sendStateSnapshot(detail: Readonly<StateEventDetail<Input, State>>) {
+    protected sendStateSnapshot(detail: Readonly<StateEventDetail<Input, MultiplayerGameState>>) {
         if (this.roomConnection && this.isHost()) {
             this.roomConnection.sendMessage(this.createStateSnapshotMessage(detail));
         }
@@ -633,9 +645,9 @@ export class P2pAuthoritativeHostMultiplayerController<
 
     /** Create a network message from state event detail. */
     protected createStateSnapshotMessage(
-        detail: Readonly<StateEventDetail<Input, State>>,
+        detail: Readonly<StateEventDetail<Input, MultiplayerGameState>>,
         stateSyncId?: SocketMessageId | undefined,
-    ): P2pAuthoritativeHostMessage<Input, State> {
+    ): P2pAuthoritativeHostMessage<Input, MultiplayerGameState> {
         return {
             ...detail,
             type: P2pAuthoritativeHostMessageType.StateSnapshot,
@@ -653,7 +665,7 @@ export class P2pAuthoritativeHostMultiplayerController<
                 input: Readonly<Input>;
             }>
         > = {},
-    ): StateEventDetail<Input, State> {
+    ): StateEventDetail<Input, MultiplayerGameState> {
         return {
             ...source,
             sequence: this.currentSequence,

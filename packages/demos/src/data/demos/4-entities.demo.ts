@@ -1,5 +1,5 @@
 /* eslint-disable sonarjs/pseudo-random */
-import {AnthaEngine, SkipExecution, type AnthaMod} from '@antha/engine';
+import {AnthaEngine, SkipExecution, type AnthaMod, type ModExecuteParams} from '@antha/engine';
 import {
     createAnthaEntityMod2d,
     EntityEvent,
@@ -7,7 +7,6 @@ import {
     type AnthaEntity2dModState,
     type BaseEntity2d,
     type EntityStore2d,
-    type EntityUpdateParams,
     type ViewCreation2d,
 } from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
@@ -75,9 +74,9 @@ class AsteroidEntity extends defineEntity({
         };
     }
 
-    public override update({msSinceLastUpdate}: Readonly<EntityUpdateParams>): void {
+    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>): void {
         /** Move the asteroid. */
-        const gameTickDelta = calculateGameTickDelta(msSinceLastUpdate);
+        const gameTickDelta = calculateGameTickDelta(msSinceLastExecute);
 
         this.params.x += this.params.directionX * gameTickDelta;
         this.params.y += this.params.directionY * gameTickDelta;
@@ -164,8 +163,8 @@ class PlayerBulletEntity extends defineEntity({
         };
     }
 
-    public override update({msSinceLastUpdate}: Readonly<EntityUpdateParams>): void {
-        const gameTickDelta = calculateGameTickDelta(msSinceLastUpdate);
+    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>): void {
+        const gameTickDelta = calculateGameTickDelta(msSinceLastExecute);
 
         this.params.x += this.params.directionX * gameTickDelta;
         this.params.y += this.params.directionY * gameTickDelta;
@@ -302,8 +301,8 @@ class PlayerEntity extends defineEntity({
         };
     }
 
-    public override async update({msSinceLastUpdate}: Readonly<EntityUpdateParams>): Promise<void> {
-        const gameTickDelta = calculateGameTickDelta(msSinceLastUpdate);
+    public override async update({msSinceLastExecute}: Readonly<ModExecuteParams>): Promise<void> {
+        const gameTickDelta = calculateGameTickDelta(msSinceLastExecute);
 
         this.shootCooldown += gameTickDelta;
 

@@ -1,4 +1,5 @@
 import {type Asset, type AssetLoader, type AssetValue} from '@antha/asset';
+import {type ModExecuteParams} from '@antha/engine';
 import {type PixiApplication} from '@antha/graphics-2d';
 import {assert, check} from '@augment-vir/assert';
 import {
@@ -396,7 +397,9 @@ export class EntityStore2d<State extends AnyObject = any> {
      *
      * @returns All detected hitbox collisions (if any).
      */
-    public async updateAllEntities(updateParams: Readonly<EntityUpdateParams>): Promise<void> {
+    public async updateAllEntities(
+        updateParams: Readonly<ModExecuteParams<NoInfer<State>>>,
+    ): Promise<void> {
         if (this.isDestroyed) {
             throw new Error('Cannot operate on a destroyed entity store.');
         }
@@ -739,15 +742,6 @@ export const position2dParamsMap = {
 export type ReverseParamsMap = Record<string, Partial<Record<'hitbox' | 'view', string[]>>>;
 
 /**
- * The parameters given to entity update methods.
- *
- * @category Internal
- */
-export type EntityUpdateParams = {
-    msSinceLastUpdate: number;
-};
-
-/**
  * Base entity class, types, and functionality.
  *
  * @category Internal
@@ -844,7 +838,9 @@ export abstract class BaseEntity2d<
      * Called every game tick. Run all entity updates in here. This should be overridden in all
      * entity definition classes.
      */
-    public abstract update(updateParams: Readonly<EntityUpdateParams>): MaybePromise<void>;
+    public abstract update(
+        updateParams: Readonly<ModExecuteParams<NoInfer<State>>>,
+    ): MaybePromise<void>;
 
     /** Called after construction to perform async initialization (e.g. creating views). */
     public initInstance(): MaybePromise<void> {

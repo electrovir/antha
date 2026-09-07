@@ -1,7 +1,8 @@
 import {AssetLoader} from '@antha/asset';
+import {AnthaEngine, type ModExecuteParams, type ModInstanceId} from '@antha/engine';
 import {createMockPixi} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
-import {DeferredPromise, makeWritable} from '@augment-vir/common';
+import {applyBrand, DeferredPromise, makeWritable} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {Circle} from 'detect-collisions';
 import {Graphics, ParticleContainer} from 'pixi.js';
@@ -16,6 +17,20 @@ import {
     type EntityStore2d,
     type ViewCreation2d,
 } from './entity.js';
+
+const testEngine = new AnthaEngine();
+const emptyEntityUpdateParams = {
+    currentTick: 0,
+    engine: testEngine,
+    executeImmediately: false,
+    frequency: undefined,
+    hostElement: document.createElement('div'),
+    lastExecution: undefined,
+    modInstanceId: applyBrand<ModInstanceId>('entity-test'),
+    msSinceLastExecute: 0,
+    state: testEngine.state,
+    ticksSinceLastExecute: 0,
+} satisfies ModExecuteParams;
 
 function createTestSuite() {
     const {defineEntity, defineLogicEntity, EntityStore} = defineEntitySuite2d();
@@ -78,9 +93,7 @@ describe('EntityStore', () => {
         store.destroy();
         await assert.throws(
             () => {
-                return store.updateAllEntities({
-                    msSinceLastUpdate: 0,
-                });
+                return store.updateAllEntities(emptyEntityUpdateParams);
             },
             {
                 matchMessage: 'Cannot operate on a destroyed entity store.',
@@ -103,9 +116,7 @@ describe('EntityStore', () => {
         /** Mark as destroyed outside an update cycle. */
         makeWritable(instance).isDestroyed = true;
 
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
@@ -123,9 +134,7 @@ describe('EntityStore', () => {
         }
 
         await store.addEntity(SelfDestroyer);
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });
 
@@ -167,9 +176,7 @@ describe('EntityStore', () => {
         assert.isDefined(firstEntity.hitbox);
         assert.isFalse(store.hitboxSystem.checkOne(firstEntity.hitbox));
 
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
         assert.deepEquals(
             {
                 collisionCount,
@@ -236,9 +243,7 @@ describe('EntityStore', () => {
 
         await store.addEntity(FirstEntity);
         await store.addEntity(SecondEntity);
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
 
         assert.strictEquals(collisionCount, 0);
     });
@@ -293,9 +298,7 @@ describe('EntityStore', () => {
             store.hitboxSystem.checkCollision(targetEntity.hitbox, observerEntity.hitbox),
         );
 
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
 
         assert.deepEquals(
             {
@@ -346,9 +349,7 @@ describe('EntityStore', () => {
         await store.addEntity(ObserverEntity);
         await store.addEntity(CollisionTargetEntity);
         await store.addEntity(CollisionTargetEntity);
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
 
         assert.strictEquals(collisionCount, 2);
     });
@@ -378,9 +379,7 @@ describe('EntityStore', () => {
 
         await store.addEntity(SelfCollidingEntity);
         await store.addEntity(SelfCollidingEntity);
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
 
         assert.strictEquals(collisionCount, 2);
     });
@@ -410,9 +409,7 @@ describe('EntityStore', () => {
 
         await store.addEntity(NoOverride);
         await store.addEntity(NoOverride);
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
         assert.strictEquals(store.currentEntityInstances.size, 2);
     });
 
@@ -451,9 +448,7 @@ describe('EntityStore', () => {
         );
         store.hitboxSystem.insert(rawHitbox);
 
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
         assert.strictEquals(store.currentEntityInstances.size, 1);
     });
 
@@ -510,9 +505,7 @@ describe('EntityStore', () => {
         await store.addEntity(VictimEntity);
 
         /** Completes without error despite entities being destroyed mid-collision. */
-        await store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await store.updateAllEntities(emptyEntityUpdateParams);
         assert.strictEquals(store.currentEntityInstances.size, 3);
     });
 
@@ -781,9 +774,7 @@ describe('EntityStore', () => {
         await store.addEntity(CollisionTargetEntity);
         await store.addEntity(AsyncCollideEntity);
 
-        const updatePromise = store.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        const updatePromise = store.updateAllEntities(emptyEntityUpdateParams);
 
         await collisionStarted.promise;
         assert.isFalse(asyncCollisionResolved);

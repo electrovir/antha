@@ -22,16 +22,19 @@ import {
  */
 export type AnthaMultiplayerP2pAuthoritativeHostState<
     Input extends JsonCompatibleValue = any,
-    State extends JsonCompatibleValue = any,
+    MultiplayerGameState extends JsonCompatibleValue = any,
 > = {
     /** P2p-authoritative-host controller state. */
     multiplayerP2pAuthoritativeHost: {
         /** Controller used to drive singleplayer or multiplayer state sync. */
-        multiplayerController: P2pAuthoritativeHostMultiplayerController<Input, State>;
+        multiplayerController: P2pAuthoritativeHostMultiplayerController<
+            Input,
+            MultiplayerGameState
+        >;
         /** Current backend API and room connection state. */
         connectionState: ApiAndRoomConnectionState;
         /** Latest state emitted by the multiplayer controller. */
-        currentState: State;
+        currentState: MultiplayerGameState;
     };
 };
 
@@ -42,9 +45,9 @@ export type AnthaMultiplayerP2pAuthoritativeHostState<
  */
 export type AnthaMultiplayerP2pAuthoritativeHostOptions<
     Input extends JsonCompatibleValue = any,
-    State extends JsonCompatibleValue = any,
+    MultiplayerGameState extends JsonCompatibleValue = any,
 > = SelectFrom<
-    P2pAuthoritativeHostMultiplayerControllerParams<Input, State>,
+    P2pAuthoritativeHostMultiplayerControllerParams<Input, MultiplayerGameState>,
     {
         applyInput: true;
         createInitialState: true;
@@ -52,7 +55,7 @@ export type AnthaMultiplayerP2pAuthoritativeHostOptions<
 > &
     PartialWithUndefined<
         SelectFrom<
-            P2pAuthoritativeHostMultiplayerControllerParams<Input, State>,
+            P2pAuthoritativeHostMultiplayerControllerParams<Input, MultiplayerGameState>,
             {
                 acceptConnection: true;
                 gameId: true;
@@ -69,9 +72,11 @@ export type AnthaMultiplayerP2pAuthoritativeHostOptions<
  */
 export function createAnthaMultiplayerP2pAuthoritativeHostMod<
     const Input extends JsonCompatibleValue = any,
-    const State extends JsonCompatibleValue = any,
->(options: Readonly<AnthaMultiplayerP2pAuthoritativeHostOptions<Input, State>>) {
-    return defineAnthaMod<AnthaMultiplayerP2pAuthoritativeHostState<NoInfer<Input>, State>>({
+    const MultiplayerGameState extends JsonCompatibleValue = any,
+>(options: Readonly<AnthaMultiplayerP2pAuthoritativeHostOptions<Input, MultiplayerGameState>>) {
+    return defineAnthaMod<
+        AnthaMultiplayerP2pAuthoritativeHostState<NoInfer<Input>, NoInfer<MultiplayerGameState>>
+    >({
         modName: 'antha-multiplayer-p2p-authoritative-host',
         execute({state}) {
             if (!state.multiplayerP2pAuthoritativeHost) {
@@ -89,7 +94,7 @@ export function createAnthaMultiplayerP2pAuthoritativeHostMod<
                 );
 
                 state.multiplayerP2pAuthoritativeHost.multiplayerController.listen(
-                    ControllerStateEvent<State, Input>,
+                    ControllerStateEvent<MultiplayerGameState, Input>,
                     ({detail}) => {
                         if (!state.multiplayerP2pAuthoritativeHost) {
                             return;
@@ -108,11 +113,17 @@ export function createAnthaMultiplayerP2pAuthoritativeHostMod<
 
 function createP2pAuthoritativeHostState<
     Input extends JsonCompatibleValue,
-    State extends JsonCompatibleValue,
+    MultiplayerGameState extends JsonCompatibleValue,
 >(
-    options: Readonly<AnthaMultiplayerP2pAuthoritativeHostOptions<Input, State>>,
-): AnthaMultiplayerP2pAuthoritativeHostState<Input, State>['multiplayerP2pAuthoritativeHost'] {
-    const multiplayerController = new P2pAuthoritativeHostMultiplayerController<Input, State>({
+    options: Readonly<AnthaMultiplayerP2pAuthoritativeHostOptions<Input, MultiplayerGameState>>,
+): AnthaMultiplayerP2pAuthoritativeHostState<
+    Input,
+    MultiplayerGameState
+>['multiplayerP2pAuthoritativeHost'] {
+    const multiplayerController = new P2pAuthoritativeHostMultiplayerController<
+        Input,
+        MultiplayerGameState
+    >({
         gameId: options.gameId || 'antha',
         applyInput: options.applyInput,
         createInitialState: options.createInitialState,

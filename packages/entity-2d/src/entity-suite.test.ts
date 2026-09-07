@@ -1,7 +1,8 @@
 import {AssetLoader} from '@antha/asset';
+import {AnthaEngine, type ModExecuteParams, type ModInstanceId} from '@antha/engine';
 import {createMockPixi} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
-import {SeededRandom, type AnyObject, type Constructor} from '@augment-vir/common';
+import {applyBrand, SeededRandom, type AnyObject, type Constructor} from '@augment-vir/common';
 import {describe, it, itCases} from '@augment-vir/test';
 import {Graphics} from 'pixi.js';
 import {defineEntitySuite2d, reverseParamsMap, type DefineViewEntity2d} from './entity-suite.js';
@@ -15,6 +16,20 @@ import {
     type EntityStore2d,
     type ViewCreation2d,
 } from './entity.js';
+
+const testEngine = new AnthaEngine();
+const emptyEntityUpdateParams = {
+    currentTick: 0,
+    engine: testEngine,
+    executeImmediately: false,
+    frequency: undefined,
+    hostElement: document.createElement('div'),
+    lastExecution: undefined,
+    modInstanceId: applyBrand<ModInstanceId>('entity-suite-test'),
+    msSinceLastExecute: 0,
+    state: testEngine.state,
+    ticksSinceLastExecute: 0,
+} satisfies ModExecuteParams;
 
 describe(defineEntitySuite2d.name, () => {
     it('infers defined state type', () => {
@@ -261,12 +276,8 @@ describe(defineEntitySuite2d.name, () => {
 
         const instance = await entityStore.addEntity(MyEntity);
 
-        await entityStore.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
-        await entityStore.updateAllEntities({
-            msSinceLastUpdate: 0,
-        });
+        await entityStore.updateAllEntities(emptyEntityUpdateParams);
+        await entityStore.updateAllEntities(emptyEntityUpdateParams);
         assert.strictEquals(updateCount, 2);
 
         instance.destroy();

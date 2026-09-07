@@ -1,5 +1,5 @@
 import {anthaAssetModName, AssetLoader, type AnthaAssetModState} from '@antha/asset';
-import {defineAnthaMod, SkipExecution} from '@antha/engine';
+import {defineAnthaMod, SkipExecution, type AnthaMod} from '@antha/engine';
 import {type AnthaGraphics2dModState} from '@antha/graphics-2d';
 import {
     mergeDefinedProperties,
@@ -15,7 +15,7 @@ import {type EntityStore2d, type EntityStore2dConstructorParams} from './entity.
  *
  * @category Internal
  */
-export type AnthaEntity2dModState<State extends AnyObject = any> = {
+export type AnthaEntity2dModState<State extends AnyObject = AnyObject> = {
     entityStore: EntityStore2d<Partial<AnthaEntity2dModState<State>>>;
     /** If true, entity updates and collision checks are skipped. */
     disableEntityUpdates: boolean;
@@ -46,7 +46,7 @@ export function createAnthaEntityMod2d<ExtraState extends AnyObject>(
 ) {
     const {EntityStore, ...entitySuite} = defineEntitySuite2d<AnthaEntity2dModState<ExtraState>>();
 
-    const mod = defineAnthaMod<AnthaEntity2dModState>({
+    const mod: AnthaMod<AnthaEntity2dModState<ExtraState>> = defineAnthaMod<AnthaEntity2dModState>({
         modName: 'antha-entity-2d',
         initState: {
             debugHitboxes: !!options.debug,
@@ -54,44 +54,42 @@ export function createAnthaEntityMod2d<ExtraState extends AnyObject>(
         cleanup({state}) {
             state.entityStore?.destroy();
         },
-        async execute({state, engine, msSinceLastExecute}) {
+        async execute(executeParams) {
             /**
              * If we don't have a mod that is expected to create the asset loader, then we create
              * one ourself.
              */
             if (
-                !state.assetLoader &&
-                !engine.currentMods.some((mod) => mod.modName === anthaAssetModName)
+                !executeParams.state.assetLoader &&
+                !executeParams.engine.currentMods.some((mod) => mod.modName === anthaAssetModName)
             ) {
-                state.assetLoader = new AssetLoader();
+                executeParams.state.assetLoader = new AssetLoader();
             }
 
-            const pixiApplication = state.pixi?.pixiApplication;
+            const pixiApplication = executeParams.state.pixi?.pixiApplication;
 
             if (!pixiApplication) {
                 return SkipExecution;
             }
 
-            if (state.entityStore) {
-                if (!state.disableEntityUpdates) {
-                    await state.entityStore.updateAllEntities({
-                        msSinceLastUpdate: msSinceLastExecute,
-                    });
+            if (executeParams.state.entityStore) {
+                if (!executeParams.state.disableEntityUpdates) {
+                    await executeParams.state.entityStore.updateAllEntities(executeParams);
                 }
-            } else if (state.assetLoader) {
-                state.entityStore = new EntityStore(
+            } else if (executeParams.state.assetLoader) {
+                executeParams.state.entityStore = new EntityStore(
                     mergeDefinedProperties(
                         {
                             pixi: pixiApplication,
-                            state,
-                            assetLoader: state.assetLoader,
+                            state: executeParams.state,
+                            assetLoader: executeParams.state.assetLoader,
                         },
                         options,
                     ),
                 );
             }
 
-            if (state.debugHitboxes) {
+            if (executeParams.state.debugHitboxes) {
                 return html`
                     <canvas class="hitbox-debug-canvas"></canvas>
                 `;

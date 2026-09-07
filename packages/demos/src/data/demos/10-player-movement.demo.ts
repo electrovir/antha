@@ -1,11 +1,10 @@
 import {createAnthaAssetMod} from '@antha/asset';
-import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
+import {AnthaEngine, SkipExecution, defineAnthaMod, type ModExecuteParams} from '@antha/engine';
 import {
     createAnthaEntityMod2d,
     position2dParamsMap,
     position2dParamsShape,
     type AnthaEntity2dModState,
-    type EntityUpdateParams,
 } from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
@@ -72,8 +71,8 @@ class PlayerEntity extends defineEntity({
         };
     }
 
-    public override update({msSinceLastUpdate}: Readonly<EntityUpdateParams>) {
-        const moveDiff = calculatePlayerMovement(msSinceLastUpdate, this.state.activeBindings);
+    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>) {
+        const moveDiff = calculatePlayerMovement(msSinceLastExecute, this.state.activeBindings);
 
         if (moveDiff) {
             this.params.x += moveDiff.x;
@@ -96,7 +95,7 @@ class PlayerEntity extends defineEntity({
  * movement vector's magnitude remains constant.
  */
 function calculatePlayerMovement(
-    msSinceLastUpdate: number,
+    msSinceLastExecute: number,
     activeBindings: Readonly<PlayersActiveBindings<PlayerAction>>,
 ) {
     const playerBindings = activeBindings['1'];
@@ -149,8 +148,8 @@ function calculatePlayerMovement(
             y: movement.y / magnitude,
         };
         return {
-            x: normalized.x * msSinceLastUpdate * 0.4,
-            y: normalized.y * msSinceLastUpdate * 0.4,
+            x: normalized.x * msSinceLastExecute * 0.4,
+            y: normalized.y * msSinceLastExecute * 0.4,
         };
     }
 

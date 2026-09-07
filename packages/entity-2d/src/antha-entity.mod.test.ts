@@ -1,6 +1,6 @@
-import {AnthaEngine} from '@antha/engine';
+import {AnthaEngine, type ModExecuteParams} from '@antha/engine';
 import {AnthaMockPixiMod} from '@antha/graphics-2d';
-import {assert} from '@augment-vir/assert';
+import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {Graphics} from 'pixi.js';
 import {createAnthaEntityMod2d, type AnthaEntity2dModState} from './antha-entity.mod.js';
@@ -155,6 +155,45 @@ describe(createAnthaEntityMod2d.name, () => {
         await engine.runSingleTick();
 
         assert.strictEquals(updateCount, 1);
+    });
+
+    it('passes the engine and state to entity updates', async () => {
+        const {mod, defineLogicEntity} = createAnthaEntityMod2d<{score: number}>({});
+        let receivedEngine: undefined | AnthaEngine<AnthaEntity2dModState<{score: number}>>;
+        let receivedState: undefined | Partial<AnthaEntity2dModState<{score: number}>>;
+
+        class ContextEntity extends defineLogicEntity({
+            key: 'ContextEntity',
+            paramsShape: undefined,
+        }) {
+            public override update({
+                engine,
+                state,
+            }: Readonly<ModExecuteParams<AnthaEntity2dModState<{score: number}>>>) {
+                receivedEngine = engine;
+                receivedState = state;
+            }
+        }
+
+        const engine = new AnthaEngine<AnthaEntity2dModState<{score: number}>>({
+            initState: {
+                score: 42,
+            },
+            mods: [
+                AnthaMockPixiMod,
+                mod,
+            ],
+        });
+
+        await engine.runSingleTick();
+
+        await assertWrap.isDefined(engine.state.entityStore).addEntity(ContextEntity);
+
+        await engine.runSingleTick();
+
+        assert.strictEquals(receivedEngine, engine);
+        assert.strictEquals(receivedState, engine.state);
+        assert.strictEquals(receivedState.score, 42);
     });
 
     it('skips entity updates while disabled', async () => {

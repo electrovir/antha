@@ -241,7 +241,7 @@ function createCapturingApiClient(webSocket: FakeClientWebSocket) {
                 listeners: CapturedWebSocketListeners;
             }>,
         ) {
-            void unusedEndpoint;
+            unusedEndpoint;
             capturedListeners = options.listeners;
             webSocket.listeners = options.listeners;
 

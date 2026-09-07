@@ -1,8 +1,7 @@
-import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
+import {AnthaEngine, SkipExecution, defineAnthaMod, type ModExecuteParams} from '@antha/engine';
 import {
     createAnthaEntityMod2d,
     type AnthaEntity2dModState,
-    type EntityUpdateParams,
     type ViewCreation2d,
 } from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
@@ -191,11 +190,11 @@ class PlayerEntity extends defineEntity({
         };
     }
 
-    public override update({msSinceLastUpdate}: Readonly<EntityUpdateParams>): void {
+    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>): void {
         this.params.x = this.pixi.screen.width / 2;
         this.params.y = this.pixi.screen.height / 2;
         this.params.angle =
-            this.params.angle + PlayerEntity.spriteProperties.rotationSpeed * msSinceLastUpdate;
+            this.params.angle + PlayerEntity.spriteProperties.rotationSpeed * msSinceLastExecute;
     }
 }
 

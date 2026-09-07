@@ -1,9 +1,5 @@
-import {defineAnthaMod, SkipExecution} from '@antha/engine';
-import {
-    type EntityUpdateParams,
-    position2dParamsMap,
-    position2dParamsShape,
-} from '@antha/entity-2d';
+import {defineAnthaMod, type ModExecuteParams, SkipExecution} from '@antha/engine';
+import {position2dParamsMap, position2dParamsShape} from '@antha/entity-2d';
 import {Graphics} from '@antha/graphics-2d';
 import {AnyGamepad, InputDirection, type PlayersActiveBindings} from '@antha/input';
 import {clamp, type Coords} from '@augment-vir/common';
@@ -153,8 +149,8 @@ class PlayerEntity extends defineEntity({
         };
     }
 
-    public override update({msSinceLastUpdate}: Readonly<EntityUpdateParams>) {
-        const moveDiff = calculatePlayerMovement(msSinceLastUpdate, this.state.activeBindings);
+    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>) {
+        const moveDiff = calculatePlayerMovement(msSinceLastExecute, this.state.activeBindings);
 
         if (moveDiff) {
             const {width: screenWidth, height: screenHeight} = this.pixi.screen;

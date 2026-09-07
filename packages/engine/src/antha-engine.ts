@@ -11,6 +11,7 @@ import {
     type PartialWithUndefined,
     type RequiredAndNotNull,
     type RequireExactlyOne,
+    type UnknownObject,
 } from '@augment-vir/common';
 import {createId} from '@paralleldrive/cuid2';
 import {type Duration, type DurationUnit} from 'date-vir';
@@ -51,7 +52,7 @@ export function createEngineTime({
  *
  * @category Internal
  */
-export type ModExecuteParams<State extends AnyObject> = {
+export type ModExecuteParams<State extends AnyObject = UnknownObject> = {
     state: Partial<State>;
     engine: AnthaEngine;
     ticksSinceLastExecute: number;
