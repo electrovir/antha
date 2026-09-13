@@ -67,9 +67,11 @@ export const AnthaAssetLoadingScreen = defineElement<{
         }),
     },
     hostClasses: {
-        'antha-asset-loading-screen-completed': ({inputs}) => inputs.completed,
+        'antha-asset-loading-screen-completed'({inputs}) {
+            return inputs.completed;
+        },
     },
-    styles: ({cssVars, hostClasses}) => {
+    styles({cssVars, hostClasses}) {
         return css`
             :host {
                 position: fixed;

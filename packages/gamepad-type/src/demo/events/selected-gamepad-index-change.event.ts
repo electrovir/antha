@@ -1,5 +1,5 @@
-import {defineTypedEvent} from 'element-vir';
+import {defineTypedCustomEvent} from 'element-vir';
 
-export const SelectedGamepadIndexChange = defineTypedEvent<number>()(
+export const SelectedGamepadIndexChange = defineTypedCustomEvent<number>()(
     'selected-gamepad-index-change',
 );

@@ -67,12 +67,14 @@ export const VirGamepadInputs = defineElement<{
                     ${listen('click', () => {
                         dispatch(
                             new events.gamepadInputClick({
-                                details: gamepadInput,
-                                deviceKey: inputs.gamepad.deviceKey,
-                                deviceName: inputs.gamepad.deviceName,
-                                deviceType: inputs.gamepad.deviceType,
-                                inputName: gamepadInput.inputName,
-                                inputValue: gamepadInput.value,
+                                detail: {
+                                    details: gamepadInput,
+                                    deviceKey: inputs.gamepad.deviceKey,
+                                    deviceName: inputs.gamepad.deviceName,
+                                    deviceType: inputs.gamepad.deviceType,
+                                    inputName: gamepadInput.inputName,
+                                    inputValue: gamepadInput.value,
+                                },
                             }),
                         );
                     })}
@@ -90,12 +92,14 @@ export const VirGamepadInputs = defineElement<{
                     ${listen('click', () => {
                         dispatch(
                             new events.gamepadInputClick({
-                                details: gamepadInput,
-                                deviceKey: inputs.gamepad.deviceKey,
-                                deviceName: inputs.gamepad.deviceName,
-                                deviceType: inputs.gamepad.deviceType,
-                                inputName: gamepadInput.inputName,
-                                inputValue: gamepadInput.value,
+                                detail: {
+                                    details: gamepadInput,
+                                    deviceKey: inputs.gamepad.deviceKey,
+                                    deviceName: inputs.gamepad.deviceName,
+                                    deviceType: inputs.gamepad.deviceType,
+                                    inputName: gamepadInput.inputName,
+                                    inputValue: gamepadInput.value,
+                                },
                             }),
                         );
                     })}

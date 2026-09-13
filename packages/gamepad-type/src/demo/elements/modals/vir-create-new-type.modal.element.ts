@@ -80,7 +80,11 @@ export const VirCreateNewTypeModal = defineElement<{
                     assert.instanceOf(element, HTMLSelectElement);
                     const value = Number(element.value);
                     if (!isNaN(value)) {
-                        dispatch(new SelectedGamepadIndexChange(value));
+                        dispatch(
+                            new SelectedGamepadIndexChange({
+                                detail: value,
+                            }),
+                        );
                     }
                 })}
             >
@@ -122,7 +126,11 @@ export const VirCreateNewTypeModal = defineElement<{
                 text: 'Save',
             })}
                 ${listen('click', () => {
-                    dispatch(new events.newModelCreate(state.newModelName));
+                    dispatch(
+                        new events.newModelCreate({
+                            detail: state.newModelName,
+                        }),
+                    );
                     dispatch(new ModalClose());
                 })}
             ></${ViraButton}>

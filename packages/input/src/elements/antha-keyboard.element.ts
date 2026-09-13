@@ -715,14 +715,22 @@ export const AnthaKeyboard = defineElement<
                     cursorPosition: state.cursorPosition + lengthDiff,
                 });
 
-                dispatch(new events.valueChange(newValue));
+                dispatch(
+                    new events.valueChange({
+                        detail: newValue,
+                    }),
+                );
             }
 
             if (state.beamElement) {
                 scrollBeamIntoView(state.beamElement);
             }
 
-            dispatch(new events.keyPress(result.keyPress));
+            dispatch(
+                new events.keyPress({
+                    detail: result.keyPress,
+                }),
+            );
         }
 
         function stopArrowRepeat() {

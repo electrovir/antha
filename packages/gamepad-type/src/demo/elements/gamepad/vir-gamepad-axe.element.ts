@@ -13,7 +13,7 @@ export const VirGamepadAxe = defineElement<{
     cssVars: {
         'vir-gamepad-axe-color': getGamepadBrandColor(undefined),
     },
-    styles: ({cssVars}) => {
+    styles({cssVars}) {
         return css`
             :host {
                 display: block;

@@ -1,4 +1,7 @@
-import {defineEslintConfig} from '@virmator/lint/configs/eslint.config.base.js';
+import {
+    defaultAllowedFileExtensions,
+    defineEslintConfig,
+} from '@virmator/lint/configs/eslint.config.base.js';
 import {dirname} from 'node:path';
 import {fileURLToPath} from 'node:url';
 
@@ -13,6 +16,17 @@ export default [
     },
     {
         rules: {
+            '@virmator/allowed-file-extensions': [
+                'error',
+                {
+                    extensions: [
+                        ...defaultAllowedFileExtensions,
+                        '.bootstrap.ts',
+                        '.demo.ts',
+                        '.modal.element.ts',
+                    ],
+                },
+            ],
             /**
              * Turn off or on specific rules. See {@link defineEslintConfig} for which plugins are
              * already enabled.

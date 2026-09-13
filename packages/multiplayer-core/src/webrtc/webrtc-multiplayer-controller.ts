@@ -517,7 +517,7 @@ export class WebrtcMultiplayerController<
                             );
                         }
                     },
-                    error: (error) => {
+                    error(error) {
                         log.error(error);
                     },
                     close: () => {

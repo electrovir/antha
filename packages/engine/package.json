@@ -1,6 +1,6 @@
 {
     "name": "@antha/engine",
-    "version": "0.14.2",
+    "version": "0.15.0",
     "description": "The Antha game engine (for the web).",
     "keywords": [
         "vir",
@@ -35,16 +35,16 @@
         "test:update": "npm test update"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.2.4",
-        "@augment-vir/common": "^32.2.4",
+        "@augment-vir/assert": "^32.3.0",
+        "@augment-vir/common": "^32.3.0",
         "@paralleldrive/cuid2": "^3.3.0",
         "date-vir": "^9.1.1",
         "observavir": "^2.3.3",
         "sentry-vir": "^4.5.1"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.4",
-        "@augment-vir/web": "^32.2.4",
+        "@augment-vir/test": "^32.3.0",
+        "@augment-vir/web": "^32.3.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-commands": "^1.0.1",
@@ -57,7 +57,7 @@
         "vite": "^8.2.2"
     },
     "peerDependencies": {
-        "element-vir": ">=26"
+        "element-vir": "^27"
     },
     "engines": {
         "node": ">=22"

@@ -36,7 +36,7 @@ const AnthaTriggerStutter = defineElement<{
 
 const randomStutterMod = defineAnthaMod<TriggerStutterState>({
     modName: 'demo-random-stutter',
-    execute: async ({state}) => {
+    async execute({state}) {
         if (state.shouldStutter) {
             state.shouldStutter = false;
             await wait({

@@ -27,7 +27,7 @@ export const VirGamepadName = defineElement<{
         gamepadModelOverride: defineElementEvent<string>(),
         createNewModel: defineElementEvent<void>(),
     },
-    styles: ({cssVars}) => {
+    styles({cssVars}) {
         return css`
             :host {
                 border-radius: 24px;
@@ -132,14 +132,22 @@ export const VirGamepadName = defineElement<{
                     const value = element.value;
 
                     if (value === createNewGamepadModelValue) {
-                        dispatch(new events.createNewModel());
+                        dispatch(
+                            new events.createNewModel({
+                                detail: undefined,
+                            }),
+                        );
                         if (gamepadModel) {
                             element.value = gamepadModel;
                         } else {
                             element.value = '';
                         }
                     } else {
-                        dispatch(new events.gamepadModelOverride(value));
+                        dispatch(
+                            new events.gamepadModelOverride({
+                                detail: value,
+                            }),
+                        );
                     }
                 })}
             >
@@ -167,7 +175,11 @@ export const VirGamepadName = defineElement<{
             </p>
             <button
                 ${listen('click', () => {
-                    dispatch(new events.editMappingsClick());
+                    dispatch(
+                        new events.editMappingsClick({
+                            detail: undefined,
+                        }),
+                    );
                 })}
             >
                 Edit Mappings

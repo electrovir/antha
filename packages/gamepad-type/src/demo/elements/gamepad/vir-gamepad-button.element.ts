@@ -13,7 +13,7 @@ export const VirGamepadButton = defineElement<{
         'vir-gamepad-button-button-size': '75px',
         'vir-gamepad-button-color': getGamepadBrandColor(undefined),
     },
-    styles: ({cssVars}) => {
+    styles({cssVars}) {
         return css`
             :host {
                 display: flex;

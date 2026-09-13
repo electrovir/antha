@@ -11,11 +11,11 @@ export const VirGamepadInput = defineElement<{
 }>()({
     tagName: 'vir-gamepad-input',
     hostClasses: {
-        'vir-gamepad-input-circle': ({inputs}) => {
+        'vir-gamepad-input-circle'({inputs}) {
             return inputs.gamepadInput.inputType === DeviceInputType.Button;
         },
     },
-    styles: ({hostClasses}) => {
+    styles({hostClasses}) {
         return css`
             :host {
                 display: flex;

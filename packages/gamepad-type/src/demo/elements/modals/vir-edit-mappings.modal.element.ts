@@ -100,7 +100,9 @@ export const VirEditMappingsModal = defineElement<{
                 ) {
                     focusInput();
                     dispatch(
-                        new events.selectedGamepadInputChange(firstNewInput as GamepadInputValue),
+                        new events.selectedGamepadInputChange({
+                            detail: firstNewInput as GamepadInputValue,
+                        }),
                     );
                 }
             });
@@ -132,7 +134,11 @@ export const VirEditMappingsModal = defineElement<{
             (selectedDevice.deviceKey !== inputs.selectedGamepadInput.deviceKey ||
                 selectedDevice.deviceName !== inputs.selectedGamepadInput.deviceName)
         ) {
-            dispatch(new events.selectedGamepadInputChange(undefined));
+            dispatch(
+                new events.selectedGamepadInputChange({
+                    detail: undefined,
+                }),
+            );
         }
 
         const gamepadTypeSelectTemplate = html`
@@ -142,7 +148,11 @@ export const VirEditMappingsModal = defineElement<{
                     assert.instanceOf(element, HTMLSelectElement);
                     const value = Number(element.value);
                     if (!isNaN(value)) {
-                        dispatch(new SelectedGamepadIndexChange(value));
+                        dispatch(
+                            new SelectedGamepadIndexChange({
+                                detail: value,
+                            }),
+                        );
                     }
                 })}
             >
@@ -197,8 +207,10 @@ export const VirEditMappingsModal = defineElement<{
                       ${listen(ViraInput.events.valueChange, (event) => {
                           dispatch(
                               new events.inputMapSave({
-                                  inputName: currentInput.inputName,
-                                  mappedName: event.detail,
+                                  detail: {
+                                      inputName: currentInput.inputName,
+                                      mappedName: event.detail,
+                                  },
                               }),
                           );
                       })}

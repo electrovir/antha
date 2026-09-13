@@ -30,6 +30,7 @@ import {
     optionalShape,
     recordShape,
     unionShape,
+    unsafeShape,
 } from 'object-shape-tester';
 
 /**
@@ -47,14 +48,12 @@ export const multiplayerServerOptionsShape = defineShape({
      * - `defaultServerLogger`
      * - `createServerLogger`
      */
-    logger: nullableShape({
-        /** Log an error reported by the multiplayer server. */
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        error: (error: Error) => {},
-        /** Log an informational message from the multiplayer server. */
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        info: (...args: ReadonlyArray<unknown>) => {},
-    }),
+    logger: nullableShape(
+        unsafeShape<ServerLogger>({
+            error: defaultServerLogger.error,
+            info: silentServerLogger.info,
+        }),
+    ),
     backendOrigin: nullableShape(''),
     /** The server's supported list of games. */
     games: unionShape(

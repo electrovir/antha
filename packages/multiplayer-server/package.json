@@ -1,6 +1,6 @@
 {
     "name": "@antha/multiplayer-server",
-    "version": "0.14.2",
+    "version": "0.15.0",
     "description": "An multiplayer server that can be used with the Antha multiplayer mod.",
     "keywords": [
         "vir",
@@ -38,11 +38,11 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@antha/multiplayer-core": "^0.14.2",
-        "@antha/multiplayer-p2p-lock-step": "^0.14.2",
-        "@augment-vir/assert": "^32.2.4",
-        "@augment-vir/common": "^32.2.4",
-        "@augment-vir/node": "^32.2.4",
+        "@antha/multiplayer-core": "^0.15.0",
+        "@antha/multiplayer-p2p-lock-step": "^0.15.0",
+        "@augment-vir/assert": "^32.3.0",
+        "@augment-vir/common": "^32.3.0",
+        "@augment-vir/node": "^32.3.0",
         "@rest-vir/api": "^2.3.2",
         "@rest-vir/host": "^2.3.2",
         "cli-vir": "^1.0.5",
@@ -52,8 +52,8 @@
         "url-vir": "^2.2.2"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.4",
-        "@types/node": "^26.4.1",
+        "@augment-vir/test": "^32.3.0",
+        "@types/node": "^26.5.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
@@ -62,7 +62,7 @@
         "tsx": "^4.23.13"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.14.2"
+        "@antha/engine": "^0.15.0"
     },
     "engines": {
         "node": ">=22"

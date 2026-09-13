@@ -1,6 +1,6 @@
 {
     "name": "@antha/fps",
-    "version": "0.14.2",
+    "version": "0.15.0",
     "description": "An Antha mod for rendering FPS.",
     "keywords": [
         "vir",
@@ -33,22 +33,22 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.2.4",
-        "@augment-vir/common": "^32.2.4",
-        "@electrovir/color": "^1.7.12",
-        "vira": "^31.31.7"
+        "@augment-vir/assert": "^32.3.0",
+        "@augment-vir/common": "^32.3.0",
+        "@electrovir/color": "^2.0.0",
+        "vira": "^32.0.0"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.2.4",
+        "@augment-vir/test": "^32.3.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
-        "element-vir": "^26.17.3",
+        "element-vir": "^27.0.1",
         "istanbul-smart-text-reporter": "^1.1.5"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.14.2",
-        "element-vir": ">=26"
+        "@antha/engine": "^0.15.0",
+        "element-vir": "^27"
     },
     "engines": {
         "node": ">=22"

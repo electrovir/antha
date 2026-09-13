@@ -441,7 +441,7 @@ async function spawnAsteroidFromEdge(
         () => {x: number; y: number; directionX: number; directionY: number}
     > = {
         /** Top edge. */
-        0: () => {
+        0() {
             return {
                 x: randomInteger({
                     min: 0,
@@ -453,7 +453,7 @@ async function spawnAsteroidFromEdge(
             };
         },
         /** Right edge. */
-        1: () => {
+        1() {
             return {
                 x: screenWidth + size,
                 y: randomInteger({
@@ -465,7 +465,7 @@ async function spawnAsteroidFromEdge(
             };
         },
         /** Bottom edge. */
-        2: () => {
+        2() {
             return {
                 x: randomInteger({
                     min: 0,
@@ -477,7 +477,7 @@ async function spawnAsteroidFromEdge(
             };
         },
         /** Left edge. */
-        3: () => {
+        3() {
             return {
                 x: -size,
                 y: randomInteger({
