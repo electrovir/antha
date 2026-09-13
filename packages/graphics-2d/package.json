@@ -1,6 +1,6 @@
 {
     "name": "@antha/graphics-2d",
-    "version": "0.15.0",
+    "version": "0.15.1",
     "description": "An Antha mod for rendering 2D graphics to a canvas.",
     "keywords": [
         "vir",
@@ -40,8 +40,8 @@
         "@augment-vir/common": "^32.3.0"
     },
     "devDependencies": {
-        "@antha/engine": "^0.15.0",
-        "@antha/web-test-runner-plugin-pixi": "^0.15.0",
+        "@antha/engine": "^0.15.1",
+        "@antha/web-test-runner-plugin-pixi": "^0.15.1",
         "@augment-vir/test": "^32.3.0",
         "@electrovir/color": "^2.0.0",
         "@web/dev-server-esbuild": "^2.0.0",
@@ -52,11 +52,11 @@
         "vira": "32.0.0"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.15.0",
-        "@electrovir/color": ">=1",
+        "@antha/engine": "^0.15.1",
+        "@electrovir/color": "^2",
         "element-vir": "^27",
-        "pixi.js": ">=8",
-        "vira": "^31.21.1"
+        "pixi.js": "^8",
+        "vira": "^32"
     },
     "engines": {
         "node": ">=22"
