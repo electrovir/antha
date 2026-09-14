@@ -13,6 +13,14 @@ export const AnthaDemoPage = defineElement<{
 }>()({
     tagName: 'antha-demo-page',
     styles: css`
+        :host {
+            display: block;
+            height: 100%;
+            overflow: clip;
+            position: relative;
+            width: 100%;
+        }
+
         .overlay {
             position: absolute;
             bottom: 0;
@@ -22,6 +30,7 @@ export const AnthaDemoPage = defineElement<{
             padding: 4px 8px;
             border-top-right-radius: 4px;
             font-family: sans-serif;
+            z-index: 1;
         }
     `,
     state() {

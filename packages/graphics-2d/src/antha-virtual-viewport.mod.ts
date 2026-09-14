@@ -1,4 +1,6 @@
 import {defineAnthaMod} from '@antha/engine';
+import {assertWrap} from '@augment-vir/assert';
+import {type PartialWithUndefined, type RequireAtLeastOne} from '@augment-vir/common';
 import {type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
 
 /**
@@ -20,6 +22,16 @@ export type VirtualViewport = {
 export type VirtualViewportSize = Pick<VirtualViewport, 'height' | 'width'>;
 
 /**
+ * Options for {@link createAnthaVirtualViewportMod}.
+ *
+ * @category Pre-Built Mods
+ */
+export type AnthaVirtualViewportOptions = RequireAtLeastOne<{
+    virtualHeight: number;
+    virtualWidth: number;
+}>;
+
+/**
  * State added by {@link createAnthaVirtualViewportMod}.
  *
  * @category Internal
@@ -35,22 +47,47 @@ export type AnthaVirtualViewportModState = AnthaGraphics2dModState & {
  */
 export function calculateVirtualViewport({
     screenSize,
+    virtualHeight,
     virtualWidth,
-}: Readonly<{
-    screenSize: Readonly<VirtualViewportSize>;
-    virtualWidth: number;
-}>) {
-    if (!screenSize.width || !virtualWidth) {
-        return undefined;
+}: Readonly<
+    PartialWithUndefined<AnthaVirtualViewportOptions> & {
+        screenSize: Readonly<VirtualViewportSize>;
     }
+>) {
+    if (
+        !screenSize.height ||
+        !screenSize.width ||
+        virtualHeight === 0 ||
+        virtualWidth === 0 ||
+        (virtualHeight == undefined && virtualWidth == undefined)
+    ) {
+        return undefined;
+    } else if (virtualHeight == undefined) {
+        const definedVirtualWidth = assertWrap.isDefined(virtualWidth);
+        const scale = screenSize.width / definedVirtualWidth;
 
-    const scale = screenSize.width / virtualWidth;
+        return {
+            height: screenSize.height / scale,
+            scale,
+            width: definedVirtualWidth,
+        };
+    } else if (virtualWidth == undefined) {
+        const scale = screenSize.height / virtualHeight;
 
-    return {
-        height: screenSize.height / scale,
-        scale,
-        width: virtualWidth,
-    };
+        return {
+            height: virtualHeight,
+            scale,
+            width: screenSize.width / scale,
+        };
+    } else {
+        const scale = Math.min(screenSize.height / virtualHeight, screenSize.width / virtualWidth);
+
+        return {
+            height: virtualHeight,
+            scale,
+            width: virtualWidth,
+        };
+    }
 }
 
 /**
@@ -114,15 +151,66 @@ function hasSameVirtualViewport({
 
 function updateVirtualViewportHostElement({
     hostElement,
+    isFixedViewport,
+    screenSize,
     virtualViewport,
 }: Readonly<{
     hostElement: HTMLElement;
+    isFixedViewport: boolean;
+    screenSize: Readonly<VirtualViewportSize>;
     virtualViewport: VirtualViewport;
 }>) {
-    hostElement.style.height = `${100 / virtualViewport.scale}%`;
-    hostElement.style.transform = `scale(${virtualViewport.scale})`;
+    hostElement.style.height = isFixedViewport
+        ? `${virtualViewport.height}px`
+        : `${100 / virtualViewport.scale}%`;
+    hostElement.style.transform = getVirtualViewportHostTransform({
+        isFixedViewport,
+        screenSize,
+        virtualViewport,
+    });
     hostElement.style.transformOrigin = 'top left';
-    hostElement.style.width = `${100 / virtualViewport.scale}%`;
+    hostElement.style.width = isFixedViewport
+        ? `${virtualViewport.width}px`
+        : `${100 / virtualViewport.scale}%`;
+}
+
+function getVirtualViewportHostTransform({
+    isFixedViewport,
+    screenSize,
+    virtualViewport,
+}: Readonly<{
+    isFixedViewport: boolean;
+    screenSize: Readonly<VirtualViewportSize>;
+    virtualViewport: VirtualViewport;
+}>) {
+    const horizontalOffset = isFixedViewport
+        ? (screenSize.width - virtualViewport.width * virtualViewport.scale) / 2
+        : 0;
+    const verticalOffset = isFixedViewport
+        ? (screenSize.height - virtualViewport.height * virtualViewport.scale) / 2
+        : 0;
+
+    return isFixedViewport
+        ? `translate(${horizontalOffset}px, ${verticalOffset}px) scale(${virtualViewport.scale})`
+        : `scale(${virtualViewport.scale})`;
+}
+
+function getVirtualViewportScreenSize({
+    hostElement,
+    isFixedViewport,
+}: Readonly<{
+    hostElement: HTMLElement;
+    isFixedViewport: boolean;
+}>) {
+    if (!isFixedViewport) {
+        return hostElement.getBoundingClientRect();
+    }
+
+    const rootNode = hostElement.getRootNode();
+    const viewportContainer =
+        rootNode instanceof ShadowRoot ? rootNode.host : hostElement.parentElement || hostElement;
+
+    return viewportContainer.getBoundingClientRect();
 }
 
 function resetVirtualViewportHostElement({
@@ -137,19 +225,16 @@ function resetVirtualViewportHostElement({
 }
 
 /**
- * A pre-built mod that scales an Antha UI and Pixi canvas to a logical viewport width.
+ * A pre-built mod that scales an Antha UI and Pixi canvas to a logical viewport.
  *
  * @category Pre-Built Mods
  */
 export function createAnthaVirtualViewportMod({
+    virtualHeight,
     virtualWidth,
-}: Readonly<{
-    /**
-     * The reference width for your game screen. Any browser window wider or skinnier than this will
-     * be scaled.
-     */
-    virtualWidth: number;
-}>) {
+}: Readonly<AnthaVirtualViewportOptions>) {
+    const isFixedViewport = !!virtualHeight && !!virtualWidth;
+
     return defineAnthaMod<AnthaVirtualViewportModState>({
         modName: 'antha-virtual-viewport',
         cleanup({hostElement, state}) {
@@ -159,8 +244,13 @@ export function createAnthaVirtualViewportMod({
             state.virtualViewport = undefined;
         },
         execute({hostElement, state}) {
+            const screenSize = getVirtualViewportScreenSize({
+                hostElement,
+                isFixedViewport,
+            });
             const virtualViewport = calculateVirtualViewport({
-                screenSize: hostElement.getBoundingClientRect(),
+                screenSize,
+                virtualHeight,
                 virtualWidth,
             });
 
@@ -172,11 +262,19 @@ export function createAnthaVirtualViewportMod({
                 !hasSameVirtualViewport({
                     previousVirtualViewport: state.virtualViewport,
                     virtualViewport,
-                }) || hostElement.style.transform !== `scale(${virtualViewport.scale})`;
+                }) ||
+                hostElement.style.transform !==
+                    getVirtualViewportHostTransform({
+                        isFixedViewport,
+                        screenSize,
+                        virtualViewport,
+                    });
 
             if (hasViewportChanged) {
                 updateVirtualViewportHostElement({
                     hostElement,
+                    isFixedViewport,
+                    screenSize,
                     virtualViewport,
                 });
                 state.virtualViewport = virtualViewport;

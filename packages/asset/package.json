@@ -1,6 +1,6 @@
 {
     "name": "@antha/asset",
-    "version": "0.15.1",
+    "version": "0.16.0",
     "description": "An Antha mod for handling asset loading.",
     "keywords": [
         "vir",
@@ -53,7 +53,7 @@
         "typedoc": "^0.28.20"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.15.1",
+        "@antha/engine": "^0.16.0",
         "element-vir": "^27"
     },
     "engines": {
