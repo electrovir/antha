@@ -3,7 +3,7 @@ import {AnthaMockPixiMod} from '@antha/graphics-2d';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {Graphics} from 'pixi.js';
-import {createAnthaEntityMod2d, type AnthaEntity2dModState} from './antha-entity.mod.js';
+import {createAnthaEntityMod2d, type AnthaEntity2dModState} from './antha-entity-2d.mod.js';
 import {type ViewCreation2d} from './entity.js';
 
 function createTickEntity({

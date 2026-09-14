@@ -2,7 +2,7 @@ import {AssetLoader} from '@antha/asset';
 import {type AudioPlayer, type AudioSetupParams} from '@antha/audio';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {createAnthaEntityMod2d} from './antha-entity.mod.js';
+import {createAnthaEntityMod2d} from './antha-entity-2d.mod.js';
 import {loadAnthaAssets} from './load-antha-assets.js';
 
 describe(loadAnthaAssets.name, () => {
