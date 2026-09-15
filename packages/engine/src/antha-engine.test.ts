@@ -1,9 +1,10 @@
 import {assert} from '@augment-vir/assert';
-import {selectFrom, wait, type AnyObject} from '@augment-vir/common';
+import {DeferredPromise, selectFrom, wait, type AnyObject} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {html} from 'element-vir';
 import {
     AnthaEngine,
+    ModExecutionTriggerType,
     SkipExecution,
     defaultAnthaEngineOptions,
     defineAnthaMod,
@@ -12,7 +13,9 @@ import {
     type AnthaModsState,
     type LastExecution,
     type ModCleanupParams,
+    type ModExecutionTrigger,
     type ModInstanceId,
+    type ModTrigger,
 } from './antha-engine.js';
 
 describe(defineAnthaMod.name, () => {
@@ -206,14 +209,12 @@ describe(AnthaEngine.name, () => {
                 selectFrom(capturedParams, {
                     engine: true,
                     hostElement: true,
-                    executeImmediately: true,
-                    frequency: true,
+                    trigger: true,
                 }),
                 {
                     engine,
                     hostElement: engine.hostElement,
-                    executeImmediately: false,
-                    frequency: undefined,
+                    trigger: undefined,
                 },
             );
         });
@@ -504,8 +505,7 @@ describe(AnthaEngine.name, () => {
             let capturedState: Record<string, unknown> | undefined;
             let capturedTicksSince: number | undefined;
             let capturedLastExecution: unknown = 'sentinel';
-            let capturedExecImmediate: boolean | undefined;
-            let capturedFrequency: unknown = 'sentinel';
+            let capturedTrigger: ModTrigger | undefined;
 
             const engine = new AnthaEngine({
                 mods: [
@@ -519,8 +519,7 @@ describe(AnthaEngine.name, () => {
                             capturedState = params.state;
                             capturedTicksSince = params.ticksSinceLastExecute;
                             capturedLastExecution = params.lastExecution;
-                            capturedExecImmediate = params.executeImmediately;
-                            capturedFrequency = params.frequency;
+                            capturedTrigger = params.trigger;
                         },
                     }),
                 ],
@@ -534,8 +533,7 @@ describe(AnthaEngine.name, () => {
             assert.strictEquals(capturedState, engine.state);
             assert.strictEquals(capturedTicksSince, 0);
             assert.isUndefined(capturedLastExecution);
-            assert.isFalse(capturedExecImmediate);
-            assert.isUndefined(capturedFrequency);
+            assert.isUndefined(capturedTrigger);
         });
 
         it('passes lastExecution on subsequent ticks', async () => {
@@ -644,12 +642,12 @@ describe(AnthaEngine.name, () => {
             assert.strictEquals(engine.state.label, 'hello');
         });
 
-        it('uses cached template when mod does not execute due to frequency', async () => {
+        it('uses cached template when mod does not execute due to its trigger', async () => {
             const mod: AnthaMod = {
-                frequency: {
-                    ticks: 3,
+                trigger: {
+                    executeImmediately: true,
+                    tickCount: 3,
                 },
-                executeImmediately: true,
                 modName: 'test',
                 execute() {
                     return html`
@@ -661,34 +659,32 @@ describe(AnthaEngine.name, () => {
                 mods: [mod],
             });
 
-            // First tick: executeImmediately + no lastExecution → executes
+            // First tick: executeImmediately + no lastExecution → executes.
             await engine.runSingleTick();
             assert.isDefined(engine.currentTemplateArray[0]);
 
-            // Second tick: frequency not reached → skipped, but template is cached
+            // Second tick: trigger not reached → skipped, but template is cached.
             await engine.runSingleTick();
             assert.isDefined(engine.currentTemplateArray[0]);
 
-            // The mod should not have re-executed on tick 1
+            // The mod should not have re-executed on tick 1.
             const lastExec = engine.lastModExecution.get(mod);
             assert.isDefined(lastExec);
             assert.strictEquals((lastExec as LastExecution).tick, 0 as number);
         });
 
-        it('passes frequency and executeImmediately to mod execute params', async () => {
-            let capturedExecImmediate: boolean | undefined;
-            let capturedFrequency: unknown = 'sentinel';
+        it('passes trigger to mod execute params', async () => {
+            let capturedTrigger: ModTrigger | undefined;
             const engine = new AnthaEngine({
                 mods: [
                     {
-                        frequency: {
-                            ticks: 2,
+                        trigger: {
+                            executeImmediately: true,
+                            tickCount: 2,
                         },
-                        executeImmediately: true,
                         modName: 'test',
                         execute(params) {
-                            capturedExecImmediate = params.executeImmediately;
-                            capturedFrequency = params.frequency;
+                            capturedTrigger = params.trigger;
                         },
                     },
                 ],
@@ -696,9 +692,9 @@ describe(AnthaEngine.name, () => {
 
             await engine.runSingleTick();
 
-            assert.isTrue(capturedExecImmediate);
-            assert.deepEquals(capturedFrequency, {
-                ticks: 2,
+            assert.deepEquals(capturedTrigger, {
+                executeImmediately: true,
+                tickCount: 2,
             });
         });
 
@@ -732,8 +728,483 @@ describe(AnthaEngine.name, () => {
         });
     });
 
+    describe('event-triggered mods', () => {
+        it('can switch a mod between tick and event execution at runtime', async () => {
+            class TestEngineEvent extends Event {
+                public static readonly type = 'test-engine-event';
+
+                constructor() {
+                    super(TestEngineEvent.type);
+                }
+            }
+
+            const executionTriggers: Readonly<ModExecutionTrigger>[] = [];
+            const mod = defineAnthaMod<AnyObject>({
+                modName: 'event-triggered-mod',
+                execute({executionTrigger}) {
+                    executionTriggers.push(executionTrigger);
+                },
+            });
+            const engine = new AnthaEngine({
+                mods: [
+                    mod,
+                ],
+            });
+            let listenerCount = 0;
+
+            engine.listen(TestEngineEvent, () => {
+                listenerCount++;
+            });
+
+            await engine.runSingleTick();
+            mod.trigger = {
+                event: TestEngineEvent,
+                executeImmediately: false,
+            };
+            const event = new TestEngineEvent();
+            engine.dispatch(event);
+            assert.deepEquals(
+                executionTriggers.map(({type}) => {
+                    return type;
+                }),
+                [
+                    ModExecutionTriggerType.Tick,
+                ],
+            );
+            await engine.runSingleTick();
+            mod.trigger = {
+                event: [
+                    TestEngineEvent,
+                ],
+                executeImmediately: false,
+            };
+            engine.dispatch(new TestEngineEvent());
+            await engine.runSingleTick();
+            mod.trigger = undefined;
+            engine.dispatch(new TestEngineEvent());
+            await engine.runSingleTick();
+
+            assert.deepEquals(
+                executionTriggers.map(({type}) => {
+                    return type;
+                }),
+                [
+                    ModExecutionTriggerType.Tick,
+                    ModExecutionTriggerType.Event,
+                    ModExecutionTriggerType.Event,
+                    ModExecutionTriggerType.Tick,
+                ],
+            );
+            assert.strictEquals(listenerCount, 3);
+        });
+
+        it('runs triggered mods in attachment order with all pending events', async () => {
+            class TestEngineEvent extends Event {
+                public static readonly type = 'test-engine-event';
+
+                constructor() {
+                    super(TestEngineEvent.type);
+                }
+            }
+
+            const executionOrder: Array<
+                Readonly<{
+                    eventCount: number;
+                    modName: string;
+                }>
+            > = [];
+            const firstMod = defineAnthaMod<AnyObject>({
+                trigger: {
+                    event: TestEngineEvent,
+                    executeImmediately: false,
+                },
+                modName: 'first',
+                execute({executionTrigger}) {
+                    if (executionTrigger.type === ModExecutionTriggerType.Event) {
+                        executionOrder.push({
+                            eventCount: executionTrigger.events.length,
+                            modName: 'first',
+                        });
+                    }
+                },
+            });
+            const secondMod = defineAnthaMod<AnyObject>({
+                trigger: {
+                    event: TestEngineEvent,
+                    executeImmediately: false,
+                },
+                modName: 'second',
+                execute({executionTrigger}) {
+                    if (executionTrigger.type === ModExecutionTriggerType.Event) {
+                        executionOrder.push({
+                            eventCount: executionTrigger.events.length,
+                            modName: 'second',
+                        });
+                    }
+                },
+            });
+            const engine = new AnthaEngine({
+                mods: [
+                    firstMod,
+                    secondMod,
+                ],
+            });
+
+            engine.dispatch(new TestEngineEvent());
+            engine.dispatch(new TestEngineEvent());
+            await engine.runSingleTick();
+
+            assert.deepEquals(executionOrder, [
+                {
+                    eventCount: 2,
+                    modName: 'first',
+                },
+                {
+                    eventCount: 2,
+                    modName: 'second',
+                },
+            ]);
+        });
+
+        it('skips ordinary ticks and events that do not match the trigger', async () => {
+            class MatchingEvent extends Event {
+                constructor() {
+                    super('matching-event');
+                }
+            }
+
+            class OtherEvent extends Event {
+                constructor() {
+                    super('other-event');
+                }
+            }
+
+            const executionTriggers: Readonly<ModExecutionTrigger>[] = [];
+            const mod = defineAnthaMod<AnyObject>({
+                trigger: {
+                    event: MatchingEvent,
+                    executeImmediately: false,
+                },
+                modName: 'matching-event-mod',
+                execute({executionTrigger}) {
+                    executionTriggers.push(executionTrigger);
+                },
+            });
+            const engine = new AnthaEngine({
+                mods: [
+                    mod,
+                ],
+            });
+
+            await engine.runSingleTick();
+            engine.dispatch(new OtherEvent());
+            await engine.runSingleTick();
+
+            assert.deepEquals(executionTriggers, []);
+
+            const matchingEvent = new MatchingEvent();
+            engine.dispatch(matchingEvent);
+            await engine.runSingleTick();
+
+            assert.deepEquals(executionTriggers, [
+                {
+                    events: [
+                        matchingEvent,
+                    ],
+                    type: ModExecutionTriggerType.Event,
+                },
+            ]);
+        });
+
+        it('executes immediately once before returning to event-only execution', async () => {
+            class TestEngineEvent extends Event {
+                constructor() {
+                    super('test-engine-event');
+                }
+            }
+
+            const executionTriggers: Readonly<ModExecutionTrigger>[] = [];
+            const engine = new AnthaEngine({
+                mods: [
+                    defineAnthaMod<AnyObject>({
+                        trigger: {
+                            event: TestEngineEvent,
+                            executeImmediately: true,
+                        },
+                        modName: 'event-triggered-mod',
+                        execute({executionTrigger}) {
+                            executionTriggers.push(executionTrigger);
+                        },
+                    }),
+                ],
+            });
+
+            await engine.runSingleTick();
+            await engine.runSingleTick();
+            const event = new TestEngineEvent();
+            engine.dispatch(event);
+            await engine.runSingleTick();
+
+            assert.deepEquals(executionTriggers, [
+                {
+                    events: [],
+                    type: ModExecutionTriggerType.Event,
+                },
+                {
+                    events: [
+                        event,
+                    ],
+                    type: ModExecutionTriggerType.Event,
+                },
+            ]);
+        });
+
+        it('supports multiple event classes and forwards events to listeners', async () => {
+            class FirstEvent extends Event {
+                constructor() {
+                    super('first-event');
+                }
+            }
+
+            class SecondEvent extends Event {
+                constructor() {
+                    super('second-event');
+                }
+            }
+
+            const executionTriggers: Readonly<ModExecutionTrigger>[] = [];
+            const receivedEvents: Event[] = [];
+            const mod = defineAnthaMod<AnyObject>({
+                trigger: {
+                    event: [
+                        FirstEvent,
+                        SecondEvent,
+                    ],
+                    executeImmediately: false,
+                },
+                modName: 'multiple-event-mod',
+                execute({executionTrigger}) {
+                    executionTriggers.push(executionTrigger);
+                },
+            });
+            const engine = new AnthaEngine({
+                mods: [
+                    mod,
+                ],
+            });
+            engine.listen(FirstEvent, (event) => {
+                receivedEvents.push(event);
+            });
+            const firstEvent = new FirstEvent();
+            const secondEvent = new SecondEvent();
+
+            assert.strictEquals(engine.dispatch(firstEvent), 1);
+            assert.strictEquals(engine.dispatch(secondEvent), 0);
+            assert.deepEquals(receivedEvents, [
+                firstEvent,
+            ]);
+
+            await engine.runSingleTick();
+
+            assert.deepEquals(executionTriggers, [
+                {
+                    events: [
+                        firstEvent,
+                        secondEvent,
+                    ],
+                    type: ModExecutionTriggerType.Event,
+                },
+            ]);
+        });
+
+        it('runs regular and event-triggered mods in attachment order', async () => {
+            class TestEngineEvent extends Event {
+                constructor() {
+                    super('test-engine-event');
+                }
+            }
+
+            const executionOrder: string[] = [];
+            const engine = new AnthaEngine({
+                mods: [
+                    defineAnthaMod<AnyObject>({
+                        modName: 'regular-before',
+                        execute() {
+                            executionOrder.push('regular-before');
+                        },
+                    }),
+                    defineAnthaMod<AnyObject>({
+                        trigger: {
+                            event: TestEngineEvent,
+                            executeImmediately: false,
+                        },
+                        modName: 'event-before',
+                        execute() {
+                            executionOrder.push('event-before');
+                        },
+                    }),
+                    defineAnthaMod<AnyObject>({
+                        modName: 'regular-after',
+                        execute() {
+                            executionOrder.push('regular-after');
+                        },
+                    }),
+                    defineAnthaMod<AnyObject>({
+                        trigger: {
+                            event: TestEngineEvent,
+                            executeImmediately: false,
+                        },
+                        modName: 'event-after',
+                        execute() {
+                            executionOrder.push('event-after');
+                        },
+                    }),
+                ],
+            });
+
+            engine.dispatch(new TestEngineEvent());
+            await engine.runSingleTick();
+
+            assert.deepEquals(executionOrder, [
+                'regular-before',
+                'event-before',
+                'regular-after',
+                'event-after',
+            ]);
+        });
+
+        it('keeps an event-triggered template until its next event', async () => {
+            class TestEngineEvent extends Event {
+                constructor() {
+                    super('test-engine-event');
+                }
+            }
+
+            const mod = defineAnthaMod<AnyObject>({
+                trigger: {
+                    event: TestEngineEvent,
+                    executeImmediately: false,
+                },
+                modName: 'event-template',
+                execute() {
+                    return html`
+                        Event rendered.
+                    `;
+                },
+            });
+            const engine = new AnthaEngine({
+                mods: [
+                    mod,
+                ],
+            });
+
+            engine.dispatch(new TestEngineEvent());
+            await engine.runSingleTick();
+            const eventTemplate = engine.currentTemplateMap.get(mod);
+
+            await engine.runSingleTick();
+
+            assert.isDefined(eventTemplate);
+            assert.strictEquals(engine.currentTemplateMap.get(mod), eventTemplate);
+        });
+
+        it('defers events dispatched during execution until the next tick', async () => {
+            class TestEngineEvent extends Event {
+                constructor() {
+                    super('test-engine-event');
+                }
+            }
+
+            const executionStarted = new DeferredPromise<void>();
+            const continueExecution = new DeferredPromise<void>();
+            const eventBatches: Array<ReadonlyArray<Event>> = [];
+            const mod = defineAnthaMod<AnyObject>({
+                trigger: {
+                    event: TestEngineEvent,
+                    executeImmediately: false,
+                },
+                modName: 'async-event-mod',
+                async execute({executionTrigger}) {
+                    if (executionTrigger.type === ModExecutionTriggerType.Event) {
+                        eventBatches.push(executionTrigger.events);
+                        if (eventBatches.length === 1) {
+                            executionStarted.resolve();
+                            await continueExecution.promise;
+                        }
+                    }
+                },
+            });
+            const engine = new AnthaEngine({
+                mods: [
+                    mod,
+                ],
+            });
+            const firstEvent = new TestEngineEvent();
+
+            engine.dispatch(firstEvent);
+            const firstTick = engine.runSingleTick();
+            await executionStarted.promise;
+
+            const secondEvent = new TestEngineEvent();
+            engine.dispatch(secondEvent);
+            continueExecution.resolve();
+            await firstTick;
+
+            assert.deepEquals(
+                [...eventBatches],
+                [
+                    [
+                        firstEvent,
+                    ],
+                ],
+            );
+
+            await engine.runSingleTick();
+
+            assert.deepEquals(eventBatches, [
+                [
+                    firstEvent,
+                ],
+                [
+                    secondEvent,
+                ],
+            ]);
+        });
+
+        it('clears pending event triggers on reset', async () => {
+            class TestEngineEvent extends Event {
+                constructor() {
+                    super('test-engine-event');
+                }
+            }
+
+            const executionTriggers: Readonly<ModExecutionTrigger>[] = [];
+            const mod = defineAnthaMod<AnyObject>({
+                trigger: {
+                    event: TestEngineEvent,
+                    executeImmediately: false,
+                },
+                modName: 'reset-event-mod',
+                execute({executionTrigger}) {
+                    executionTriggers.push(executionTrigger);
+                },
+            });
+            const engine = new AnthaEngine({
+                mods: [
+                    mod,
+                ],
+            });
+
+            engine.dispatch(new TestEngineEvent());
+            await engine.reset();
+            await engine.runSingleTick();
+
+            assert.deepEquals(executionTriggers, []);
+        });
+    });
+
     describe('shouldModExecute', () => {
-        it('returns true when no frequency is set', () => {
+        it('returns true when no trigger is set', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
                 modName: 'test',
@@ -743,7 +1214,7 @@ describe(AnthaEngine.name, () => {
             assert.isTrue(engine.shouldModExecute(mod, undefined));
         });
 
-        it('returns true when no frequency is set, even with lastExecution', () => {
+        it('returns true when no trigger is set, even with lastExecution', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
                 modName: 'test',
@@ -760,10 +1231,10 @@ describe(AnthaEngine.name, () => {
         it('returns true when executeImmediately is true and no lastExecution', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
-                frequency: {
-                    ticks: 10,
+                trigger: {
+                    executeImmediately: true,
+                    tickCount: 10,
                 },
-                executeImmediately: true,
                 modName: 'test',
                 execute() {},
             };
@@ -774,8 +1245,9 @@ describe(AnthaEngine.name, () => {
         it('does not immediately execute when executeImmediately is false', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
-                frequency: {
-                    ticks: 10,
+                trigger: {
+                    executeImmediately: false,
+                    tickCount: 10,
                 },
                 modName: 'test',
                 execute() {},
@@ -784,12 +1256,13 @@ describe(AnthaEngine.name, () => {
             assert.isFalse(engine.shouldModExecute(mod, undefined));
         });
 
-        it('returns true when tick frequency is reached', () => {
+        it('returns true when the tick count is reached', () => {
             const engine = new AnthaEngine();
             engine.currentTick = 10;
             const mod: AnthaMod = {
-                frequency: {
-                    ticks: 5,
+                trigger: {
+                    executeImmediately: false,
+                    tickCount: 5,
                 },
                 modName: 'test',
                 execute() {},
@@ -802,12 +1275,13 @@ describe(AnthaEngine.name, () => {
             assert.isTrue(engine.shouldModExecute(mod, lastExecution));
         });
 
-        it('returns false when tick frequency is not yet reached', () => {
+        it('returns false when the tick count is not yet reached', () => {
             const engine = new AnthaEngine();
             engine.currentTick = 3;
             const mod: AnthaMod = {
-                frequency: {
-                    ticks: 5,
+                trigger: {
+                    executeImmediately: false,
+                    tickCount: 5,
                 },
                 modName: 'test',
                 execute() {},
@@ -820,13 +1294,14 @@ describe(AnthaEngine.name, () => {
             assert.isFalse(engine.shouldModExecute(mod, lastExecution));
         });
 
-        it('handles durationMs frequency using wall-clock time', () => {
+        it('handles durationMs using wall-clock time', () => {
             const engine = new AnthaEngine();
             engine.currentTick = 10;
 
             const mod: AnthaMod = {
-                frequency: {
+                trigger: {
                     durationMs: 160,
+                    executeImmediately: false,
                 },
                 modName: 'test',
                 execute() {},
@@ -839,13 +1314,14 @@ describe(AnthaEngine.name, () => {
             assert.isTrue(engine.shouldModExecute(mod, lastExecution));
         });
 
-        it('returns false when durationMs frequency is not reached', () => {
+        it('returns false when durationMs is not reached', () => {
             const engine = new AnthaEngine();
             engine.currentTick = 5;
 
             const mod: AnthaMod = {
-                frequency: {
+                trigger: {
                     durationMs: 160,
+                    executeImmediately: false,
                 },
                 modName: 'test',
                 execute() {},
@@ -858,11 +1334,12 @@ describe(AnthaEngine.name, () => {
             assert.isFalse(engine.shouldModExecute(mod, lastExecution));
         });
 
-        it('returns true when ticksBetweenExecutions is 0 (zero frequency ticks)', () => {
+        it('returns true when tickCount is 0', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
-                frequency: {
-                    ticks: 0,
+                trigger: {
+                    executeImmediately: false,
+                    tickCount: 0,
                 },
                 modName: 'test',
                 execute() {},
@@ -875,11 +1352,12 @@ describe(AnthaEngine.name, () => {
             assert.isTrue(engine.shouldModExecute(mod, lastExecution));
         });
 
-        it('returns true when durationMs is 0 (zero frequency duration)', () => {
+        it('returns true when durationMs is 0', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
-                frequency: {
+                trigger: {
                     durationMs: 0,
+                    executeImmediately: false,
                 },
                 modName: 'test',
                 execute() {},
@@ -892,14 +1370,14 @@ describe(AnthaEngine.name, () => {
             assert.isTrue(engine.shouldModExecute(mod, lastExecution));
         });
 
-        it('respects frequency after executeImmediately first tick', () => {
+        it('respects tickCount after executeImmediately', () => {
             const engine = new AnthaEngine();
             engine.currentTick = 1;
             const mod: AnthaMod = {
-                frequency: {
-                    ticks: 5,
+                trigger: {
+                    executeImmediately: true,
+                    tickCount: 5,
                 },
-                executeImmediately: true,
                 modName: 'test',
                 execute() {},
             };
@@ -911,11 +1389,12 @@ describe(AnthaEngine.name, () => {
             assert.isFalse(engine.shouldModExecute(mod, lastExecution));
         });
 
-        it('handles durationMs frequency with no lastExecution', () => {
+        it('handles durationMs with no lastExecution', () => {
             const engine = new AnthaEngine();
             const mod: AnthaMod = {
-                frequency: {
+                trigger: {
                     durationMs: 160,
+                    executeImmediately: false,
                 },
                 modName: 'test',
                 execute() {},
@@ -1012,10 +1491,10 @@ describe(AnthaEngine.name, () => {
     it('reuses the last template when a mod is skipped', async () => {
         let executeCount = 0;
         const mod: AnthaMod = {
-            frequency: {
-                ticks: 100,
+            trigger: {
+                executeImmediately: true,
+                tickCount: 100,
             },
-            executeImmediately: true,
             modName: 'test',
             execute() {
                 executeCount++;
@@ -1040,10 +1519,10 @@ describe(AnthaEngine.name, () => {
     it('does not record execution when mod returns SkipExecution', async () => {
         let executeCount = 0;
         const mod: AnthaMod = {
-            frequency: {
-                ticks: 100,
+            trigger: {
+                executeImmediately: true,
+                tickCount: 100,
             },
-            executeImmediately: true,
             modName: 'test',
             execute() {
                 executeCount++;
@@ -1063,10 +1542,10 @@ describe(AnthaEngine.name, () => {
         let executeCount = 0;
         let ready = false;
         const mod: AnthaMod = {
-            frequency: {
-                ticks: 100,
+            trigger: {
+                executeImmediately: true,
+                tickCount: 100,
             },
-            executeImmediately: true,
             modName: 'test',
             execute() {
                 executeCount++;
@@ -1102,7 +1581,7 @@ describe(AnthaEngine.name, () => {
         assert.isDefined(engine.lastModExecution.get(mod));
         assert.isDefined(engine.currentTemplateArray[0]);
 
-        /** Tick 3: frequency not reached (100 ticks), should not re-execute. */
+        /** Tick 3: trigger not reached (100 ticks), should not re-execute. */
         await engine.runSingleTick();
         assert.strictEquals(executeCount, 3);
     });

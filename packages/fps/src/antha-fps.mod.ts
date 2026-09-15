@@ -43,14 +43,14 @@ export type AnthaFpsModOptions = PartialWithUndefined<
 export function createAnthaFpsMod(options?: Readonly<AnthaFpsModOptions> | undefined) {
     return defineAnthaMod<ShowCountersState>({
         modName: 'antha-fps',
-        frequency: {
+        trigger: {
             durationMs: options?.fpsUpdateIntervalMs || 500,
+            executeImmediately: true,
         },
         initState: {
             debugFps: !!options?.debugFps,
             hideFps: !!options?.hideFps,
         },
-        executeImmediately: true,
         execute({state, msSinceLastExecute, ticksSinceLastExecute}) {
             const fpsStutters = getOrSet(state, 'fpsStutters', () => []);
 

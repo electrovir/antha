@@ -65,10 +65,13 @@ export type P2pLockStepMessage<MultiplayerPacket extends JsonCompatibleValue> =
       }
 
     /** Sent from the host to clients when a frame is ready. */
-    | {
+    | ({
           type: P2pLockStepMessageType.Frame;
           actions: FrameEventDetail<MultiplayerPacket>[];
-      };
+      } & PartialWithUndefined<{
+          /** Whether this frame is meant for syncing a new client. */
+          isSynchronizationFrame: boolean;
+      }>);
 
 /**
  * Constructor parameters for {@link P2pLockStepMultiplayerController}.
@@ -552,6 +555,7 @@ export class P2pLockStepMultiplayerController<
             this.roomConnection.sendToOnlyOneClient(clientId, {
                 type: P2pLockStepMessageType.Frame,
                 actions: [],
+                isSynchronizationFrame: true,
             });
         }
     }
@@ -591,7 +595,6 @@ export class P2pLockStepMultiplayerController<
             );
             const currentFrameActions = this.frameActions;
             this.frameActions = [];
-            this.calculateFps();
             this.roomConnection.sendMessage({
                 actions: currentFrameActions.map(({packet}) => {
                     return packet;
@@ -599,11 +602,14 @@ export class P2pLockStepMultiplayerController<
                 sourceClientId: this.clientId,
                 type: P2pLockStepMessageType.Actions,
             });
-            this.dispatch(
-                new MultiplayerControllerFrameEvent({
-                    detail: message.actions,
-                }),
-            );
+            if (!message.isSynchronizationFrame) {
+                this.calculateFps();
+                this.dispatch(
+                    new MultiplayerControllerFrameEvent({
+                        detail: message.actions,
+                    }),
+                );
+            }
         }
     }
 

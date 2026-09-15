@@ -1,5 +1,10 @@
 import {AssetLoader} from '@antha/asset';
-import {AnthaEngine, type ModExecuteParams, type ModInstanceId} from '@antha/engine';
+import {
+    AnthaEngine,
+    ModExecutionTriggerType,
+    type ModExecuteParams,
+    type ModInstanceId,
+} from '@antha/engine';
 import {createMockPixi} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
 import {applyBrand, SeededRandom, type AnyObject, type Constructor} from '@augment-vir/common';
@@ -21,8 +26,10 @@ const testEngine = new AnthaEngine();
 const emptyEntityUpdateParams = {
     currentTick: 0,
     engine: testEngine,
-    executeImmediately: false,
-    frequency: undefined,
+    executionTrigger: {
+        type: ModExecutionTriggerType.Tick,
+    },
+    trigger: undefined,
     hostElement: document.createElement('div'),
     lastExecution: undefined,
     modInstanceId: applyBrand<ModInstanceId>('entity-suite-test'),

@@ -10,8 +10,10 @@ import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {
     createAnthaMultiplayerP2pLockStepMod,
+    isMultiplayerRoomConnected,
     type AnthaMultiplayerP2pLockStepState,
 } from './antha-multiplayer-p2p-lock-step.mod.js';
+import {MultiplayerControllerFrameEvent} from './p2p-lock-step-multiplayer-controller.js';
 
 type TestEngineState = Partial<AnthaMultiplayerP2pLockStepState<string>>;
 
@@ -38,6 +40,7 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
 
         const multiplayerState = assertWrap.isDefined(engine.state.multiplayerP2pLockStep);
         let availableRooms: Readonly<MultiplayerClientRooms> = {};
+        let receivedFrame: boolean = false;
 
         assert.strictEquals(mod.modName, 'antha-multiplayer-p2p-lock-step');
 
@@ -47,6 +50,9 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
                 availableRooms = detail;
             },
         );
+        engine.listen(MultiplayerControllerFrameEvent, () => {
+            receivedFrame = true;
+        });
 
         multiplayerState.multiplayerController.startSingleplayer();
         multiplayerState.multiplayerController.dispatch(
@@ -62,10 +68,12 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             }),
         );
 
+        assert.isTrue(receivedFrame);
         assert.deepEquals(
             {
                 availableRooms,
                 connectionState: multiplayerState.connectionState,
+                isRoomConnected: isMultiplayerRoomConnected(engine.state),
             },
             {
                 availableRooms: {
@@ -80,6 +88,7 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
                     api: MultiplayerConnectionState.Connected,
                     room: MultiplayerConnectionState.Disconnected,
                 },
+                isRoomConnected: false,
             },
         );
 

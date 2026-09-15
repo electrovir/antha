@@ -11,6 +11,7 @@ import {
     type SelectFrom,
 } from '@augment-vir/common';
 import {
+    MultiplayerControllerFrameEvent,
     P2pLockStepMultiplayerController,
     type P2pLockStepMultiplayerControllerParams,
 } from './p2p-lock-step-multiplayer-controller.js';
@@ -32,6 +33,19 @@ export type AnthaMultiplayerP2pLockStepState<MultiplayerPacket extends JsonCompa
             connectionState: ApiAndRoomConnectionState;
         };
     };
+
+/**
+ * Indicates whether a p2p-lock-step multiplayer room is currently connected.
+ *
+ * @category Util
+ */
+export function isMultiplayerRoomConnected({
+    multiplayerP2pLockStep,
+}: Readonly<
+    Partial<SelectFrom<AnthaMultiplayerP2pLockStepState, {multiplayerP2pLockStep: true}>>
+>) {
+    return !!multiplayerP2pLockStep?.multiplayerController.roomId;
+}
 
 /**
  * Options for {@link createAnthaMultiplayerP2pLockStepMod}.
@@ -61,7 +75,7 @@ export function createAnthaMultiplayerP2pLockStepMod<
 >(options: Readonly<AnthaMultiplayerP2pLockStepOptions<MultiplayerPacket>> = {}) {
     return defineAnthaMod<AnthaMultiplayerP2pLockStepState<NoInfer<MultiplayerPacket>>>({
         modName: 'antha-multiplayer-p2p-lock-step',
-        execute({state}) {
+        execute({engine, state}) {
             if (options.debugMultiplayer == undefined) {
                 state.debugMultiplayer = options.debugMultiplayer;
             }
@@ -93,6 +107,16 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         );
 
                         state.multiplayerP2pLockStep.connectionState = newConnectionState;
+                    },
+                );
+                state.multiplayerP2pLockStep.multiplayerController.listen(
+                    MultiplayerControllerFrameEvent,
+                    ({detail}) => {
+                        engine.dispatch(
+                            new MultiplayerControllerFrameEvent({
+                                detail,
+                            }),
+                        );
                     },
                 );
             }

@@ -33,10 +33,10 @@ const fpsTrackerMod: AnthaMod<{
     fps: number;
 }> = {
     modName: 'demo-tsp-tracker',
-    frequency: {
+    trigger: {
         durationMs: 1000,
+        executeImmediately: true,
     },
-    executeImmediately: true,
     execute({state, msSinceLastExecute, ticksSinceLastExecute}) {
         const elapsedSeconds = msSinceLastExecute / 1000;
 
@@ -79,11 +79,11 @@ const colorCyclerMod: AnthaMod<{
     colorIndex: number;
 }> = {
     modName: 'demo-color-cycle',
-    frequency: {
-        ticks: 50,
+    trigger: {
+        executeImmediately: true,
+        tickCount: 50,
     },
-    executeImmediately: true,
-    execute({state, frequency}) {
+    execute({state, trigger}) {
         state.colorIndex = ((state.colorIndex || 0) + 1) % colorCyclePairs.length;
         const colorPair = assertWrap.isDefined(colorCyclePairs[state.colorIndex || 0]);
 
@@ -102,7 +102,7 @@ const colorCyclerMod: AnthaMod<{
                     ${colorCss(colorPair)}
                 `}
             >
-                Color cycles every ${frequency?.ticks} ticks
+                Color cycles every ${trigger?.tickCount} ticks
             </div>
         `;
     },

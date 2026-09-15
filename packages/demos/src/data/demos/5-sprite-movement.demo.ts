@@ -200,7 +200,6 @@ class PlayerEntity extends defineEntity({
 
 const dynamicSpriteMod = defineAnthaMod<AnthaEntity2dModState<SpritesGameState>>({
     modName: 'demo-dynamic-sprite',
-    executeImmediately: true,
     async execute({state}) {
         if (!state.entityStore) {
             return SkipExecution;

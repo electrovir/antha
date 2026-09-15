@@ -641,6 +641,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                         clientId: memberClientId,
                         message: {
                             actions: [],
+                            isSynchronizationFrame: true,
                             type: P2pLockStepMessageType.Frame,
                         },
                     },
@@ -741,6 +742,46 @@ describe(P2pLockStepMultiplayerController.name, () => {
                             'member-one',
                             'member-two',
                         ],
+                        sourceClientId: fakeConnection.clientId,
+                        type: P2pLockStepMessageType.Actions,
+                    },
+                ],
+            },
+        );
+    });
+
+    it('does not emit a frame event for synchronization frames', () => {
+        const controller = createController();
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        let frameEventCount = 0;
+
+        controller.listen(MultiplayerControllerFrameEvent, () => {
+            frameEventCount++;
+        });
+        controller.setRoomConnectionForTest(fakeConnection);
+        controller.roomController.dispatch(
+            new MultiplayerControllerMessageEvent<P2pLockStepMessage<string>>(
+                createMultiplayerId.client(),
+                {
+                    actions: [],
+                    isSynchronizationFrame: true,
+                    type: P2pLockStepMessageType.Frame,
+                },
+            ),
+        );
+
+        assert.deepEquals(
+            {
+                frameEventCount,
+                sentMessages: fakeConnection.sentMessages,
+            },
+            {
+                frameEventCount: 0,
+                sentMessages: [
+                    {
+                        actions: [],
                         sourceClientId: fakeConnection.clientId,
                         type: P2pLockStepMessageType.Actions,
                     },

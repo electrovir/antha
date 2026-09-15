@@ -12,6 +12,7 @@ import {singleplayerToMultiplayerDemo} from './demos/17-singleplayer-to-multipla
 import {multiplayerRoomSwitchingDemo} from './demos/18-multiplayer-room-switching.demo.js';
 import {virtualViewportDemo} from './demos/19-virtual-viewport.demo.js';
 import {graphics2dDemo} from './demos/2-graphics-2d.demo.js';
+import {eventTriggeredModsDemo} from './demos/20-event-triggered-mods.demo.js';
 import {audioEngineDemo} from './demos/3-audio-engine.demo.js';
 import {entitiesDemo} from './demos/4-entities.demo.js';
 import {spriteMovementDemo} from './demos/5-sprite-movement.demo.js';
@@ -40,6 +41,7 @@ export const allDemos: AnthaDemo[] = [
     singleplayerToMultiplayerDemo,
     multiplayerRoomSwitchingDemo,
     virtualViewportDemo,
+    eventTriggeredModsDemo,
 ];
 
 export const allDemosByPathKey = arrayToObject(allDemos, (demo) => {

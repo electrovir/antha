@@ -303,7 +303,6 @@ const entityAssetDemoMod = defineAnthaMod<
     AnthaEntity2dModState<EntityAssetDemoGameState> & AnthaAssetModState
 >({
     modName: 'entity-asset-demo',
-    executeImmediately: true,
     execute({state}) {
         const entityStore = state.entityStore;
         const assetLoader = state.assetLoader;

@@ -8,11 +8,11 @@ describe(createAnthaFpsMod.name, () => {
         const mod = createAnthaFpsMod();
 
         assert.strictEquals(mod.modName, 'antha-fps');
-        assert.isDefined(mod.frequency);
-        assert.deepEquals(mod.frequency, {
+        assert.isDefined(mod.trigger);
+        assert.deepEquals(mod.trigger, {
             durationMs: 500,
+            executeImmediately: true,
         });
-        assert.isTrue(mod.executeImmediately);
     });
 
     it('creates a mod with custom options', () => {
@@ -23,8 +23,9 @@ describe(createAnthaFpsMod.name, () => {
         });
 
         assert.strictEquals(mod.modName, 'antha-fps');
-        assert.deepEquals(mod.frequency, {
+        assert.deepEquals(mod.trigger, {
             durationMs: 1000,
+            executeImmediately: true,
         });
     });
 
@@ -80,7 +81,7 @@ describe(createAnthaFpsMod.name, () => {
         /**
          * Shift engine start time back by 1 second and advance current tick so the next execution
          * sees 32 ticks in 1 second (i.e. 32 FPS), which is below the expected ~62 FPS threshold.
-         * The tick count must also exceed the frequency threshold (500ms / 16ms ≈ 31.25 ticks).
+         * The tick count must also exceed the trigger interval (500ms / 16ms ≈ 31.25 ticks).
          */
         engine.engineStartTime = performance.now() - 1000;
         engine.currentTick = 32;

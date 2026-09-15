@@ -199,7 +199,6 @@ export function createSaveGameSuite<RuntimeSaveState, StoredSaveStateShape exten
     });
 
     const anthaAutosaveMod = defineAnthaMod<AutosaveModState<RuntimeSaveState>>({
-        executeImmediately: true,
         modName: 'Antha Autosave',
         async cleanup({engine, state}) {
             if (!('saveState' in state) || state.savingStaredAt) {

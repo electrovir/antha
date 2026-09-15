@@ -57,10 +57,10 @@ const bouncingBallsMod: AnthaMod<
     }
 > = {
     modName: 'demo-bouncing-balls',
-    frequency: {
+    trigger: {
         durationMs: physicsStepDurationMs,
+        executeImmediately: true,
     },
-    executeImmediately: true,
     execute({state, msSinceLastExecute}): typeof SkipExecution | void {
         const pixiApp = state.pixi?.pixiApplication;
 

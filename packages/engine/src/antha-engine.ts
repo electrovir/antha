@@ -2,12 +2,14 @@ import {waitUntil} from '@augment-vir/assert';
 import {
     applyBrand,
     awaitedForEach,
+    ensureArray,
     getOrSetFromMap,
     makeWritable,
     mergeDefinedProperties,
     type AnyObject,
     type ArrayElement,
     type Branded,
+    type Constructor,
     type MaybePromise,
     type PartialWithUndefined,
     type RequiredAndNotNull,
@@ -19,6 +21,7 @@ import {createId} from '@paralleldrive/cuid2';
 import {type Duration, type DurationUnit} from 'date-vir';
 import {css, html, type HtmlInterpolation} from 'element-vir';
 import {Observable} from 'observavir';
+import {GenericListenTarget} from 'typed-event-target';
 import {AnthaUi} from './antha-ui.element.js';
 import {type AnthaLogger} from './logger/antha-logger.js';
 import {browserAnthaLogger} from './logger/browser-antha-logger.js';
@@ -57,6 +60,7 @@ export function createEngineTime({
 export type ModExecuteParams<State extends AnyObject = UnknownObject> = {
     state: Partial<State>;
     engine: AnthaEngine;
+    executionTrigger: Readonly<ModExecutionTrigger>;
     ticksSinceLastExecute: number;
     msSinceLastExecute: DOMHighResTimeStamp;
     lastExecution: Readonly<LastExecution> | undefined;
@@ -78,8 +82,33 @@ export type ModCleanupParams<State extends AnyObject> = {
 } & ModOptions;
 
 /**
+ * The reason an Antha mod is currently executing.
+ *
+ * @category Internal
+ */
+export enum ModExecutionTriggerType {
+    Tick = 'tick',
+    Event = 'event',
+}
+
+/**
+ * Identifies what caused the current mod execution.
+ *
+ * @category Internal
+ */
+export type ModExecutionTrigger =
+    | {
+          type: ModExecutionTriggerType.Tick;
+          events?: never;
+      }
+    | {
+          type: ModExecutionTriggerType.Event;
+          events: ReadonlyArray<Event>;
+      };
+
+/**
  * Return this from a mod's `execute` callback to instruct {@link AnthaEngine} that the mod's current
- * execution should not count toward the mod's frequency schedule. This is useful when a mod needs a
+ * execution should not count toward the mod's trigger schedule. This is useful when a mod needs a
  * dependency (such as a canvas or external resource) that isn't ready yet so that the engine will
  * keep retrying on subsequent ticks, even if the mod has a low execution frequency.
  *
@@ -102,36 +131,41 @@ export type SkipExecution = typeof SkipExecution;
 export type ModExecuteResult = MaybePromise<HtmlInterpolation | void | SkipExecution>;
 
 /**
- * Possible options to use when defining {@link AnthaMod}.
+ * Possible trigger options for a {@link AnthaMod}.
  *
  * @category Internal
  */
-export type ModOptions = {
+export type ModTrigger = {
     /**
-     * The frequency at which this mod should execute.
-     *
-     * - `undefined`: execute on every tick
-     * - `duration`: execute on each duration. This will be converted to a tick count based on what
-     *   tick speed the engine is running at.
-     * - `ticks`: execute every `ticks` ticks.
-     *
-     * @default undefined
-     */
-    frequency:
-        | RequireExactlyOne<{
-              durationMs: number;
-              ticks: number;
-          }>
-        | undefined;
-    /**
-     * If `true`, this mod will execute immediately on game engine init instead of waiting for its
-     * first tick to hit based on the given frequency configuration. If frequency is omitted or
-     * `undefined`, this option is not necessary.
+     * If `true`, this mod executes on the engine's first tick instead of waiting for its first
+     * eligible scheduled tick or event.
      *
      * @default false
      */
     executeImmediately: boolean;
-};
+} & RequireExactlyOne<{
+    /**
+     * Execute with a period of the given milliseconds. This will be converted to a tick count based
+     * on what tick speed the engine is running at.
+     */
+    durationMs: number;
+    /** Execute every `tickCount` ticks. */
+    tickCount: number;
+    /**
+     * When set, this mod executes only when the engine dispatches an instance of one of these event
+     * classes.
+     */
+    event: Constructor<Event> | ReadonlyArray<Constructor<Event>>;
+}>;
+
+/**
+ * Possible options to use when defining {@link AnthaMod}.
+ *
+ * @category Internal
+ */
+export type ModOptions = PartialWithUndefined<{
+    trigger: ModTrigger;
+}>;
 
 /**
  * A mod for {@link AnthaEngine}. This is the core of getting anything done in the engine, everything
@@ -162,12 +196,12 @@ export type AnthaMod<State extends AnyObject = any> = {
     modName: string;
     /**
      * The execute callback. This is where the mod's functionality lives. This will be called in
-     * each tick based on the provided frequency. Any non-nullish output will be rendered as HTML to
+     * each tick based on the configured trigger. Any non-nullish output will be rendered as HTML to
      * the DOM.
      */
     execute: (this: void, params: Readonly<ModExecuteParams<NoInfer<State>>>) => ModExecuteResult;
-} & PartialWithUndefined<
-    {
+} & ModOptions &
+    PartialWithUndefined<{
         initState: Partial<NoInfer<State>>;
         /**
          * Use this to cleanup resources that the mod has created. This is called when the engine is
@@ -177,8 +211,7 @@ export type AnthaMod<State extends AnyObject = any> = {
             this: void,
             params: Readonly<ModCleanupParams<NoInfer<State>>>,
         ) => MaybePromise<void>;
-    } & ModOptions
->;
+    }>;
 
 /**
  * Extracts state type from a mod.
@@ -306,8 +339,9 @@ export type AnthaEngineInit<State extends AnyObject = AnyObject> = PartialWithUn
  * });
  * ```
  */
-export class AnthaEngine<State extends AnyObject = AnyObject> {
+export class AnthaEngine<State extends AnyObject = AnyObject> extends GenericListenTarget {
     constructor(init?: AnthaEngineInit<State> | undefined) {
+        super();
         this.state = init?.initState || {};
         this.options = mergeDefinedProperties(defaultAnthaEngineOptions, init?.engineOptions);
         this.currentMods = init?.mods || [];
@@ -391,6 +425,8 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
     public isLoopRunning = false;
     /** Indicates whether a tick is currently running or not. This should not be modified externally. */
     public readonly isTickRunning = false as boolean;
+    /** Events waiting for their triggered mod's next normal tick. */
+    protected eventTriggeredMods = new Map<AnthaMod, Event[]>();
 
     /**
      * Stop the tick loop. If the loop already isn't running, no changes will be made.
@@ -411,6 +447,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
         this.stopLoop();
         await waitUntil.isFalse(() => this.isTickRunning);
 
+        this.eventTriggeredMods = new Map();
         this.currentTick = 0;
 
         /** Clear all per-mod tracking for current mods. */
@@ -424,8 +461,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
                     return applyBrand<ModInstanceId>(createId());
                 }),
                 state: this.state,
-                executeImmediately: mod.executeImmediately || false,
-                frequency: mod.frequency || undefined,
+                trigger: mod.trigger,
             });
         });
 
@@ -473,104 +509,146 @@ export class AnthaEngine<State extends AnyObject = AnyObject> {
      */
     public async runSingleTick(): Promise<void> {
         makeWritable(this).isTickRunning = true;
-        /** Clear the array as we're about to populate it. */
-        this.currentTemplateArray.length = 0;
-        const executionStart = performance.now();
-        this.engineTime = createEngineTime({
-            milliseconds: executionStart - this.engineStartTime,
-        });
 
-        /**
-         * Use a plain `for` loop instead of `awaitedForEach` so that synchronous mods execute
-         * without microtask boundaries between them. Only yield when a mod actually returns a
-         * `Promise`.
-         */
-        for (let index = 0; index < this.currentMods.length; index++) {
-            // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-            const mod = this.currentMods[index]!;
-            const lastExecution = this.lastModExecution.get(mod);
-            const shouldExecute = this.shouldModExecute(mod, lastExecution);
+        try {
+            const eventTriggeredMods = this.eventTriggeredMods;
+            /** Construct a new map so that the new triggers can populate fresh. */
+            this.eventTriggeredMods = new Map();
 
-            let executeResult: HtmlInterpolation | void | SkipExecution | undefined;
+            /** Clear the array as we're about to populate it. */
+            this.currentTemplateArray.length = 0;
+            const executionStart = performance.now();
+            this.engineTime = createEngineTime({
+                milliseconds: executionStart - this.engineStartTime,
+            });
 
-            if (shouldExecute) {
-                if (!lastExecution && mod.initState) {
-                    Object.assign(this.state, mod.initState);
+            /**
+             * Use a plain `for` loop instead of `awaitedForEach` so that synchronous mods execute
+             * without microtask boundaries between them. Only yield when a mod actually returns a
+             * `Promise`.
+             */
+            for (let index = 0; index < this.currentMods.length; index++) {
+                // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                const mod = this.currentMods[index]!;
+                const lastExecution = this.lastModExecution.get(mod);
+                const shouldExecute = this.shouldModExecute(mod, lastExecution, eventTriggeredMods);
+                const events = mod.trigger?.event ? eventTriggeredMods.get(mod) || [] : undefined;
+                const executionTrigger: ModExecutionTrigger = events
+                    ? {
+                          type: ModExecutionTriggerType.Event,
+                          events,
+                      }
+                    : {
+                          type: ModExecutionTriggerType.Tick,
+                      };
+
+                let executeResult: HtmlInterpolation | void | SkipExecution | undefined;
+
+                if (shouldExecute) {
+                    if (!lastExecution && mod.initState) {
+                        Object.assign(this.state, mod.initState);
+                    }
+
+                    const rawResult = mod.execute({
+                        engine: this,
+                        modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () => {
+                            return applyBrand<ModInstanceId>(createId());
+                        }),
+                        currentTick: this.currentTick,
+                        state: this.state,
+                        executionTrigger,
+                        ticksSinceLastExecute: this.currentTick - (lastExecution?.tick ?? 0),
+                        trigger: mod.trigger,
+                        lastExecution,
+                        hostElement: this.getEnsuredHostElement(),
+                        msSinceLastExecute:
+                            executionStart - (lastExecution?.timeMs ?? this.engineStartTime),
+                    });
+
+                    executeResult = rawResult instanceof Promise ? await rawResult : rawResult;
                 }
 
-                const rawResult = mod.execute({
-                    engine: this,
-                    modInstanceId: getOrSetFromMap(this.modInstanceIdMap, mod, () => {
-                        return applyBrand<ModInstanceId>(createId());
-                    }),
-                    currentTick: this.currentTick,
-                    state: this.state,
-                    ticksSinceLastExecute: this.currentTick - (lastExecution?.tick ?? 0),
-                    executeImmediately: mod.executeImmediately || false,
-                    frequency: mod.frequency || undefined,
-                    lastExecution,
-                    hostElement: this.getEnsuredHostElement(),
-                    msSinceLastExecute:
-                        executionStart - (lastExecution?.timeMs ?? this.engineStartTime),
-                });
+                const skipped = executeResult === SkipExecution;
 
-                executeResult = rawResult instanceof Promise ? await rawResult : rawResult;
+                const rawTemplate: HtmlInterpolation =
+                    shouldExecute && !skipped
+                        ? (executeResult as Exclude<typeof executeResult, SkipExecution>) ||
+                          undefined
+                        : undefined;
+
+                const modTemplate: HtmlInterpolation =
+                    shouldExecute && !skipped
+                        ? rawTemplate
+                            ? html`
+                                  <div
+                                      data-antha-mod=${mod.modName}
+                                      style=${css`
+                                          display: contents;
+                                      `}
+                                  >
+                                      ${rawTemplate}
+                                  </div>
+                              `
+                            : undefined
+                        : this.currentTemplateMap.get(mod);
+
+                this.currentTemplateArray[index] = modTemplate;
+
+                if (shouldExecute && !skipped) {
+                    this.currentTemplateMap.set(mod, modTemplate);
+                    this.lastModExecution.set(mod, {
+                        tick: this.currentTick,
+                        timeMs: executionStart,
+                    });
+                }
             }
 
-            const skipped = executeResult === SkipExecution;
-
-            const rawTemplate: HtmlInterpolation =
-                shouldExecute && !skipped
-                    ? (executeResult as Exclude<typeof executeResult, SkipExecution>) || undefined
-                    : undefined;
-
-            const modTemplate: HtmlInterpolation =
-                shouldExecute && !skipped
-                    ? rawTemplate
-                        ? html`
-                              <div
-                                  data-antha-mod=${mod.modName}
-                                  style=${css`
-                                      display: contents;
-                                  `}
-                              >
-                                  ${rawTemplate}
-                              </div>
-                          `
-                        : undefined
-                    : this.currentTemplateMap.get(mod);
-
-            this.currentTemplateArray[index] = modTemplate;
-
-            if (shouldExecute && !skipped) {
-                this.currentTemplateMap.set(mod, modTemplate);
-                this.lastModExecution.set(mod, {
-                    tick: this.currentTick,
-                    timeMs: executionStart,
-                });
-            }
+            this.observable.setValue(this.currentTemplateArray);
+            this.currentTick++;
+        } finally {
+            makeWritable(this).isTickRunning = false;
         }
+    }
 
-        this.currentTick++;
-        this.observable.setValue(this.currentTemplateArray);
-        makeWritable(this).isTickRunning = false;
+    /**
+     * Dispatch an event through the engine.
+     *
+     * @returns The number of listeners that received the event.
+     */
+    public override dispatch(event: Event) {
+        this.currentMods.forEach((mod) => {
+            if (
+                mod.trigger?.event &&
+                ensureArray(mod.trigger.event).some((eventTrigger) => {
+                    return event instanceof eventTrigger;
+                })
+            ) {
+                getOrSetFromMap(this.eventTriggeredMods, mod, () => []).push(event);
+            }
+        });
+        return super.dispatch(event);
     }
 
     /** Used to determine if a mod should execute right now or not. */
     public shouldModExecute(
         mod: Readonly<AnthaMod>,
         lastExecution: Readonly<LastExecution> | undefined,
+        eventTriggeredMods?: ReadonlyMap<AnthaMod, ReadonlyArray<Event>> | undefined,
     ): boolean {
-        if (!mod.frequency || (!lastExecution && mod.executeImmediately)) {
+        if ((!lastExecution && mod.trigger?.executeImmediately) || !mod.trigger) {
             return true;
-        } else if (mod.frequency.ticks) {
+        } else if (mod.trigger.event) {
+            return (
+                !!eventTriggeredMods?.has(mod) || (!lastExecution && mod.trigger.executeImmediately)
+            );
+        } else if (mod.trigger.tickCount) {
             const ticksSinceLastExecution = this.currentTick - (lastExecution?.tick || 0);
 
-            return ticksSinceLastExecution >= mod.frequency.ticks;
-        } else if (mod.frequency.durationMs) {
+            return ticksSinceLastExecution >= mod.trigger.tickCount;
+        } else if (mod.trigger.durationMs) {
             const msSinceLastExecution = performance.now() - (lastExecution?.timeMs || 0);
 
-            return msSinceLastExecution >= mod.frequency.durationMs;
+            return msSinceLastExecution >= mod.trigger.durationMs;
         } else {
             return true;
         }
