@@ -187,7 +187,7 @@ export class P2pLockStepMultiplayerController<
     protected frameActions: FrameEventDetail<MultiplayerPacket>[] = [];
     protected timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
     protected frameTickReady = true;
-    protected frameMs: number | undefined;
+    public frameMs: number;
     protected joiningRoom = false;
     protected lastFpsCalculation = {
         timestamp: 0,
@@ -346,9 +346,6 @@ export class P2pLockStepMultiplayerController<
      */
     public runFrame(actions?: ReadonlyArray<MultiplayerPacket> | undefined) {
         this.debugLog(`runFrame called with ${actions?.length || 0} actions`);
-        if (this.frameMs != undefined) {
-            throw new Error('Cannot manually run frame when frameDuration has been set.');
-        }
 
         if (actions) {
             this.act(actions);

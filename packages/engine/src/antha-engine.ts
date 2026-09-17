@@ -135,7 +135,7 @@ export type ModExecuteResult = MaybePromise<HtmlInterpolation | void | SkipExecu
  *
  * @category Internal
  */
-export type ModTrigger = {
+export type ModTrigger = PartialWithUndefined<{
     /**
      * If `true`, this mod executes on the engine's first tick instead of waiting for its first
      * eligible scheduled tick or event.
@@ -143,20 +143,21 @@ export type ModTrigger = {
      * @default false
      */
     executeImmediately: boolean;
-} & RequireExactlyOne<{
-    /**
-     * Execute with a period of the given milliseconds. This will be converted to a tick count based
-     * on what tick speed the engine is running at.
-     */
-    durationMs: number;
-    /** Execute every `tickCount` ticks. */
-    tickCount: number;
-    /**
-     * When set, this mod executes only when the engine dispatches an instance of one of these event
-     * classes.
-     */
-    event: Constructor<Event> | ReadonlyArray<Constructor<Event>>;
-}>;
+}> &
+    RequireExactlyOne<{
+        /**
+         * Execute with a period of the given milliseconds. This will be converted to a tick count
+         * based on what tick speed the engine is running at.
+         */
+        durationMs: number;
+        /** Execute every `tickCount` ticks. */
+        tickCount: number;
+        /**
+         * When set, this mod executes only when the engine dispatches an instance of one of these
+         * event classes.
+         */
+        event: Constructor<Event> | ReadonlyArray<Constructor<Event>>;
+    }>;
 
 /**
  * Possible options to use when defining {@link AnthaMod}.
@@ -639,7 +640,8 @@ export class AnthaEngine<State extends AnyObject = AnyObject> extends GenericLis
             return true;
         } else if (mod.trigger.event) {
             return (
-                !!eventTriggeredMods?.has(mod) || (!lastExecution && mod.trigger.executeImmediately)
+                !!eventTriggeredMods?.has(mod) ||
+                (!lastExecution && !!mod.trigger.executeImmediately)
             );
         } else if (mod.trigger.tickCount) {
             const ticksSinceLastExecution = this.currentTick - (lastExecution?.tick || 0);
