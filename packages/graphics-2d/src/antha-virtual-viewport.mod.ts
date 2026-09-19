@@ -1,94 +1,31 @@
+import {
+    calculateVirtualViewport,
+    type AnthaVirtualViewportOptions,
+    type AnthaVirtualViewportState,
+    type VirtualViewport,
+    type VirtualViewportSize,
+} from '@antha/asset';
 import {defineAnthaMod} from '@antha/engine';
-import {assertWrap} from '@augment-vir/assert';
-import {type PartialWithUndefined, type RequireAtLeastOne} from '@augment-vir/common';
 import {type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
 
 /**
- * The logical dimensions and scale of a virtual viewport.
+ * Re-exported from {@link @antha/asset!VirtualViewport}.
  *
  * @category Internal
  */
-export type VirtualViewport = {
-    height: number;
-    scale: number;
-    width: number;
-};
-
-/**
- * The dimensions of a virtual viewport without its scale.
- *
- * @category Internal
- */
-export type VirtualViewportSize = Pick<VirtualViewport, 'height' | 'width'>;
-
-/**
- * Options for {@link createAnthaVirtualViewportMod}.
- *
- * @category Pre-Built Mods
- */
-export type AnthaVirtualViewportOptions = RequireAtLeastOne<{
-    virtualHeight: number;
-    virtualWidth: number;
-}>;
+export type {
+    AnthaVirtualViewportOptions,
+    AnthaVirtualViewportState,
+    VirtualViewport,
+    VirtualViewportSize,
+} from '@antha/asset';
 
 /**
  * State added by {@link createAnthaVirtualViewportMod}.
  *
  * @category Internal
  */
-export type AnthaVirtualViewportModState = AnthaGraphics2dModState & {
-    virtualViewport: VirtualViewport | undefined;
-};
-
-/**
- * Calculates the logical viewport for a physical screen size.
- *
- * @category Util
- */
-export function calculateVirtualViewport({
-    screenSize,
-    virtualHeight,
-    virtualWidth,
-}: Readonly<
-    PartialWithUndefined<AnthaVirtualViewportOptions> & {
-        screenSize: Readonly<VirtualViewportSize>;
-    }
->) {
-    if (
-        !screenSize.height ||
-        !screenSize.width ||
-        virtualHeight === 0 ||
-        virtualWidth === 0 ||
-        (virtualHeight == undefined && virtualWidth == undefined)
-    ) {
-        return undefined;
-    } else if (virtualHeight == undefined) {
-        const definedVirtualWidth = assertWrap.isDefined(virtualWidth);
-        const scale = screenSize.width / definedVirtualWidth;
-
-        return {
-            height: screenSize.height / scale,
-            scale,
-            width: definedVirtualWidth,
-        };
-    } else if (virtualWidth == undefined) {
-        const scale = screenSize.height / virtualHeight;
-
-        return {
-            height: virtualHeight,
-            scale,
-            width: screenSize.width / scale,
-        };
-    } else {
-        const scale = Math.min(screenSize.height / virtualHeight, screenSize.width / virtualWidth);
-
-        return {
-            height: virtualHeight,
-            scale,
-            width: virtualWidth,
-        };
-    }
-}
+export type AnthaVirtualViewportModState = AnthaGraphics2dModState & AnthaVirtualViewportState;
 
 /**
  * Maps a pointer position from canvas coordinates into a virtual viewport.

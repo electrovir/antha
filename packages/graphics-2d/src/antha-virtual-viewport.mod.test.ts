@@ -1,8 +1,8 @@
+import {calculateVirtualViewport} from '@antha/asset';
 import {AnthaEngine} from '@antha/engine';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {
-    calculateVirtualViewport,
     calculateVirtualViewportPoint,
     createAnthaVirtualViewportMod,
     createVirtualViewportPixiOptions,

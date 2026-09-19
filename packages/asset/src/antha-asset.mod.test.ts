@@ -1,14 +1,11 @@
 import {AnthaEngine} from '@antha/engine';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {wait} from '@augment-vir/common';
-import {describe, it, testWeb} from '@augment-vir/test';
-import {html} from 'element-vir';
+import {describe, it} from '@augment-vir/test';
 import {
-    AnthaAssetLoadingScreen,
     type AnthaAssetModState,
     anthaAssetModName,
     createAnthaAssetMod,
-    defaultLoadingScreenFadeMs,
 } from './antha-asset.mod.js';
 import {type AssetLoadState} from './asset-loader.js';
 
@@ -259,52 +256,5 @@ describe(createAnthaAssetMod.name, () => {
         const templates = engine.currentTemplateArray;
         assert.isLengthExactly(templates, 1);
         assert.isUndefined(templates[0]);
-    });
-});
-
-describe(AnthaAssetLoadingScreen.tagName, () => {
-    it('renders loading screen element', async () => {
-        const fixture = await testWeb.render(html`
-            <${AnthaAssetLoadingScreen.assign({
-                progressPercent: 50,
-                dotCount: 2,
-                completed: false,
-                currentResourceName: undefined,
-                loadingScreenFadeMs: defaultLoadingScreenFadeMs,
-            })}></${AnthaAssetLoadingScreen}>
-        `);
-
-        assert.instanceOf(fixture, AnthaAssetLoadingScreen);
-        testWeb.cleanupRender();
-    });
-
-    it('renders completed state', async () => {
-        const fixture = await testWeb.render(html`
-            <${AnthaAssetLoadingScreen.assign({
-                progressPercent: 100,
-                dotCount: 0,
-                completed: true,
-                currentResourceName: undefined,
-                loadingScreenFadeMs: defaultLoadingScreenFadeMs,
-            })}></${AnthaAssetLoadingScreen}>
-        `);
-
-        assert.instanceOf(fixture, AnthaAssetLoadingScreen);
-        testWeb.cleanupRender();
-    });
-
-    it('uses its configured fade duration', async () => {
-        const fixture = await testWeb.render(html`
-            <${AnthaAssetLoadingScreen.assign({
-                progressPercent: 100,
-                dotCount: 0,
-                completed: true,
-                currentResourceName: undefined,
-                loadingScreenFadeMs: 200,
-            })}></${AnthaAssetLoadingScreen}>
-        `);
-
-        assert.strictEquals(globalThis.getComputedStyle(fixture).transitionDuration, '0.2s');
-        testWeb.cleanupRender();
     });
 });

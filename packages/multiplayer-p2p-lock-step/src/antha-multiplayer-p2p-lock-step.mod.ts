@@ -75,11 +75,10 @@ export function createAnthaMultiplayerP2pLockStepMod<
 >(options: Readonly<AnthaMultiplayerP2pLockStepOptions<MultiplayerPacket>> = {}) {
     return defineAnthaMod<AnthaMultiplayerP2pLockStepState<NoInfer<MultiplayerPacket>>>({
         modName: 'antha-multiplayer-p2p-lock-step',
+        initState: {
+            debugMultiplayer: options.debugMultiplayer,
+        },
         execute({engine, state}) {
-            if (options.debugMultiplayer == undefined) {
-                state.debugMultiplayer = options.debugMultiplayer;
-            }
-
             if (!state.multiplayerP2pLockStep) {
                 log.if(!!state.debugMultiplayer).faint(
                     '[multiplayer] creating p2p-lock-step mod state',
