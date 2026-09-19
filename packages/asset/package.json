@@ -43,6 +43,7 @@
         "typed-event-target": "^4.3.3"
     },
     "devDependencies": {
+        "@antha/engine": "^0.17.0",
         "@augment-vir/test": "^32.3.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
