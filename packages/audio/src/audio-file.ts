@@ -4,6 +4,7 @@ import {
     DeferredPromise,
     ensureArray,
     ensureError,
+    getOrSetFromMap,
     makeWritable,
     stringify,
     type AnyObject,
@@ -168,7 +169,10 @@ export type AudioPlayback = {
     deferredPlayPromise: DeferredPromise<boolean>;
     offsetSeconds: number;
     startedAt: number;
-};
+} & PartialWithUndefined<{
+    /** Cached channel input node for this playback. */
+    inputNode: AudioNode;
+}>;
 
 /**
  * Allows creating an array of `AudioNode` instances ("effects") by passing the given `AudioContext`
@@ -272,6 +276,13 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
     public readonly gainNode: GainNode;
     public readonly sourceKey: string;
     protected readonly activeBufferSources = new Map<AudioBufferSourceNode, AudioPlayback>();
+    protected readonly audioChannelOutputNodeMap = new Map<
+        AudioNode,
+        {
+            gainNode: GainNode;
+            inputNode: AudioNode;
+        }
+    >();
     protected readonly pausedPlaybacks = new Set<AudioPlayback>();
 
     constructor(protected readonly params: AudioFileParams) {
@@ -339,7 +350,14 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
      * @returns Whether or not the audio file was actually played. The audio file will not be played
      *   if audio is currently disabled.
      */
-    public async play(): Promise<boolean> {
+    public async play({
+        outputNode,
+    }: Readonly<
+        PartialWithUndefined<{
+            /** Sets an output node different from the default one. */
+            outputNode: AudioNode;
+        }>
+    > = {}) {
         const audioBuffer = await this.load();
         if (!this.isAudioAllowed) {
             makeWritable(this).isAudioAllowed = await isPlayingEnabled(this.audioContext);
@@ -359,6 +377,29 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
             deferredPlayPromise: new DeferredPromise<boolean>(),
             offsetSeconds: 0,
             startedAt: this.audioContext.currentTime,
+            ...(outputNode
+                ? {
+                      inputNode: getOrSetFromMap(this.audioChannelOutputNodeMap, outputNode, () => {
+                          const gainNode = this.audioContext.createGain();
+                          gainNode.gain.value = clamp(this.params.volume ?? 1, {
+                              min: 0,
+                              max: 1,
+                          });
+                          gainNode.connect(outputNode);
+                          const outputNodes = {
+                              gainNode,
+                              inputNode: setupEffects(
+                                  this.audioContext,
+                                  gainNode,
+                                  this.params.createEffects,
+                              ).outputNode,
+                          };
+                          this.audioChannelOutputNodeMap.set(outputNode, outputNodes);
+
+                          return outputNodes;
+                      }).inputNode,
+                  }
+                : {}),
         };
         this.startPlayback(playback);
 
@@ -439,6 +480,13 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
             }
         }
 
+        this.audioChannelOutputNodeMap.forEach((outputNodes) => {
+            if (outputNodes.inputNode !== outputNodes.gainNode) {
+                outputNodes.inputNode.disconnect();
+            }
+            outputNodes.gainNode.disconnect();
+        });
+        this.audioChannelOutputNodeMap.clear();
         this.outputNode.disconnect();
         (this as AnyObject).audioCache = {};
         this.loadPromise = undefined;
@@ -520,7 +568,7 @@ export class AudioFile extends ListenTarget<AllAudioFileEvents> {
     protected startPlayback(playback: AudioPlayback) {
         const bufferSource = this.audioContext.createBufferSource();
         bufferSource.buffer = playback.audioBuffer;
-        bufferSource.connect(this.outputNode);
+        bufferSource.connect(playback.inputNode ?? this.outputNode);
         playback.startedAt = this.audioContext.currentTime;
         this.activeBufferSources.set(bufferSource, playback);
 

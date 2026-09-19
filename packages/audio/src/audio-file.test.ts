@@ -24,6 +24,10 @@ class TestAudioFile extends AudioFile {
     public clearActiveBufferSourcesForTest() {
         this.activeBufferSources.clear();
     }
+
+    public getAudioChannelOutputNodesForTest() {
+        return [...this.audioChannelOutputNodeMap.values()];
+    }
 }
 
 describe(AudioFile.name, () => {
@@ -114,6 +118,30 @@ describe(AudioFile.name, () => {
 
         await makePlayable(audioContext);
         await waitUntil.isTrue(() => file.play());
+    });
+    it('reuses output nodes for repeated playback through an audio channel', async () => {
+        const audioContext = new AudioContext();
+        const outputNode = audioContext.createGain();
+        const file = new TestAudioFile({
+            sources: [shortMp3Base64],
+            audioContext,
+        });
+
+        try {
+            await file.load();
+            await makePlayable(audioContext);
+            await file.play({
+                outputNode,
+            });
+            await file.play({
+                outputNode,
+            });
+
+            assert.isLengthExactly(file.getAudioChannelOutputNodesForTest(), 1);
+        } finally {
+            await file.destroy();
+            await audioContext.close();
+        }
     });
     it('stops active playback without unloading', async () => {
         const audioContext = new AudioContext();

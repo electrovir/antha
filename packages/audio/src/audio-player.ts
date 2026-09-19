@@ -1,7 +1,9 @@
 import {
     awaitedBlockingMap,
     clamp,
+    getObjectTypedEntries,
     getObjectTypedValues,
+    getOrSet,
     makeWritable,
     type AnyObject,
     type MaybePromise,
@@ -43,7 +45,13 @@ export type AudioLoadProgressCallback = (
  *
  * @category Internal
  */
-export type AudioPlayerOptions = Pick<AudioFileParams, 'fetch' | 'volume' | 'createEffects'>;
+export type AudioPlayerOptions = Pick<AudioFileParams, 'fetch' | 'volume' | 'createEffects'> &
+    PartialWithUndefined<{
+        /** Used to pre-populate audio channel gain nodes. The channel name mapped to its volume. */
+        initChannels: {
+            [ChannelName in string]: number;
+        };
+    }>;
 
 /**
  * Inputs for playing audio.
@@ -60,6 +68,8 @@ export type AudioSetupParams = Readonly<
  * @category Main
  */
 export class AudioPlayer extends ListenTarget<AllAudioFileEvents> {
+    /** Gain nodes for audio channels created by {@link AudioPlayer.play}. */
+    public readonly audioChannelNodes: Record<string, GainNode> = {};
     public readonly audioFiles: {[SourceKey in string]: AudioFile} = {};
     public readonly audioContext = new AudioContext();
     public readonly audioCache: AudioFileCache = {};
@@ -90,11 +100,48 @@ export class AudioPlayer extends ListenTarget<AllAudioFileEvents> {
             this.gainNode,
             options.createEffects,
         ).outputNode;
+
+        getObjectTypedEntries(options.initChannels || {}).forEach(
+            ([
+                channelName,
+                volume,
+            ]) => {
+                this.getAudioChannelNode(channelName, volume);
+            },
+        );
     }
 
-    /** Play an audio file. */
-    public async play(params: Readonly<AudioSetupParams>): Promise<boolean> {
-        return this.setupAudioFile(params).play();
+    /** Plays audio, optionally routing this playback through a named channel. */
+    public async play({
+        audioChannel,
+        ...audioSetup
+    }: Readonly<
+        AudioSetupParams &
+            PartialWithUndefined<{
+                /** Routes this playback through a named channel gain node. */
+                audioChannel: string;
+            }>
+    >) {
+        const audioFile = this.setupAudioFile(audioSetup);
+
+        return audioChannel == undefined
+            ? audioFile.play()
+            : audioFile.play({
+                  outputNode: this.getAudioChannelNode(audioChannel, 1),
+              });
+    }
+
+    protected getAudioChannelNode(audioChannel: string, volume: number) {
+        return getOrSet(this.audioChannelNodes, audioChannel, () => {
+            const audioChannelNode = this.audioContext.createGain();
+            audioChannelNode.gain.value = clamp(volume, {
+                min: 0,
+                max: 1,
+            });
+            audioChannelNode.connect(this.outputNode);
+
+            return audioChannelNode;
+        });
     }
 
     /** Create a new {@link AudioFile} instance at the given `key` and set it up. */
@@ -255,6 +302,9 @@ export class AudioPlayer extends ListenTarget<AllAudioFileEvents> {
                 delete this.audioCache[audioFile.sourceKey];
             }),
         );
+        getObjectTypedValues(this.audioChannelNodes).forEach((audioChannelNode) => {
+            audioChannelNode.disconnect();
+        });
         await this.audioContext.close();
         (this as AnyObject).isDestroyed = true;
     }

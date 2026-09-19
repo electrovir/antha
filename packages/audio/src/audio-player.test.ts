@@ -78,6 +78,23 @@ describe(AudioPlayer.name, () => {
 
         assert.isTrue(player.isDestroyed);
     });
+    it('initializes audio channel volumes', async () => {
+        const player = new AudioPlayer({
+            initChannels: {
+                music: 0.25,
+            },
+        });
+
+        try {
+            assert.isApproximately(
+                assertWrap.isDefined(player.audioChannelNodes.music).gain.value,
+                0.25,
+                0.00001,
+            );
+        } finally {
+            await player.destroy();
+        }
+    });
     it('loads a real audio file', async () => {
         const player = new AudioPlayer();
 
@@ -93,6 +110,29 @@ describe(AudioPlayer.name, () => {
         });
 
         assert.isLengthExactly(Object.keys(player.audioFiles), 1);
+    });
+    it('reuses audio files across audio channels', async () => {
+        const player = new AudioPlayer();
+
+        try {
+            await player.loadFiles([shortMp3Params]);
+            await player.play({
+                ...shortMp3Params,
+                audioChannel: 'effects',
+            });
+            await player.play({
+                ...shortMp3Params,
+                audioChannel: 'music',
+            });
+
+            assert.isLengthExactly(Object.keys(player.audioFiles), 1);
+            assert.hasKeys(player.audioChannelNodes, [
+                'effects',
+                'music',
+            ]);
+        } finally {
+            await player.destroy();
+        }
     });
     it('sets all isPlayingEnabled', async () => {
         const player = new AudioPlayer();
