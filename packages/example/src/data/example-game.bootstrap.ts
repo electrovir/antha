@@ -11,7 +11,7 @@ import {
 } from '@antha/input';
 import {type GameInputAction, PlayerAction} from './game-action.js';
 import {type FullExampleGameState} from './game-state.js';
-import {exampleGameEntityMod} from './mods/example-entity.mod.js';
+import {updateEntitiesMod} from './mods/example-entity.mod.js';
 import {exampleGameMod} from './mods/example-game.mod.js';
 import {exampleHangarMod} from './mods/hangar.mod.js';
 import {examplePauseMenuMod} from './mods/pause-menu.mod.js';
@@ -145,7 +145,7 @@ export function bootstrapExampleGame({
                     background: 'black',
                 },
             }),
-            exampleGameEntityMod,
+            updateEntitiesMod,
             exampleHangarMod,
             createAnthaReadRawInputMod(),
             createAnthaInputBindingsMod(),

@@ -1,5 +1,5 @@
 import {AnthaEngine, defineAnthaMod, SkipExecution} from '@antha/engine';
-import {createAnthaEntityMod2d, type AnthaEntity2dModState} from '@antha/entity-2d';
+import {createAnthaEntity2dSuite, type AnthaEntity2dModState} from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
 import {
     createAnthaGraphics2dMod,
@@ -34,7 +34,7 @@ type VirtualViewportDemoGameState = {
 type VirtualViewportDemoState = AnthaEntity2dModState<VirtualViewportDemoGameState> &
     AnthaVirtualViewportModState;
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod2d<VirtualViewportDemoGameState>(
+const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<VirtualViewportDemoGameState>(
     {},
 );
 
@@ -191,7 +191,7 @@ export const virtualViewportDemo: AnthaDemo = {
                     },
                 }),
                 createAnthaFpsMod(),
-                entityStoreMod,
+                updateEntitiesMod,
                 virtualViewportDemoEntityMod,
                 virtualViewportDemoControlsMod,
             ],

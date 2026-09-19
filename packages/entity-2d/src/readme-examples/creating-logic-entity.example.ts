@@ -1,12 +1,12 @@
 import {AnthaEngine, defineAnthaMod} from '@antha/engine';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
-import {type AnthaEntity2dModState, createAnthaEntityMod2d} from '../index.js';
+import {type AnthaEntity2dModState, createAnthaEntity2dSuite} from '../index.js';
 
 type GameState = AnthaEntity2dModState<{
     hasCreatedScoreEntity: boolean;
 }>;
 
-const {defineLogicEntity, mod: entityMod} = createAnthaEntityMod2d<{
+const {defineLogicEntity, updateEntitiesMod} = createAnthaEntity2dSuite<{
     hasCreatedScoreEntity: boolean;
 }>();
 
@@ -23,7 +23,7 @@ const engine = new AnthaEngine<GameState>({
     },
     mods: [
         createAnthaGraphics2dMod(),
-        entityMod,
+        updateEntitiesMod,
         defineAnthaMod<GameState>({
             modName: 'game-logic',
             async execute({state}) {

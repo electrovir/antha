@@ -1,7 +1,7 @@
 import {createAnthaAssetMod} from '@antha/asset';
 import {AnthaEngine, SkipExecution, defineAnthaMod, type ModExecuteParams} from '@antha/engine';
 import {
-    createAnthaEntityMod2d,
+    createAnthaEntity2dSuite,
     position2dParamsMap,
     position2dParamsShape,
     type AnthaEntity2dModState,
@@ -32,7 +32,7 @@ type PlayerMovementGameState = {
     player: PlayerEntity;
 } & AnthaInputBindingsModState<PlayerAction>;
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod2d<PlayerMovementGameState>({});
+const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<PlayerMovementGameState>({});
 
 const triangleSize = 20;
 
@@ -283,7 +283,7 @@ export const playerMovementDemo: AnthaDemo = {
                 createAnthaGraphics2dMod(),
                 createAnthaFpsMod(),
                 createAnthaAssetMod(),
-                entityStoreMod,
+                updateEntitiesMod,
                 createAnthaReadRawInputMod(),
                 createAnthaInputBindingsMod<PlayerAction>(),
                 playerMovementMod,

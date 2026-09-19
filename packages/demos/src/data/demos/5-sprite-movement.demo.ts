@@ -1,6 +1,6 @@
 import {AnthaEngine, SkipExecution, defineAnthaMod, type ModExecuteParams} from '@antha/engine';
 import {
-    createAnthaEntityMod2d,
+    createAnthaEntity2dSuite,
     type AnthaEntity2dModState,
     type ViewCreation2d,
 } from '@antha/entity-2d';
@@ -26,7 +26,7 @@ type SpritesGameState = {
     playerEntity: PlayerEntity;
 };
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod2d<SpritesGameState>({});
+const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<SpritesGameState>({});
 
 class PlayerEntity extends defineEntity({
     key: 'PlayerSprite',
@@ -230,7 +230,7 @@ export const spriteMovementDemo: AnthaDemo = {
                     `,
                 }),
                 createAnthaFpsMod(),
-                entityStoreMod,
+                updateEntitiesMod,
                 dynamicSpriteMod,
             ],
         });

@@ -2,14 +2,14 @@ import {AssetLoader} from '@antha/asset';
 import {type AudioPlayer, type AudioSetupParams} from '@antha/audio';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {createAnthaEntityMod2d} from './antha-entity-2d.mod.js';
+import {createAnthaEntity2dSuite} from './antha-entity-2d.mod.js';
 import {loadAnthaAssets} from './load-antha-assets.js';
 
 describe(loadAnthaAssets.name, () => {
     it('loads entity assets, audio files, and additional assets', async () => {
         const loadedResourceNames: string[] = [];
         const assetLoader = new AssetLoader();
-        const {defineLogicEntity} = createAnthaEntityMod2d({});
+        const {defineLogicEntity} = createAnthaEntity2dSuite({});
 
         class AssetEntity extends defineLogicEntity({
             key: 'AssetEntity',

@@ -11,15 +11,15 @@ import {applyBrand, DeferredPromise, makeWritable} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {Circle} from 'detect-collisions';
 import {Graphics, ParticleContainer} from 'pixi.js';
-import {defineEntitySuite2d} from './entity-suite.js';
+import {createAnthaEntity2dSuite} from './antha-entity-2d.mod.js';
 import {
     EntityDestroyEvent,
     EntityEvent,
     EntityHitboxSystem,
     entityPositionParamsShape,
+    EntityStore2d,
     position2dParamsMap,
     type BaseEntity2d,
-    type EntityStore2d,
     type ViewCreation2d,
 } from './entity.js';
 
@@ -40,25 +40,20 @@ const emptyEntityUpdateParams = {
 } satisfies ModExecuteParams;
 
 function createTestSuite() {
-    const {defineEntity, defineLogicEntity, EntityStore} = defineEntitySuite2d();
-    return {
-        defineEntity,
-        defineLogicEntity,
-        EntityStore,
-    };
+    return createAnthaEntity2dSuite({});
 }
 
 function createTestStore(
-    suite: {EntityStore: new (...args: any[]) => EntityStore2d},
+    _suiteForEntityDefinitions: ReturnType<typeof createTestSuite>,
     options?: {
         assetLoader?: AssetLoader;
         customHitboxSystem?: EntityHitboxSystem;
     },
 ) {
-    return new suite.EntityStore({
+    return new EntityStore2d({
         pixi: createMockPixi(),
         state: {},
-        assetLoader: options?.assetLoader,
+        assetLoader: options?.assetLoader || new AssetLoader(),
         customHitboxSystem: options?.customHitboxSystem,
     });
 }

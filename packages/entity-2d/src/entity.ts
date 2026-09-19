@@ -394,8 +394,6 @@ export class EntityStore2d<State extends AnyObject = any> {
      * Runs `.update()` on all current entities and runs collision detection for all hitboxes. If
      * any entities get marked as destroyed during their update, then they will be removed from the
      * set of entities.
-     *
-     * @returns All detected hitbox collisions (if any).
      */
     public async updateAllEntities(
         updateParams: Readonly<ModExecuteParams<NoInfer<State>>>,
@@ -466,6 +464,23 @@ export class EntityStore2d<State extends AnyObject = any> {
             }
         });
         await Promise.all(collisionPromises);
+    }
+
+    /** Runs presentation-only updates for every entity without simulating collisions. */
+    public async renderAllEntities(
+        renderParams: Readonly<ModExecuteParams<NoInfer<State>>>,
+    ): Promise<void> {
+        if (this.isDestroyed) {
+            throw new Error('Cannot operate on a destroyed entity store.');
+        }
+
+        for (const entity of this.currentEntityInstances) {
+            if (entity.isDestroyed) {
+                return;
+            }
+
+            await entity.render(renderParams);
+        }
     }
 
     /** Get all current instances of the given entity class constructor. */
@@ -841,6 +856,10 @@ export abstract class BaseEntity2d<
     public abstract update(
         updateParams: Readonly<ModExecuteParams<NoInfer<State>>>,
     ): MaybePromise<void>;
+
+    /** Updates transient presentation state without changing the authoritative simulation. */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public render(_renderParams: Readonly<ModExecuteParams<NoInfer<State>>>): MaybePromise<void> {}
 
     /** Called after construction to perform async initialization (e.g. creating views). */
     public initInstance(): MaybePromise<void> {

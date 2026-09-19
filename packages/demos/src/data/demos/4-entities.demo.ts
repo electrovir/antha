@@ -1,7 +1,7 @@
 /* eslint-disable sonarjs/pseudo-random */
 import {AnthaEngine, SkipExecution, type AnthaMod, type ModExecuteParams} from '@antha/engine';
 import {
-    createAnthaEntityMod2d,
+    createAnthaEntity2dSuite,
     EntityEvent,
     position2dParamsMap,
     type AnthaEntity2dModState,
@@ -40,7 +40,7 @@ type AsteroidsGameState = {
 class PlayerDeathEvent extends EntityEvent<void> {}
 class AsteroidHitEvent extends EntityEvent<{score: number}> {}
 
-const {mod: entityStoreMod, defineEntity} = createAnthaEntityMod2d<AsteroidsGameState>({});
+const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<AsteroidsGameState>({});
 
 class AsteroidEntity extends defineEntity({
     key: 'Asteroid',
@@ -644,7 +644,7 @@ export const entitiesDemo: AnthaDemo = {
                 createAnthaFpsMod({
                     debugFps: true,
                 }),
-                entityStoreMod,
+                updateEntitiesMod,
                 asteroidsGameMod,
             ],
         });

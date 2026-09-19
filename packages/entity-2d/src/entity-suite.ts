@@ -1,4 +1,3 @@
-import {type Asset} from '@antha/asset';
 import {check} from '@augment-vir/assert';
 import {
     type AnyObject,
@@ -9,22 +8,20 @@ import {
 } from '@augment-vir/common';
 import {type Shape} from 'object-shape-tester';
 import {
-    BaseEntity2d,
+    type BaseEntity2d,
     type BaseEntityAssetDefinitions,
     type Entity2dConstructor,
     type Entity2dConstructorParams,
     type EntityCollisionDefinition,
     entityPositionParamsShape,
-    EntityStore2d,
-    type EntityStore2dConstructorParams,
     type MappedEntityAssets,
     type ParamsMap,
     type ReverseParamsMap,
-    ViewEntity2d,
+    type ViewEntity2d,
 } from './entity.js';
 
 /**
- * Params for both {@link EntitySuite2d.defineEntity} and {@link EntitySuite2d.defineLogicEntity}.
+ * Params for both `defineEntity` and `defineLogicEntity`.
  *
  * @category Internal
  */
@@ -209,7 +206,7 @@ export type DefinedViewEntity2dConstructor<
     StaticEntity2dParts<State, ParamsShape>;
 
 /**
- * Type for {@link EntitySuite2d.defineEntity}.
+ * Type for `defineEntity`.
  *
  * @category Internal
  */
@@ -280,102 +277,6 @@ export type DefineLogicEntity2d<State extends AnyObject> = <
  *
  * ========================
  */
-
-/**
- * Output of {@link defineEntitySuite2d}, used to defining and creating entities.
- *
- * @category Internal
- */
-export type EntitySuite2d<State extends AnyObject> = {
-    /**
-     * The suite's entity store constructor. Instantiate this and to add your first entities.
-     *
-     * All defined entities will also have a reference to this store so they can add additional
-     * entities by themselves.
-     */
-    EntityStore: new (params: Readonly<EntityStore2dConstructorParams>) => EntityStore2d<State>;
-
-    /**
-     * Define a standard entity (with a view). This is intended to be extended from your entity
-     * class.
-     */
-    defineEntity: DefineViewEntity2d<State>;
-    /** Define an entity that doesn't have an attached view. These are likely to be rare. */
-    defineLogicEntity: DefineLogicEntity2d<State>;
-    /**
-     * A set of entity keys used within this entity suite. This will only be populated by all
-     * classes that are defined with `defineEntity` or `defineLogicEntity` (so this will miss any
-     * not-yet-resolved dynamic imports). This will be populated even before the classes are ever
-     * instantiated.
-     */
-    entityKeys: Set<string>;
-};
-
-/**
- * This is the starting point of the @game-vir/entity package. Call this to produce the function
- * needed to define new entities and the store needed to add entity instances.
- *
- * @category Main
- */
-export function defineEntitySuite2d<State extends AnyObject>(): EntitySuite2d<State> {
-    const entityKeys = new Set<string>();
-
-    function createDefiner<ParentClass extends typeof BaseEntity2d>(entityParent: ParentClass) {
-        return (params: DefineEntity2dArgs<any, BaseEntityAssetDefinitions>): AnyObject => {
-            if (params.assets) {
-                getObjectTypedEntries(params.assets).forEach(
-                    ([
-                        key,
-                        rawAsset,
-                    ]) => {
-                        (rawAsset as typeof rawAsset & Pick<Asset, 'assetName'>).assetName = [
-                            params.key,
-                            key,
-                        ].join(':');
-                    },
-                );
-            }
-
-            return defineEntity(entityParent, params);
-        };
-    }
-
-    function defineEntity(
-        entityParent: typeof BaseEntity2d,
-        {collidesWith, key, paramsShape, paramsMap, assets}: DefineEntity2dArgs<any, any>,
-    ) {
-        if (entityKeys.has(key)) {
-            throw new Error(`Entity key '${key}' has already been attached to an entity class.`);
-        }
-        entityKeys.add(key);
-
-        const classWrapper = {
-            // @ts-expect-error: abstract methods are intentionally not implemented here
-            [key]: class extends entityParent {
-                public static override readonly collidesWith = collidesWith;
-                public static override readonly collidesWithSet = new Set(
-                    collidesWith?.collidesWithOtherEntities,
-                );
-                public static override readonly entityKey = key;
-                public static override readonly paramsShape = paramsShape;
-                public static override readonly assets = assets || {};
-
-                public static override readonly paramsMap = paramsMap;
-                public static override readonly reverseParamsMap = reverseParamsMap(paramsMap);
-            },
-        };
-
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-        return classWrapper[key]!;
-    }
-
-    return {
-        EntityStore: EntityStore2d,
-        defineEntity: createDefiner(ViewEntity2d) as DefineViewEntity2d<State>,
-        defineLogicEntity: createDefiner(BaseEntity2d) as DefineLogicEntity2d<State>,
-        entityKeys,
-    };
-}
 
 /**
  * Converts {@link ParamsMap} to {@link ReverseParamsMap}.

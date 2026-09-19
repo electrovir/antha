@@ -5,7 +5,7 @@ import {
 } from '@antha/asset';
 import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
 import {
-    createAnthaEntityMod2d,
+    createAnthaEntity2dSuite,
     loadAnthaAssets,
     type AnthaEntity2dModState,
     type EntityStore2d,
@@ -42,7 +42,7 @@ type EntityAssetDemoGameState = {
     yellowToggle: boolean;
 };
 
-const {mod: entityMod, defineEntity} = createAnthaEntityMod2d<EntityAssetDemoGameState>({});
+const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<EntityAssetDemoGameState>({});
 
 class RedCircleEntity extends defineEntity({
     key: 'RedCircleEntity',
@@ -368,7 +368,7 @@ export const entityAssetLoadingDemo: AnthaDemo = {
                 createAnthaGraphics2dMod(),
                 createAnthaFpsMod(),
                 createAnthaAssetMod(),
-                entityMod,
+                updateEntitiesMod,
                 entityAssetDemoMod,
             ],
         });
