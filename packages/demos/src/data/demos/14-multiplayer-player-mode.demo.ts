@@ -1,6 +1,6 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod, type AnthaMod} from '@antha/engine';
 import {
-    MultiplayerControllerClientEvent,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
@@ -134,7 +134,7 @@ const DemoModeRoomLobby = defineElement<{
 
         const cleanupCallbacks = [
             inputs.gameState.multiplayerP2pLockStep.multiplayerController.listen(
-                MultiplayerControllerClientEvent,
+                MultiplayerControllerClientStatusEvent,
                 () => {
                     updateConnectedClientCount();
                 },
@@ -526,7 +526,7 @@ function createRoomModeSelectionMod(
                 );
 
                 state.multiplayerP2pLockStep.multiplayerController.listen(
-                    MultiplayerControllerClientEvent,
+                    MultiplayerControllerClientStatusEvent,
                     (event) => {
                         if (
                             state.multiplayerP2pLockStep?.multiplayerController.isHost() &&

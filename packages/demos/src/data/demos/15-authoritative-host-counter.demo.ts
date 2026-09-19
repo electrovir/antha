@@ -1,6 +1,6 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod, type AnthaMod} from '@antha/engine';
 import {
-    MultiplayerControllerClientEvent,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
@@ -192,7 +192,7 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
 
         const cleanupCallbacks = [
             inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-                MultiplayerControllerClientEvent,
+                MultiplayerControllerClientStatusEvent,
                 () => {
                     updateConnectedClientCount();
                 },

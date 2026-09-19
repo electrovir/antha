@@ -11,7 +11,6 @@ import {
     type SelectFrom,
 } from '@augment-vir/common';
 import {
-    MultiplayerControllerFrameEvent,
     P2pLockStepMultiplayerController,
     type P2pLockStepMultiplayerControllerParams,
 } from './p2p-lock-step-multiplayer-controller.js';
@@ -60,6 +59,7 @@ export type AnthaMultiplayerP2pLockStepOptions<
         {
             acceptConnection: true;
             debugMultiplayer: true;
+            frameDuration: true;
             gameId: true;
         }
     >
@@ -78,6 +78,10 @@ export function createAnthaMultiplayerP2pLockStepMod<
         initState: {
             debugMultiplayer: options.debugMultiplayer,
         },
+        cleanup({state}) {
+            log.if(!!state.debugMultiplayer).faint('[multiplayer] cleaning up p2p-lock-step mod');
+            state.multiplayerP2pLockStep?.multiplayerController.destroy();
+        },
         execute({engine, state}) {
             if (!state.multiplayerP2pLockStep) {
                 log.if(!!state.debugMultiplayer).faint(
@@ -89,7 +93,7 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         gameId: options.gameId || 'antha',
                         acceptConnection: options.acceptConnection,
                         debugMultiplayer: state.debugMultiplayer,
-                        frameDuration: undefined,
+                        frameDuration: options.frameDuration,
                     }),
                     connectionState: emptyApiAndRoomConnectionState,
                 };
@@ -108,21 +112,10 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         state.multiplayerP2pLockStep.connectionState = newConnectionState;
                     },
                 );
-                state.multiplayerP2pLockStep.multiplayerController.listen(
-                    MultiplayerControllerFrameEvent,
-                    ({detail}) => {
-                        engine.dispatch(
-                            new MultiplayerControllerFrameEvent({
-                                detail,
-                            }),
-                        );
-                    },
-                );
+                state.multiplayerP2pLockStep.multiplayerController.listenToAll((event) => {
+                    engine.dispatch(event);
+                });
             }
-        },
-        cleanup({state}) {
-            log.if(!!state.debugMultiplayer).faint('[multiplayer] cleaning up p2p-lock-step mod');
-            state.multiplayerP2pLockStep?.multiplayerController.destroy();
         },
     });
 }

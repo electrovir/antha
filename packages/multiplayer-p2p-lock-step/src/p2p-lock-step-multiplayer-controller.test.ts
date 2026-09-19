@@ -4,7 +4,7 @@ import {
     createMultiplayerId,
     createNewRoom,
     MultiplayerConnectionState,
-    MultiplayerControllerClientEvent,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
     MultiplayerControllerMessageEvent,
     MultiplayerControllerRoomListEvent,
@@ -521,7 +521,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             roomListEvents: [],
         };
 
-        controller.listen(MultiplayerControllerClientEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerClientStatusEvent, ({detail}) => {
             state.clientEvents.push(detail);
         });
         controller.listen(MultiplayerControllerConnectionEvent, ({detail}) => {
@@ -560,7 +560,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             }),
         );
         controller.roomController.dispatch(
-            new MultiplayerControllerClientEvent({
+            new MultiplayerControllerClientStatusEvent({
                 detail: {
                     newMember: memberClientId,
                 },
@@ -800,7 +800,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         fakeConnection.setHost(true);
 
         controller.roomController.dispatch(
-            new MultiplayerControllerClientEvent({
+            new MultiplayerControllerClientStatusEvent({
                 detail: {
                     newHost: controller.localClientIdForTest,
                 },

@@ -3,7 +3,7 @@ import {
     createMultiplayerId,
     createNewRoom,
     MultiplayerConnectionState,
-    MultiplayerControllerClientEvent,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
     MultiplayerControllerMessageEvent,
     MultiplayerControllerRoomListEvent,
@@ -582,7 +582,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             roomListEvents: [],
         };
 
-        controller.listen(MultiplayerControllerClientEvent, ({detail}) => {
+        controller.listen(MultiplayerControllerClientStatusEvent, ({detail}) => {
             state.clientEvents.push(detail);
         });
         controller.listen(MultiplayerControllerConnectionEvent, ({detail}) => {
@@ -618,7 +618,7 @@ describe(P2pAuthoritativeHostMultiplayerController.name, () => {
             }),
         );
         controller.roomController.dispatch(
-            new MultiplayerControllerClientEvent({
+            new MultiplayerControllerClientStatusEvent({
                 detail: {
                     newMember: clientId,
                 },

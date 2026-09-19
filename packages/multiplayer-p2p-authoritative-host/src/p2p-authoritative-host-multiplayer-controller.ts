@@ -4,7 +4,7 @@ import {
     createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
-    MultiplayerControllerClientEvent,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
     MultiplayerControllerMessageEvent,
     MultiplayerControllerRoomListEvent,
@@ -189,7 +189,7 @@ export type AllP2pAuthoritativeHostMultiplayerControllerEvents<
 > =
     | MultiplayerControllerStateEvent<MultiplayerGameState, Input>
     | MultiplayerControllerRoomListEvent
-    | MultiplayerControllerClientEvent
+    | MultiplayerControllerClientStatusEvent
     | MultiplayerControllerConnectionEvent;
 
 /**
@@ -462,7 +462,7 @@ export class P2pAuthoritativeHostMultiplayerController<
         this.roomController.listen(MultiplayerControllerConnectionEvent, (event) => {
             this.dispatch(event);
         });
-        this.roomController.listen(MultiplayerControllerClientEvent, (event) => {
+        this.roomController.listen(MultiplayerControllerClientStatusEvent, (event) => {
             this.dispatch(event);
         });
         this.roomController.listen(

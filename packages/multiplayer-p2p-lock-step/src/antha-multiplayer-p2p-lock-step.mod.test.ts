@@ -1,7 +1,9 @@
 import {AnthaEngine} from '@antha/engine';
 import {
+    createMultiplayerId,
     createNewRoom,
     MultiplayerConnectionState,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
     MultiplayerControllerRoomListEvent,
     type MultiplayerClientRooms,
@@ -16,6 +18,9 @@ import {
 import {MultiplayerControllerFrameEvent} from './p2p-lock-step-multiplayer-controller.js';
 
 type TestEngineState = Partial<AnthaMultiplayerP2pLockStepState<string>>;
+type ClientEventTestEngineState = AnthaMultiplayerP2pLockStepState<string> & {
+    lifecycleEventCount: number;
+};
 
 describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
     it('creates the lock-step mod and mirrors controller room state', async () => {
@@ -123,6 +128,36 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         );
 
         assert.isUndefined(engine.state.multiplayerP2pLockStep);
+
+        await engine.reset();
+    });
+
+    it('handles client events forwarded by the p2p-lock-step controller', async () => {
+        const engine = new AnthaEngine<ClientEventTestEngineState>({
+            initState: {
+                lifecycleEventCount: 0,
+            },
+            mods: [
+                createAnthaMultiplayerP2pLockStepMod<string, ClientEventTestEngineState>({
+                    gameId: 'client-event-mod-test',
+                    handleClientEvent({state}) {
+                        state.lifecycleEventCount = (state.lifecycleEventCount || 0) + 1;
+                    },
+                }),
+            ],
+        });
+
+        await engine.runSingleTick();
+        assertWrap.isDefined(engine.state.multiplayerP2pLockStep).multiplayerController.dispatch(
+            new MultiplayerControllerClientStatusEvent({
+                detail: {
+                    newMember: createMultiplayerId.client(),
+                },
+            }),
+        );
+        await engine.runSingleTick();
+
+        assert.strictEquals(engine.state.lifecycleEventCount, 1);
 
         await engine.reset();
     });

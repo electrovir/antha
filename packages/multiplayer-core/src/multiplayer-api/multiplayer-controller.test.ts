@@ -12,7 +12,7 @@ import {type MultiplayerClientRooms} from './multiplayer-api.js';
 import {createMultiplayerApiClient, type MultiplayerApiClient} from './multiplayer-client.js';
 import {
     MultiplayerConnectionState,
-    MultiplayerControllerClientEvent,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
     MultiplayerControllerMessageEvent,
     MultiplayerControllerRoomListEvent,
@@ -489,7 +489,7 @@ describe(MultiplayerRoomController.name, () => {
                     gameId: 'some id',
                 });
 
-                controller.listen(MultiplayerControllerClientEvent, ({detail}) => {
+                controller.listen(MultiplayerControllerClientStatusEvent, ({detail}) => {
                     clientEvents.push(detail);
                 });
                 controller.listen(MultiplayerControllerMessageEvent, ({sourceClientId, detail}) => {
@@ -537,7 +537,7 @@ describe(MultiplayerRoomController.name, () => {
                         knownErrors: MultiplayerRoomController.knownErrors,
                         roomId: room.roomId,
                         staticEvents: [
-                            'MultiplayerControllerClientEvent',
+                            'MultiplayerControllerClientStatusEvent',
                             'MultiplayerControllerConnectionEvent',
                             'MultiplayerControllerMessageEvent',
                             'MultiplayerControllerRoomListEvent',

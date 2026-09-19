@@ -4,7 +4,7 @@ import {
     createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
-    MultiplayerControllerClientEvent,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
     MultiplayerControllerMessageEvent,
     MultiplayerControllerRoomListEvent,
@@ -137,7 +137,7 @@ export type AllP2pLockStepMultiplayerControllerEvents<
 > =
     | MultiplayerControllerFrameEvent<MultiplayerPacket>
     | MultiplayerControllerRoomListEvent
-    | MultiplayerControllerClientEvent
+    | MultiplayerControllerClientStatusEvent
     | MultiplayerControllerConnectionEvent;
 
 /**
@@ -488,7 +488,7 @@ export class P2pLockStepMultiplayerController<
             );
             this.dispatch(event);
         });
-        this.roomController.listen(MultiplayerControllerClientEvent, (event) => {
+        this.roomController.listen(MultiplayerControllerClientStatusEvent, (event) => {
             this.debugLog(`client event received: ${JSON.stringify(event.detail)}`);
             if ('newMember' in event.detail) {
                 this.syncNewMember(event.detail.newMember);

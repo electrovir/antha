@@ -217,9 +217,9 @@ export type MultiplayerControllerRoomListListener = (
  *
  * @category Events
  */
-export class MultiplayerControllerClientEvent extends defineTypedCustomEvent<
+export class MultiplayerControllerClientStatusEvent extends defineTypedCustomEvent<
     Readonly<MultiplayerConnectionUpdate>
->()('multiplayer-controller-client') {}
+>()('multiplayer-controller-client-status') {}
 
 /**
  * Fires when the controller's connection state is updated.
@@ -238,7 +238,7 @@ export class MultiplayerControllerConnectionEvent extends defineTypedCustomEvent
 export type AllMultiplayerRoomControllerEvents<Message extends JsonCompatibleValue> =
     | MultiplayerControllerMessageEvent<Message>
     | MultiplayerControllerRoomListEvent
-    | MultiplayerControllerClientEvent
+    | MultiplayerControllerClientStatusEvent
     | MultiplayerControllerConnectionEvent;
 
 /**
@@ -254,7 +254,7 @@ export class MultiplayerRoomController<
     public static readonly events = {
         MultiplayerControllerMessageEvent,
         MultiplayerControllerRoomListEvent,
-        MultiplayerControllerClientEvent,
+        MultiplayerControllerClientStatusEvent,
         MultiplayerControllerConnectionEvent,
     };
     /** All events emitted by this controller. */
@@ -466,7 +466,7 @@ export class MultiplayerRoomController<
         });
         currentConnection.listen(WebrtcMultiplayerConnectionUpdateEvent, (event) => {
             this.dispatch(
-                new MultiplayerControllerClientEvent({
+                new MultiplayerControllerClientStatusEvent({
                     detail: event.detail,
                 }),
             );
