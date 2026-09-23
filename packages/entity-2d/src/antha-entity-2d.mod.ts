@@ -1,27 +1,237 @@
 import {type AnthaAssetModState, type Asset} from '@antha/asset';
-import {defineAnthaMod, SkipExecution, type AnthaMod, type ModTrigger} from '@antha/engine';
+import {defineAnthaMod, SkipExecution, type ModTrigger} from '@antha/engine';
 import {type AnthaGraphics2dModState} from '@antha/graphics-2d';
 import {assertWrap} from '@augment-vir/assert';
 import {
     getObjectTypedEntries,
     mergeDefinedProperties,
     type AnyObject,
+    type Constructor,
     type PartialWithUndefined,
 } from '@augment-vir/common';
 import {html} from 'element-vir';
-import {
-    reverseParamsMap,
-    type DefineEntity2dArgs,
-    type DefineLogicEntity2d,
-    type DefineViewEntity2d,
-} from './entity-suite.js';
+import {type Shape} from 'object-shape-tester';
 import {
     BaseEntity2d,
+    entityPositionParamsShape,
     EntityStore2d,
+    reverseParamsMap,
     ViewEntity2d,
     type BaseEntityAssetDefinitions,
+    type EntityCollisionDefinition,
     type EntityStore2dConstructorParams,
+    type ParamsMap,
+    type StaticEntity2dParts,
 } from './entity.js';
+
+/**
+ * Params for both `defineEntity` and `defineLogicEntity`.
+ *
+ * @category Internal
+ */
+export type DefineEntity2dArgs<
+    ParamsShape extends Shape | undefined,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined,
+> = {
+    /** Entity classes this entity observes collisions with. Omit to observe none. */
+    collidesWith?: EntityCollisionDefinition | undefined;
+    /**
+     * This key is used for deserialization of entities to track which class needs to be
+     * constructed. Do not use duplicate key strings across multiple entity classes.
+     */
+    key: string;
+    /**
+     * This should contain all parameters necessary to reconstruct this entity from scratch so it
+     * can be serialized, sent across the network in JSON format, then reconstructed on another
+     * device (for multiplayer support).
+     *
+     * Make sure to include {@link entityPositionParamsShape} as part of the shape if you want to
+     * include entity position parameters.
+     */
+    paramsShape?: ParamsShape;
+    /**
+     * A mapping of the entity's params object (defined by {@link DefineEntity2dArgs.paramsShape})
+     * keys to hitbox and/or view properties.
+     *
+     * Use `standardParamsMap` to automatically map the params `x` and `y` in `paramsShape` to both
+     * the entity's hitbox x/y and the entity's view x/y.
+     *
+     * @example
+     *
+     * ```ts
+     * const customMapping = {
+     *     paramsShape: defineShape({
+     *         left: -1,
+     *         top: -1,
+     *     }),
+     *     paramsMap: {
+     *         hitbox: {
+     *             x: 'left', // maps `left` from `paramsShape` to the entity's hitbox.x
+     *             y: 'top', // maps `top` from `paramsShape` to the entity's hitbox.y
+     *         },
+     *         view: {
+     *             x: 'left', // maps `left` from `paramsShape` to the entity's view.x
+     *             y: 'top', // maps `top` from `paramsShape` to the entity's view.y
+     *         },
+     *     },
+     * };
+     * ```
+     *
+     * @example
+     *
+     * ```ts
+     * const standardMapping = {
+     *     paramsShape: defineShape({
+     *         left: -1,
+     *         top: -1,
+     *     }),
+     *     paramsMap: standardParamsMap, // use the standard x/y mapping
+     * };
+     * ```
+     *
+     * @example
+     *
+     * ```ts
+     * const undefinedMapping = {
+     *     paramsShape: defineShape({
+     *         left: -1,
+     *         top: -1,
+     *     }),
+     *     paramsMap: undefined, // no mapping at all
+     * };
+     * ```
+     *
+     * @example
+     *
+     * ```ts
+     * const omittedMapping = {
+     *     paramsShape: defineShape({
+     *         left: -1,
+     *         top: -1,
+     *     }),
+     *     // no mapping at all
+     * };
+     * ```
+     *
+     * @default undefined // no mapping
+     */
+    paramsMap?:
+        | ParamsMap<
+              NoInfer<ParamsShape> extends Shape ? NoInfer<ParamsShape>['runtimeType'] : undefined
+          >
+        | undefined;
+    assets?: EntityAssets;
+};
+
+/**
+ * ========================
+ *
+ * # View Entity
+ *
+ * Types for entity definitions that have a view.
+ *
+ * ========================
+ */
+
+/**
+ * The constructor output of {@link DefinedViewEntity2dConstructor}.
+ *
+ * @category Internal
+ */
+export type DefinedViewEntity2dInstance<
+    State extends AnyObject,
+    ParamsShape extends Shape<Record<string, any>> | undefined,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined,
+> = ViewEntity2d<
+    State,
+    ParamsShape extends Shape ? ParamsShape['runtimeType'] : undefined,
+    EntityAssets
+>;
+
+/**
+ * Output of {@link DefineViewEntity2d}.
+ *
+ * @category Internal
+ */
+export type DefinedViewEntity2dConstructor<
+    State extends AnyObject,
+    ParamsShape extends Shape | undefined,
+    EntityAssets extends BaseEntityAssetDefinitions | undefined,
+> = Constructor<
+    DefinedViewEntity2dInstance<State, ParamsShape, EntityAssets>,
+    ConstructorParameters<
+        typeof ViewEntity2d<
+            State,
+            ParamsShape extends Shape ? ParamsShape['runtimeType'] : undefined
+        >
+    >
+> &
+    StaticEntity2dParts<State, ParamsShape>;
+
+/**
+ * Type for `defineEntity`.
+ *
+ * @category Internal
+ */
+export type DefineViewEntity2d<State extends AnyObject> = <
+    const ParamsShape extends Shape | undefined,
+    const EntityAssets extends BaseEntityAssetDefinitions | undefined,
+>(
+    params: DefineEntity2dArgs<ParamsShape, EntityAssets>,
+) => DefinedViewEntity2dConstructor<State, NoInfer<ParamsShape>, NoInfer<EntityAssets>> &
+    StaticEntity2dParts<NoInfer<State>, NoInfer<ParamsShape>>;
+
+/**
+ * ========================
+ *
+ * # Logic Entity
+ *
+ * Types for entity definitions that don't have a view. The only difference between these types and
+ * the view types are that this uses `BaseEntity2d` instead of `ViewEntity2d`.
+ *
+ * ========================
+ */
+
+/**
+ * The constructor output of {@link DefinedLogicEntity2dConstructor}.
+ *
+ * @category Internal
+ */
+export type DefinedLogicEntity2dInstance<
+    State extends AnyObject,
+    ParamsShape extends Shape | undefined,
+> = BaseEntity2d<State, ParamsShape extends Shape ? ParamsShape['runtimeType'] : undefined>;
+
+/**
+ * Output of {@link DefineLogicEntity2d}.
+ *
+ * @category Internal
+ */
+export type DefinedLogicEntity2dConstructor<
+    State extends AnyObject,
+    ParamsShape extends Shape | undefined,
+> = Constructor<
+    DefinedLogicEntity2dInstance<State, ParamsShape>,
+    ConstructorParameters<
+        typeof BaseEntity2d<
+            State,
+            ParamsShape extends Shape ? ParamsShape['runtimeType'] : undefined
+        >
+    >
+> &
+    StaticEntity2dParts<State, ParamsShape>;
+
+/**
+ * Type for `defineLogicEntity`.
+ *
+ * @category Internal
+ */
+export type DefineLogicEntity2d<State extends AnyObject> = <
+    const ParamsShape extends Shape | undefined,
+    const EntityAssets extends BaseEntityAssetDefinitions | undefined,
+>(
+    params: DefineEntity2dArgs<ParamsShape, EntityAssets>,
+) => DefinedLogicEntity2dConstructor<NoInfer<State>, NoInfer<ParamsShape>>;
 
 /**
  * State for {@link createAnthaEntity2dSuite}.
@@ -31,9 +241,11 @@ import {
 export type AnthaEntity2dModState<State extends AnyObject = AnyObject> = {
     entityStore: EntityStore2d<Partial<AnthaEntity2dModState<State>>>;
     /** If true, entity updates and collision checks are skipped. */
-    disableEntityUpdates: boolean;
+    disableEntityUpdate: boolean;
+    /** If true, entity renders are skipped. */
+    disableEntityRender: boolean;
     /** If `true`, hit boxes are visually rendered for debugging purposes. */
-    debugHitboxes: boolean;
+    showHitboxDebug: boolean;
 } & State &
     AnthaGraphics2dModState &
     AnthaAssetModState;
@@ -47,10 +259,22 @@ export type AnthaEntity2dModOptions = PartialWithUndefined<
     EntityStore2dConstructorParams & {
         debug: boolean;
         /**
-         * The entity update mod's trigger. If left undefined, entity logic will update on every
-         * engine tick.
+         * The entity update mod's trigger. If left undefined, enabled entity updates will run on
+         * every engine tick.
          */
         updateTrigger: ModTrigger;
+        /**
+         * If `true`, the `updateEntitiesMod` does not update entity data and collision state.
+         *
+         * @default false
+         */
+        disableEntityUpdate: boolean;
+        /**
+         * If `true`, the `updateEntitiesMod` does not update transient entity render state.
+         *
+         * @default false
+         */
+        disableEntityRender: boolean;
     }
 >;
 
@@ -82,7 +306,7 @@ function ensureEntityStore({
 }
 
 /**
- * Creates entity update mods and entity factories.
+ * Creates an entity update mod and entity factories.
  *
  * @category Pre-built Mods
  */
@@ -139,37 +363,16 @@ export function createAnthaEntity2dSuite<ExtraState extends AnyObject>(
         return assertWrap.isDefined(classWrapper[key]);
     }
 
-    const renderEntitiesMod: AnthaMod<AnthaEntity2dModState<ExtraState>> =
-        defineAnthaMod<AnthaEntity2dModState>({
-            modName: 'antha-entity-2d-render',
-            initState: {
-                debugHitboxes: !!options.debug,
-            },
-            cleanup({state}) {
-                state.entityStore?.destroy();
-            },
-            async execute(executeParams) {
-                if (
-                    !ensureEntityStore({
-                        options,
-                        state: executeParams.state,
-                    })
-                ) {
-                    return SkipExecution;
-                }
-
-                await executeParams.state.entityStore?.renderAllEntities(executeParams);
-
-                return executeParams.state.debugHitboxes
-                    ? html`
-                          <canvas class="hitbox-debug-canvas"></canvas>
-                      `
-                    : undefined;
-            },
-        });
-
     const updateEntitiesMod = defineAnthaMod<AnthaEntity2dModState<ExtraState>>({
         modName: 'antha-entity-2d-update',
+        initState: {
+            showHitboxDebug: !!options.debug,
+            disableEntityRender: !!options.disableEntityRender,
+            disableEntityUpdate: !!options.disableEntityUpdate,
+        } satisfies Partial<AnthaEntity2dModState> as Partial<AnthaEntity2dModState<ExtraState>>,
+        cleanup({state}) {
+            state.entityStore?.destroy();
+        },
         trigger: options.updateTrigger,
         async execute(executeParams) {
             if (
@@ -179,37 +382,28 @@ export function createAnthaEntity2dSuite<ExtraState extends AnyObject>(
                 })
             ) {
                 return SkipExecution;
+            } else if (executeParams.state.entityStore) {
+                if (!executeParams.state.disableEntityUpdate) {
+                    await executeParams.state.entityStore.updateAllEntities(executeParams);
+                }
+
+                if (!executeParams.state.disableEntityRender) {
+                    await executeParams.state.entityStore.renderAllEntities(executeParams);
+                }
             }
 
-            if (executeParams.state.entityStore && !executeParams.state.disableEntityUpdates) {
-                await executeParams.state.entityStore.updateAllEntities(executeParams);
-            }
-
-            return undefined;
+            return executeParams.state.showHitboxDebug
+                ? html`
+                      <canvas class="hitbox-debug-canvas"></canvas>
+                  `
+                : undefined;
         },
     });
 
     return {
         /**
-         * This mod renders each entity by calling its `render` method.
-         *
-         * - If you want to split logic updates from render updates, make sure to include this mod
-         *   _and_ the `updateEntitiesMod` and implement the `update` and `render` methods in each
-         *   entity.
-         * - If you do _not_ want to split logic updates from render updates, do not use this mod, use
-         *   the `updateEntitiesMod` mod exclusively and do _not_ implement the `render` method in
-         *   each entity. (You must still implement the `update` method in each entity.)
-         */
-        renderEntitiesMod,
-        /**
-         * This mod updates all logic for each entity by calling its `update` method.
-         *
-         * - If you want to split logic updates from render updates, make sure to include this mod
-         *   _and_ the `renderEntitiesMod` and implement the `update` and `render` methods in each
-         *   entity.
-         * - If you do _not_ want to split logic updates from render updates, use this mod exclusively
-         *   and do _not_ implement the `render` method in each entity. (You must still implement
-         *   the `update` method in each entity.)
+         * Updates entity data an/or transient render state, depending on the options you provided
+         * to `createAnthaEntity2dSuite`.
          */
         updateEntitiesMod,
         defineEntity: createDefiner(ViewEntity2d) as DefineViewEntity2d<

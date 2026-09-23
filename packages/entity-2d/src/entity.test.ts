@@ -8,7 +8,7 @@ import {
 import {createMockPixi} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
 import {applyBrand, DeferredPromise, makeWritable} from '@augment-vir/common';
-import {describe, it} from '@augment-vir/test';
+import {describe, it, itCases} from '@augment-vir/test';
 import {Circle} from 'detect-collisions';
 import {Graphics, ParticleContainer} from 'pixi.js';
 import {createAnthaEntity2dSuite} from './antha-entity-2d.mod.js';
@@ -19,6 +19,7 @@ import {
     entityPositionParamsShape,
     EntityStore2d,
     position2dParamsMap,
+    reverseParamsMap,
     type BaseEntity2d,
     type ViewCreation2d,
 } from './entity.js';
@@ -101,6 +102,63 @@ describe('EntityStore', () => {
                 matchMessage: 'Cannot operate on a destroyed entity store.',
             },
         );
+    });
+
+    it('throws when rendering with a destroyed store', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        store.destroy();
+
+        await assert.throws(
+            () => {
+                return store.renderAllEntities(emptyEntityUpdateParams);
+            },
+            {
+                matchMessage: 'Cannot operate on a destroyed entity store.',
+            },
+        );
+    });
+
+    it('stops rendering after reaching a destroyed entity', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        let renderCount = 0;
+
+        class RenderEntity extends suite.defineLogicEntity({
+            key: 'RenderEntity',
+            paramsShape: undefined,
+        }) {
+            public override render(): void {
+                renderCount += 1;
+            }
+
+            public override update(): void {}
+        }
+
+        const firstEntity = await store.addEntity(RenderEntity);
+        await store.addEntity(RenderEntity);
+        makeWritable(firstEntity).isDestroyed = true;
+
+        await store.renderAllEntities(emptyEntityUpdateParams);
+
+        assert.strictEquals(renderCount, 0);
+    });
+
+    it('renders logic entities without a render override', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class BaseLogicEntity extends suite.defineLogicEntity({
+            key: 'BaseLogicEntity',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        const entity = await store.addEntity(BaseLogicEntity);
+        await store.renderAllEntities(emptyEntityUpdateParams);
+
+        assert.isFalse(entity.isDestroyed);
     });
 
     it('cleans up entities destroyed outside update cycle', async () => {
@@ -629,6 +687,63 @@ describe('EntityStore', () => {
         });
     });
 
+    it('deserializes preregistered entities', async () => {
+        const suite = createTestSuite();
+
+        class PreregisteredEntity extends suite.defineLogicEntity({
+            key: 'PreregisteredEntity',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        const store = new EntityStore2d({
+            assetLoader: new AssetLoader(),
+            pixi: createMockPixi(),
+            preregisteredEntities: [PreregisteredEntity],
+            state: {},
+        });
+
+        const deserialized = await store.deserializeEntity('PreregisteredEntity', undefined);
+
+        assert.instanceOf(deserialized, PreregisteredEntity);
+    });
+
+    it('replaces previous entity registrations when requested', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class FirstEntity extends suite.defineLogicEntity({
+            key: 'FirstRegisteredEntity',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        class SecondEntity extends suite.defineLogicEntity({
+            key: 'SecondRegisteredEntity',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        store.registerEntities({
+            entities: [FirstEntity],
+        });
+        store.registerEntities({
+            clearPreviousRegistrations: true,
+            entities: [SecondEntity],
+        });
+
+        await assert.throws(() => store.deserializeEntity('FirstRegisteredEntity', undefined), {
+            matchMessage: "No entity registered for key 'FirstRegisteredEntity'",
+        });
+        assert.instanceOf(
+            await store.deserializeEntity('SecondRegisteredEntity', undefined),
+            SecondEntity,
+        );
+    });
+
     it('deserializes a entity with params', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
@@ -784,6 +899,68 @@ describe('EntityStore', () => {
         await updatePromise;
         assert.isTrue(asyncCollisionResolved);
     });
+});
+
+describe(reverseParamsMap.name, () => {
+    itCases(reverseParamsMap, [
+        {
+            it: 'converts a full params map',
+            input: {
+                hitbox: {
+                    angle: true,
+                    width: 'w',
+                },
+                view: {
+                    alpha: true,
+                    width: 'w',
+                },
+            },
+            expect: {
+                angle: {
+                    hitbox: ['angle'],
+                },
+                w: {
+                    hitbox: ['width'],
+                    view: ['width'],
+                },
+                alpha: {
+                    view: ['alpha'],
+                },
+            },
+        },
+        {
+            it: 'converts a partial params map',
+            input: {
+                hitbox: {
+                    angle: true,
+                    width: 'w',
+                },
+            },
+            expect: {
+                angle: {
+                    hitbox: ['angle'],
+                },
+                w: {
+                    hitbox: ['width'],
+                },
+            },
+        },
+        {
+            it: 'skips falsy mapping values',
+            input: {
+                hitbox: {
+                    // @ts-expect-error: can't assign false to a params map
+                    angle: false,
+                    width: 'w',
+                },
+            },
+            expect: {
+                w: {
+                    hitbox: ['width'],
+                },
+            },
+        },
+    ]);
 });
 
 describe('BaseEntity', () => {

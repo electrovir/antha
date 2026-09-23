@@ -131,6 +131,7 @@ export class AudioPlayer extends ListenTarget<AllAudioFileEvents> {
               });
     }
 
+    /** Gets a channel gain node, creating it with `volume` when necessary. */
     protected getAudioChannelNode(audioChannel: string, volume: number) {
         return getOrSet(this.audioChannelNodes, audioChannel, () => {
             const audioChannelNode = this.audioContext.createGain();

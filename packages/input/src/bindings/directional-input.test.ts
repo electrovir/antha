@@ -87,4 +87,49 @@ describe(getDirectionalInputVector.name, () => {
             },
         );
     });
+
+    it('uses the newest negative input when opposing directions are held', () => {
+        assert.deepEquals(
+            getDirectionalInputVector({
+                activeBindings: {
+                    [TestBinding.Left]: {
+                        actCount: 0,
+                        holdDuration: {
+                            milliseconds: 10,
+                        },
+                        lastActDuration: {
+                            milliseconds: 0,
+                        },
+                        rawInputs: [],
+                        value: 1,
+                    },
+                    [TestBinding.Right]: {
+                        actCount: 0,
+                        holdDuration: {
+                            milliseconds: 20,
+                        },
+                        lastActDuration: {
+                            milliseconds: 0,
+                        },
+                        rawInputs: [],
+                        value: 1,
+                    },
+                },
+                bindingNames,
+            }),
+            {
+                x: -1,
+                y: 0,
+            },
+        );
+    });
+
+    it('returns undefined when no directional bindings are active', () => {
+        assert.isUndefined(
+            getDirectionalInputVector({
+                activeBindings: undefined,
+                bindingNames,
+            }),
+        );
+    });
 });

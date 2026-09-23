@@ -1,7 +1,13 @@
-import {AnthaEngine} from '@antha/engine';
+import {
+    AnthaEngine,
+    ModExecutionTriggerType,
+    type ModExecuteParams,
+    type ModInstanceId,
+} from '@antha/engine';
 import {
     createMultiplayerId,
     createNewRoom,
+    emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
     MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
@@ -9,18 +15,40 @@ import {
     type MultiplayerClientRooms,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
+import {applyBrand, type JsonCompatibleValue} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {
     createAnthaMultiplayerP2pLockStepMod,
     isMultiplayerRoomConnected,
     type AnthaMultiplayerP2pLockStepState,
 } from './antha-multiplayer-p2p-lock-step.mod.js';
-import {MultiplayerControllerFrameEvent} from './p2p-lock-step-multiplayer-controller.js';
+import {
+    MultiplayerControllerFrameEvent,
+    P2pLockStepMultiplayerController,
+} from './p2p-lock-step-multiplayer-controller.js';
 
 type TestEngineState = Partial<AnthaMultiplayerP2pLockStepState<string>>;
+type TestPacket = JsonCompatibleValue & {
+    amount: number;
+};
+type FrameTestState = AnthaMultiplayerP2pLockStepState<TestPacket> & {
+    receivedAmounts: number[];
+    simulationTicks: number[];
+};
 type ClientEventTestEngineState = AnthaMultiplayerP2pLockStepState<string> & {
     lifecycleEventCount: number;
 };
+
+const testEngine = new AnthaEngine();
+const executeParams = {
+    currentTick: 0,
+    engine: testEngine,
+    hostElement: document.createElement('div'),
+    lastExecution: undefined,
+    modInstanceId: applyBrand<ModInstanceId>('frame-handler-mod-test'),
+    msSinceLastExecute: 0,
+    ticksSinceLastExecute: 0,
+} satisfies Omit<ModExecuteParams, 'executionTrigger' | 'state'>;
 
 describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
     it('creates the lock-step mod and mirrors controller room state', async () => {
@@ -132,21 +160,21 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         await engine.reset();
     });
 
-    it('handles client events forwarded by the p2p-lock-step controller', async () => {
+    it('forwards client events from the p2p-lock-step controller', async () => {
         const engine = new AnthaEngine<ClientEventTestEngineState>({
             initState: {
                 lifecycleEventCount: 0,
             },
             mods: [
-                createAnthaMultiplayerP2pLockStepMod<string, ClientEventTestEngineState>({
+                createAnthaMultiplayerP2pLockStepMod<string>({
                     gameId: 'client-event-mod-test',
-                    handleClientEvent({state}) {
-                        state.lifecycleEventCount = (state.lifecycleEventCount || 0) + 1;
-                    },
                 }),
             ],
         });
 
+        engine.listen(MultiplayerControllerClientStatusEvent, () => {
+            engine.state.lifecycleEventCount = (engine.state.lifecycleEventCount || 0) + 1;
+        });
         await engine.runSingleTick();
         assertWrap.isDefined(engine.state.multiplayerP2pLockStep).multiplayerController.dispatch(
             new MultiplayerControllerClientStatusEvent({
@@ -160,5 +188,126 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         assert.strictEquals(engine.state.lifecycleEventCount, 1);
 
         await engine.reset();
+    });
+
+    it('simulates every received frame in serial order', async () => {
+        const multiplayerController = new P2pLockStepMultiplayerController<TestPacket>({
+            gameId: 'frame-handler-mod-test',
+        });
+        Object.defineProperty(multiplayerController, 'roomId', {
+            value: createMultiplayerId.room(),
+        });
+        const mod = createAnthaMultiplayerP2pLockStepMod<TestPacket, FrameTestState>({
+            handlePacket({packet: detail, state}) {
+                state.receivedAmounts = [
+                    ...(state.receivedAmounts || []),
+                    detail.packet.amount,
+                ];
+            },
+            runFrameUpdate({currentTick, state}) {
+                state.simulationTicks = [
+                    ...(state.simulationTicks || []),
+                    currentTick,
+                ];
+            },
+        });
+        const engine = new AnthaEngine<FrameTestState>({
+            initState: {
+                multiplayerP2pLockStep: {
+                    connectionState: emptyApiAndRoomConnectionState,
+                    multiplayerController,
+                },
+                receivedAmounts: [],
+                simulationTicks: [],
+            },
+            mods: [
+                mod,
+            ],
+        });
+        const sourceClientId = createMultiplayerId.client();
+
+        engine.dispatch(
+            new MultiplayerControllerFrameEvent<TestPacket>({
+                detail: [
+                    {
+                        packet: {
+                            amount: 1,
+                        },
+                        sourceClientId,
+                    },
+                ],
+            }),
+        );
+        engine.dispatch(
+            new MultiplayerControllerFrameEvent<TestPacket>({
+                detail: [
+                    {
+                        packet: {
+                            amount: 2,
+                        },
+                        sourceClientId,
+                    },
+                ],
+            }),
+        );
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(
+            {
+                multiplayerLockstepTick: engine.state.multiplayerLockstepTick,
+                receivedAmounts: engine.state.receivedAmounts,
+                simulationTicks: engine.state.simulationTicks,
+            },
+            {
+                multiplayerLockstepTick: 2,
+                receivedAmounts: [
+                    1,
+                    2,
+                ],
+                simulationTicks: [
+                    1,
+                    2,
+                ],
+            },
+        );
+
+        await engine.reset();
+        multiplayerController.destroy();
+    });
+
+    it('runs frame updates without a connected room', async () => {
+        let frameUpdateCount = 0;
+        const mod = createAnthaMultiplayerP2pLockStepMod<TestPacket, FrameTestState>({
+            handlePacket() {},
+            runFrameUpdate() {
+                frameUpdateCount++;
+            },
+        });
+        const multiplayerController = new P2pLockStepMultiplayerController<TestPacket>({
+            gameId: 'frame-handler-mod-test',
+        });
+        const frameEvent = new MultiplayerControllerFrameEvent<TestPacket>({
+            detail: [],
+        });
+
+        await mod.execute({
+            ...executeParams,
+            executionTrigger: {
+                events: [
+                    frameEvent,
+                ],
+                type: ModExecutionTriggerType.Event,
+            },
+            state: {
+                multiplayerP2pLockStep: {
+                    connectionState: emptyApiAndRoomConnectionState,
+                    multiplayerController,
+                },
+            },
+        });
+
+        assert.strictEquals(frameUpdateCount, 1);
+        multiplayerController.destroy();
     });
 });

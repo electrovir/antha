@@ -13,7 +13,7 @@ import {
     MultiplayerControllerFrameEvent,
     createAnthaMultiplayerP2pLockStepMod,
     type AnthaMultiplayerP2pLockStepState,
-    type FrameEventDetail,
+    type MultiplayerFramePacket,
     type P2pLockStepMultiplayerController,
 } from '@antha/multiplayer-p2p-lock-step';
 import {check} from '@augment-vir/assert';
@@ -468,7 +468,7 @@ const multiplayerActionReactions = {
     [ActionType in MultiplayerActionType]: (
         params: Readonly<{
             detail: Readonly<
-                FrameEventDetail<
+                MultiplayerFramePacket<
                     Extract<
                         MultiplayerAction,
                         {
@@ -485,7 +485,7 @@ const multiplayerActionReactions = {
         MultiplayerActionType,
         (
             params: Readonly<{
-                detail: Readonly<FrameEventDetail<MultiplayerAction>>;
+                detail: Readonly<MultiplayerFramePacket<MultiplayerAction>>;
                 state: Partial<SelectableRoomState>;
             }>,
         ) => MaybePromise<void>

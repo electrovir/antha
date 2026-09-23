@@ -254,17 +254,23 @@ describe(createSaveGameSuite.name, () => {
             storedSaveStateShape: identityStoredSaveStateShape,
         });
         const assetLoader = new AssetLoader();
+        const originalError = console.error;
+        console.error = () => {};
 
-        await assert.throws(
-            () => {
-                return assetLoader.loadIndividualAsset({
-                    asset: suite.loadSaveDataAsset,
-                });
-            },
-            {
-                matchMessage: 'Expected deserialization failure.',
-            },
-        );
+        try {
+            await assert.throws(
+                () => {
+                    return assetLoader.loadIndividualAsset({
+                        asset: suite.loadSaveDataAsset,
+                    });
+                },
+                {
+                    matchMessage: 'Expected deserialization failure.',
+                },
+            );
+        } finally {
+            console.error = originalError;
+        }
     });
 
     it('deserializes loaded state and serializes the final save state', async () => {

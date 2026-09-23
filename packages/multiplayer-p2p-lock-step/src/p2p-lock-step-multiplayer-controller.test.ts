@@ -15,8 +15,8 @@ import {assert, assertWrap} from '@augment-vir/assert';
 import {type MaybePromise, wait} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {
-    type FrameEventDetail,
     MultiplayerControllerFrameEvent,
+    type MultiplayerFramePacket,
     type P2pLockStepMessage,
     P2pLockStepMessageType,
     P2pLockStepMultiplayerController,
@@ -35,7 +35,7 @@ class MockP2pLockStepMultiplayerController extends P2pLockStepMultiplayerControl
         this.roomConnection = roomConnection;
     }
 
-    public setFrameMsForTest(frameMs: number | undefined) {
+    public setFrameMsForTest(frameMs: number) {
         this.frameMs = frameMs;
     }
 
@@ -272,10 +272,10 @@ function createActionsMessage({
 }
 
 function createFrameMessage(
-    actions: ReadonlyArray<FrameEventDetail<string>>,
+    actions: ReadonlyArray<MultiplayerFramePacket<string>>,
 ): P2pLockStepMessage<string> {
     return {
-        actions: [
+        packets: [
             ...actions,
         ],
         type: P2pLockStepMessageType.Frame,
@@ -285,7 +285,7 @@ function createFrameMessage(
 describe(P2pLockStepMultiplayerController.name, () => {
     it('runs singleplayer p2p-lock-step frames', async () => {
         const state: {
-            frames: ReadonlyArray<ReadonlyArray<FrameEventDetail<string>>>;
+            frames: ReadonlyArray<ReadonlyArray<MultiplayerFramePacket<string>>>;
         } = {
             frames: [],
         };
@@ -341,7 +341,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         controller.destroy();
     });
 
-    it('exposes connection state and guards invalid lifecycle calls', async () => {
+    it('exposes connection state and guards invalid lifecycle calls', () => {
         const controller = createController();
 
         assert.deepEquals(
@@ -385,17 +385,12 @@ describe(P2pLockStepMultiplayerController.name, () => {
         controller.stopRoomUpdates();
 
         assert.throws(() => controller.act('before-connect'));
-        assert.throws(() => controller.runFrame());
 
         controller.startSingleplayer();
 
         assert.throws(() => controller.startSingleplayer(), {
             matchMessage: 'Cannot start singleplayer with a connection already present.',
         });
-        await assert.throws(() => controller.joinOrCreateRoom(createNewRoom()), {
-            matchMessage: 'Please start this controller in multiplayer mode',
-        });
-
         controller.leaveRoom();
         controller.leaveRoom();
         controller.destroy();
@@ -413,7 +408,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 gameId: 'opened-lock-step-test',
             });
             const state: {
-                frames: ReadonlyArray<ReadonlyArray<FrameEventDetail<string>>>;
+                frames: ReadonlyArray<ReadonlyArray<MultiplayerFramePacket<string>>>;
             } = {
                 frames: [],
             };
@@ -512,7 +507,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         const state: {
             clientEvents: unknown[];
             connectionEvents: unknown[];
-            frames: ReadonlyArray<ReadonlyArray<FrameEventDetail<string>>>;
+            frames: ReadonlyArray<ReadonlyArray<MultiplayerFramePacket<string>>>;
             roomListEvents: unknown[];
         } = {
             clientEvents: [],
@@ -640,7 +635,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                     {
                         clientId: memberClientId,
                         message: {
-                            actions: [],
+                            packets: [],
                             isSynchronizationFrame: true,
                             type: P2pLockStepMessageType.Frame,
                         },
@@ -658,7 +653,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 ],
                 sentMessages: [
                     {
-                        actions: [
+                        packets: [
                             {
                                 sourceClientId: fakeConnection.clientId,
                                 packet: 'host-action',
@@ -682,7 +677,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         });
         const hostClientId = createMultiplayerId.client();
         const state: {
-            frames: ReadonlyArray<ReadonlyArray<FrameEventDetail<string>>>;
+            frames: ReadonlyArray<ReadonlyArray<MultiplayerFramePacket<string>>>;
         } = {
             frames: [],
         };
@@ -765,7 +760,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
             new MultiplayerControllerMessageEvent<P2pLockStepMessage<string>>(
                 createMultiplayerId.client(),
                 {
-                    actions: [],
+                    packets: [],
                     isSynchronizationFrame: true,
                     type: P2pLockStepMessageType.Frame,
                 },
@@ -795,7 +790,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         const fakeConnection = createFakeConnection({
             host: false,
         });
-        controller.setFrameMsForTest(undefined);
+        controller.setFrameMsForTest(0);
         controller.setRoomConnectionForTest(fakeConnection);
         fakeConnection.setHost(true);
 
@@ -809,7 +804,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
 
         assert.deepEquals(fakeConnection.sentMessages, [
             {
-                actions: [],
+                packets: [],
                 type: P2pLockStepMessageType.Frame,
             },
         ]);
@@ -819,7 +814,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
     it('runs manual frames when automatic frame duration is disabled', () => {
         const controller = createController();
         const state: {
-            frames: ReadonlyArray<ReadonlyArray<FrameEventDetail<string>>>;
+            frames: ReadonlyArray<ReadonlyArray<MultiplayerFramePacket<string>>>;
         } = {
             frames: [],
         };
@@ -834,10 +829,11 @@ describe(P2pLockStepMultiplayerController.name, () => {
         });
         controller.startSingleplayer();
         const clientId = assertWrap.isDefined(controller.getClientId());
-        controller.setFrameMsForTest(undefined);
+        controller.setFrameMsForTest(0);
         controller.runFrame([
             'manual',
         ]);
+        controller.runFrame();
 
         assert.deepEquals(state.frames, [
             [
@@ -924,8 +920,8 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 gameId: 'joined-lock-step-test',
             });
             const state: {
-                hostFrames: ReadonlyArray<ReadonlyArray<FrameEventDetail<string>>>;
-                memberFrames: ReadonlyArray<ReadonlyArray<FrameEventDetail<string>>>;
+                hostFrames: ReadonlyArray<ReadonlyArray<MultiplayerFramePacket<string>>>;
+                memberFrames: ReadonlyArray<ReadonlyArray<MultiplayerFramePacket<string>>>;
             } = {
                 hostFrames: [],
                 memberFrames: [],

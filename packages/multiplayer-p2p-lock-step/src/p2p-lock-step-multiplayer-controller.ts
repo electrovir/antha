@@ -46,7 +46,7 @@ export enum P2pLockStepMessageType {
  *
  * @category Internal
  */
-export type FrameEventDetail<MultiplayerPacket extends JsonCompatibleValue> = {
+export type MultiplayerFramePacket<MultiplayerPacket extends JsonCompatibleValue> = {
     packet: MultiplayerPacket;
     sourceClientId: ClientId;
 };
@@ -67,7 +67,7 @@ export type P2pLockStepMessage<MultiplayerPacket extends JsonCompatibleValue> =
     /** Sent from the host to clients when a frame is ready. */
     | ({
           type: P2pLockStepMessageType.Frame;
-          actions: FrameEventDetail<MultiplayerPacket>[];
+          packets: MultiplayerFramePacket<MultiplayerPacket>[];
       } & PartialWithUndefined<{
           /** Whether this frame is meant for syncing a new client. */
           isSynchronizationFrame: boolean;
@@ -119,10 +119,12 @@ export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatible
 export class MultiplayerControllerFrameEvent<
     MultiplayerPacket extends JsonCompatibleValue,
 > extends defineTypedCustomEvent<any>()('multiplayer-controller-frame') {
-    public declare detail: ReadonlyArray<FrameEventDetail<MultiplayerPacket>>;
+    public declare detail: ReadonlyArray<MultiplayerFramePacket<MultiplayerPacket>>;
 
     constructor(
-        eventInitDict: TypedCustomEventInit<ReadonlyArray<FrameEventDetail<MultiplayerPacket>>>,
+        eventInitDict: TypedCustomEventInit<
+            ReadonlyArray<MultiplayerFramePacket<MultiplayerPacket>>
+        >,
     ) {
         super(eventInitDict);
     }
@@ -184,7 +186,7 @@ export class P2pLockStepMultiplayerController<
         | MultiplayerRoomConnection<P2pLockStepMessage<MultiplayerPacket>>
         | undefined;
     protected clientsResponded: Record<ClientId, boolean> = {};
-    protected frameActions: FrameEventDetail<MultiplayerPacket>[] = [];
+    protected frameActions: MultiplayerFramePacket<MultiplayerPacket>[] = [];
     protected timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
     protected frameTickReady = true;
     public frameMs: number;
@@ -372,7 +374,7 @@ export class P2pLockStepMultiplayerController<
         this.debugLog(`act called with ${actionArray.length} actions`);
         this.frameActions = [
             ...this.frameActions,
-            ...actionArray.map((packet): FrameEventDetail<MultiplayerPacket> => {
+            ...actionArray.map((packet): MultiplayerFramePacket<MultiplayerPacket> => {
                 return {
                     sourceClientId: this.clientId,
                     packet,
@@ -551,7 +553,7 @@ export class P2pLockStepMultiplayerController<
         if (this.roomConnection && this.isHost()) {
             this.roomConnection.sendToOnlyOneClient(clientId, {
                 type: P2pLockStepMessageType.Frame,
-                actions: [],
+                packets: [],
                 isSynchronizationFrame: true,
             });
         }
@@ -578,7 +580,7 @@ export class P2pLockStepMultiplayerController<
             };
             this.frameActions = [
                 ...this.frameActions,
-                ...message.actions.map((packet): FrameEventDetail<MultiplayerPacket> => {
+                ...message.actions.map((packet): MultiplayerFramePacket<MultiplayerPacket> => {
                     return {
                         sourceClientId,
                         packet,
@@ -588,7 +590,7 @@ export class P2pLockStepMultiplayerController<
             this.maybeFinishFrame();
         } else if (!this.isHost() && message.type === P2pLockStepMessageType.Frame) {
             this.debugLog(
-                `member received frame with ${message.actions.length} actions; sending ${this.frameActions.length} local actions back to host`,
+                `member received frame with ${message.packets.length} actions; sending ${this.frameActions.length} local actions back to host`,
             );
             const currentFrameActions = this.frameActions;
             this.frameActions = [];
@@ -603,7 +605,7 @@ export class P2pLockStepMultiplayerController<
                 this.calculateFps();
                 this.dispatch(
                     new MultiplayerControllerFrameEvent({
-                        detail: message.actions,
+                        detail: message.packets,
                     }),
                 );
             }
@@ -634,7 +636,7 @@ export class P2pLockStepMultiplayerController<
         this.frameActions = [];
         this.roomConnection?.sendMessage({
             type: P2pLockStepMessageType.Frame,
-            actions: currentFrameActions,
+            packets: currentFrameActions,
         });
         this.dispatch(
             new MultiplayerControllerFrameEvent({

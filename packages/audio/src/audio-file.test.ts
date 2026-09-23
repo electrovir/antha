@@ -1,4 +1,4 @@
-import {assert, waitUntil} from '@augment-vir/assert';
+import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {DeferredPromise, wait} from '@augment-vir/common';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
@@ -125,6 +125,9 @@ describe(AudioFile.name, () => {
         const file = new TestAudioFile({
             sources: [shortMp3Base64],
             audioContext,
+            createEffects(effectContext) {
+                return [effectContext.createBiquadFilter()];
+            },
         });
 
         try {
@@ -138,6 +141,10 @@ describe(AudioFile.name, () => {
             });
 
             assert.isLengthExactly(file.getAudioChannelOutputNodesForTest(), 1);
+            assert.instanceOf(
+                assertWrap.isDefined(file.getAudioChannelOutputNodesForTest()[0]).inputNode,
+                BiquadFilterNode,
+            );
         } finally {
             await file.destroy();
             await audioContext.close();

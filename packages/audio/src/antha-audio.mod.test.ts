@@ -7,6 +7,7 @@ import {shortMp3FileUrl} from './files.mock.js';
 
 enum TestAudioChannel {
     Effects = 'effects',
+    Music = 'music',
 }
 
 describe(createAnthaAudioMod.name, () => {
@@ -36,6 +37,31 @@ describe(createAnthaAudioMod.name, () => {
         const secondPlayer = engine.state.audioPlayer;
 
         assert.strictEquals(firstPlayer, secondPlayer);
+    });
+
+    it('resumes audio only after the first global input', async () => {
+        const engine = new AnthaEngine<AnthaAudioState>({
+            mods: [createAnthaAudioMod()],
+        });
+
+        await engine.runSingleTick();
+
+        const audioPlayer = assertWrap.isDefined(engine.state.audioPlayer);
+        const resumeCalls: undefined[] = [];
+        audioPlayer.audioContext.resume = () => {
+            resumeCalls.push(undefined);
+
+            return Promise.resolve();
+        };
+
+        try {
+            globalThis.dispatchEvent(new Event('click'));
+            globalThis.dispatchEvent(new Event('click'));
+
+            assert.isLengthExactly(resumeCalls, 1);
+        } finally {
+            await engine.reset();
+        }
     });
 
     it('passes options to AudioPlayer', async () => {
@@ -93,13 +119,31 @@ describe(createAnthaAudioMod.name, () => {
             volume: 0.5,
         });
         await engine.runSingleTick();
+        await audioPlayer.play({
+            audioChannel: TestAudioChannel.Music,
+            sources: [shortMp3FileUrl],
+            volume: 0.5,
+        });
+        await engine.runSingleTick();
 
-        const audioChannelNode = assertWrap.isDefined(
+        const effectsAudioChannelNode = assertWrap.isDefined(
             audioPlayer.audioChannelNodes[TestAudioChannel.Effects],
         );
+        const musicAudioChannelNode = assertWrap.isDefined(
+            audioPlayer.audioChannelNodes[TestAudioChannel.Music],
+        );
 
-        assert.isApproximately(audioPlayer.gainNode.gain.value, 0.5, 0.00001);
-        assert.isApproximately(audioChannelNode.gain.value, 0.8, 0.00001);
+        assert.isApproximately(effectsAudioChannelNode.gain.value, 0.8, 0.00001);
+        assert.deepEquals(
+            {
+                masterVolume: audioPlayer.gainNode.gain.value,
+                musicVolume: musicAudioChannelNode.gain.value,
+            },
+            {
+                masterVolume: 0.5,
+                musicVolume: 1,
+            },
+        );
 
         await engine.reset();
     });

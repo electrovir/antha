@@ -33,4 +33,37 @@ describe(calculateVirtualViewport.name, () => {
             }),
         );
     });
+
+    it('infers a missing logical dimension from the physical screen', () => {
+        assert.deepEquals(
+            {
+                height: calculateVirtualViewport({
+                    screenSize: {
+                        height: 1080,
+                        width: 3840,
+                    },
+                    virtualWidth: 1920,
+                }),
+                width: calculateVirtualViewport({
+                    screenSize: {
+                        height: 1080,
+                        width: 3840,
+                    },
+                    virtualHeight: 1080,
+                }),
+            },
+            {
+                height: {
+                    height: 540,
+                    scale: 2,
+                    width: 1920,
+                },
+                width: {
+                    height: 1080,
+                    scale: 1,
+                    width: 3840,
+                },
+            },
+        );
+    });
 });

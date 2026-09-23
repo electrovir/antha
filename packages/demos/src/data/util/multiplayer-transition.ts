@@ -1,6 +1,6 @@
 import {type MultiplayerApiClient, type RoomInput} from '@antha/multiplayer-core';
 import {
-    type FrameEventDetail,
+    type MultiplayerFramePacket,
     P2pLockStepMultiplayerController,
 } from '@antha/multiplayer-p2p-lock-step';
 
@@ -15,7 +15,7 @@ export function applyDemoCounterFrame({
     actions,
     state,
 }: Readonly<{
-    actions: ReadonlyArray<FrameEventDetail<DemoCounterInput>>;
+    actions: ReadonlyArray<MultiplayerFramePacket<DemoCounterInput>>;
     state: number;
 }>) {
     return actions.reduce((currentCount, {packet}) => {

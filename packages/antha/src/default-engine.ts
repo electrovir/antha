@@ -2,7 +2,7 @@ import {createAnthaAssetMod, type AnthaAssetModOptions} from '@antha/asset';
 import {createAnthaAudioMod, type AnthaAudioModOptions, type AnthaAudioState} from '@antha/audio';
 import {AnthaEngine, type AnthaEngineInit} from '@antha/engine';
 import {
-    createAnthaEntityMod2d,
+    createAnthaEntity2dSuite,
     type AnthaEntity2dModOptions,
     type AnthaEntity2dModState,
 } from '@antha/entity-2d';
@@ -63,18 +63,14 @@ export function createDefaultAnthaEngine<
     ExtraState extends AnyObject = EmptyObject,
     UserCommandName extends string = string,
 >(options: Readonly<DefaultAnthaEngineOptions<ExtraState, UserCommandName>> = {}) {
-    const {
-        mod: entityMod,
-        defineEntity,
-        defineLogicEntity,
-        entityKeys,
-    } = createAnthaEntityMod2d<
-        AnthaGraphics2dModState &
-            AnthaAudioState &
-            AnthaReadRawInputModState &
-            AnthaInputBindingsModState<UserCommandName> &
-            ExtraState
-    >(options);
+    const {defineEntity, defineLogicEntity, entityKeys, updateEntitiesMod} =
+        createAnthaEntity2dSuite<
+            AnthaGraphics2dModState &
+                AnthaAudioState &
+                AnthaReadRawInputModState &
+                AnthaInputBindingsModState<UserCommandName> &
+                ExtraState
+        >(options);
 
     const engine = new AnthaEngine<DefaultAnthaEngineState<ExtraState, UserCommandName>>({
         ...options,
@@ -83,7 +79,7 @@ export function createDefaultAnthaEngine<
             createAnthaFpsMod(options),
             createAnthaAssetMod(options),
             createAnthaAudioMod(options),
-            entityMod,
+            updateEntitiesMod,
             createAnthaReadRawInputMod(options),
             createAnthaInputBindingsMod(options),
             ...(options.mods || []),

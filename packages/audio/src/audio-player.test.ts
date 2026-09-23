@@ -42,16 +42,16 @@ describe(AudioPlayer.name, () => {
     });
     it('allows a specified codec', async () => {
         await makePlayable();
-        assert.isDefined(
-            new AudioPlayer().play({
+        await assert.throws(() => {
+            return new AudioPlayer().play({
                 sources: [
                     {
                         url: 'invalid',
                         codec: Codec.mp3,
                     },
                 ],
-            }),
-        );
+            });
+        });
     });
     it('destroys all files', async () => {
         const player = new AudioPlayer();

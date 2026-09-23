@@ -1,5 +1,5 @@
 import {defineAnthaMod} from '@antha/engine';
-import {check} from '@augment-vir/assert';
+import {assertWrap, check} from '@augment-vir/assert';
 import {
     getObjectTypedEntries,
     type EmptyFunction,
@@ -87,11 +87,7 @@ function syncChannelVolumes(state: Partial<AnthaAudioState>) {
         };
     }
 
-    if (!state.audioPlayer) {
-        return;
-    }
-
-    const audioPlayer = state.audioPlayer;
+    const audioPlayer = assertWrap.isDefined(state.audioPlayer);
     const audioChannelVolume = state.audioChannelVolume;
 
     if (

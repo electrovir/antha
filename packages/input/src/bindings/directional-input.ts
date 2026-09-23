@@ -1,6 +1,10 @@
 import {type ActiveBindings} from './player-bindings.js';
 
-/** Names the bindings that control a two-dimensional direction. */
+/**
+ * Names the bindings that control a two-dimensional direction.
+ *
+ * @category Internal
+ */
 export type DirectionalBindingNames<BindingName extends string> = {
     down: BindingName;
     left: BindingName;

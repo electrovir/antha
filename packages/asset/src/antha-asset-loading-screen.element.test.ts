@@ -83,6 +83,23 @@ describe(AnthaAssetLoadingScreen.tagName, () => {
                     width: '100%',
                 },
             );
+
+            hostElement.style.transform = 'scale(1)';
+            hostElement.style.width = '1920px';
+            await waitUntil(() => !loadingScreen.style.transform);
+
+            assert.deepEquals(
+                {
+                    height: loadingScreen.style.height,
+                    transform: loadingScreen.style.transform,
+                    width: loadingScreen.style.width,
+                },
+                {
+                    height: '',
+                    transform: '',
+                    width: '',
+                },
+            );
         } finally {
             hostElement.remove();
             testWeb.cleanupRender();
