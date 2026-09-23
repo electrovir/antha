@@ -2,6 +2,7 @@ import {defineAnthaMod, type ModExecuteParams, ModExecutionTriggerType} from '@a
 import {
     type ApiAndRoomConnectionState,
     emptyApiAndRoomConnectionState,
+    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
 } from '@antha/multiplayer-core';
 import {
@@ -89,6 +90,14 @@ export type AnthaMultiplayerP2pLockStepOptions<
                 } & ModExecuteParams<State>
             >,
         ) => MaybePromise<void>;
+        /** Handles a client or host status change. */
+        handleClientStatus: (
+            params: Readonly<{
+                event: Readonly<MultiplayerControllerClientStatusEvent>;
+                multiplayerController: P2pLockStepMultiplayerController<MultiplayerPacket>;
+                state: Partial<State>;
+            }>,
+        ) => MaybePromise<void>;
     }>;
 
 /**
@@ -102,23 +111,27 @@ export function createAnthaMultiplayerP2pLockStepMod<
     const MultiplayerPacket extends JsonCompatibleValue = any,
     State extends
         AnthaMultiplayerP2pLockStepState<MultiplayerPacket> = AnthaMultiplayerP2pLockStepState<MultiplayerPacket>,
->(
-    options: Readonly<
-        AnthaMultiplayerP2pLockStepOptions<NoInfer<MultiplayerPacket>, NoInfer<State>>
-    > = {},
-) {
+>(options: Readonly<AnthaMultiplayerP2pLockStepOptions<MultiplayerPacket, NoInfer<State>>> = {}) {
     return defineAnthaMod<NoInfer<State>>({
         modName: 'antha-multiplayer-p2p-lock-step',
         initState: {
             debugMultiplayer: options.debugMultiplayer,
             multiplayerLockstepTick: 0,
         } satisfies Partial<AnthaMultiplayerP2pLockStepState> as Partial<NoInfer<State>>,
-        trigger: options.handlePacket
-            ? {
-                  event: MultiplayerControllerFrameEvent,
-                  executeImmediately: true,
-              }
-            : undefined,
+        trigger:
+            options.handlePacket || options.runFrameUpdate || options.handleClientStatus
+                ? {
+                      event: [
+                          ...(options.handlePacket || options.runFrameUpdate
+                              ? [MultiplayerControllerFrameEvent]
+                              : []),
+                          ...(options.handleClientStatus
+                              ? [MultiplayerControllerClientStatusEvent]
+                              : []),
+                      ],
+                      executeImmediately: true,
+                  }
+                : undefined,
         cleanup({state}) {
             log.if(!!state.debugMultiplayer).faint('[multiplayer] cleaning up p2p-lock-step mod');
             state.multiplayerP2pLockStep?.multiplayerController.destroy();
@@ -160,21 +173,25 @@ export function createAnthaMultiplayerP2pLockStepMod<
                 });
             }
 
-            if (
-                (options.handlePacket || options.runFrameUpdate) &&
-                executeParams.executionTrigger.type === ModExecutionTriggerType.Event
-            ) {
-                await awaitedBlockingMap(
-                    executeParams.executionTrigger
-                        .events as MultiplayerControllerFrameEvent<MultiplayerPacket>[],
-                    async (event) => {
-                        if (!state.multiplayerP2pLockStep?.multiplayerController) {
-                            return;
-                        }
-
+            if (executeParams.executionTrigger.type === ModExecutionTriggerType.Event) {
+                await awaitedBlockingMap(executeParams.executionTrigger.events, async (event) => {
+                    if (!state.multiplayerP2pLockStep?.multiplayerController) {
+                        return;
+                    } else if (event instanceof MultiplayerControllerClientStatusEvent) {
+                        await options.handleClientStatus?.({
+                            event,
+                            multiplayerController:
+                                state.multiplayerP2pLockStep.multiplayerController,
+                            state,
+                        });
+                        return;
+                    } else if (
+                        event instanceof MultiplayerControllerFrameEvent &&
+                        (options.handlePacket || options.runFrameUpdate)
+                    ) {
                         if (options.handlePacket) {
                             for (const detail of event.detail) {
-                                await options.handlePacket?.({
+                                await options.handlePacket({
                                     packet: detail,
                                     multiplayerController:
                                         state.multiplayerP2pLockStep.multiplayerController,
@@ -205,8 +222,8 @@ export function createAnthaMultiplayerP2pLockStepMod<
                             multiplayerFrameEvent: event,
                             ticksSinceLastExecute: 1,
                         });
-                    },
-                );
+                    }
+                });
             }
         },
     });

@@ -37,6 +37,7 @@ type FrameTestState = AnthaMultiplayerP2pLockStepState<TestPacket> & {
 };
 type ClientEventTestEngineState = AnthaMultiplayerP2pLockStepState<string> & {
     lifecycleEventCount: number;
+    statusHandlerCount: number;
 };
 
 const testEngine = new AnthaEngine();
@@ -188,6 +189,125 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         assert.strictEquals(engine.state.lifecycleEventCount, 1);
 
         await engine.reset();
+    });
+
+    it('handles client status events through the lock-step mod', async () => {
+        const engine = new AnthaEngine<ClientEventTestEngineState>({
+            initState: {
+                lifecycleEventCount: 0,
+                statusHandlerCount: 0,
+            },
+            mods: [
+                createAnthaMultiplayerP2pLockStepMod<string, ClientEventTestEngineState>({
+                    gameId: 'client-status-handler-mod-test',
+                    handleClientStatus({event, state}) {
+                        if ('newMember' in event.detail) {
+                            state.statusHandlerCount = (state.statusHandlerCount || 0) + 1;
+                        }
+                    },
+                }),
+            ],
+        });
+
+        await engine.runSingleTick();
+        assertWrap.isDefined(engine.state.multiplayerP2pLockStep).multiplayerController.dispatch(
+            new MultiplayerControllerClientStatusEvent({
+                detail: {
+                    newMember: createMultiplayerId.client(),
+                },
+            }),
+        );
+        await engine.runSingleTick();
+
+        assert.strictEquals(engine.state.statusHandlerCount, 1);
+
+        await engine.reset();
+    });
+
+    it('ignores frame events when frame handlers are not configured', async () => {
+        const multiplayerController = new P2pLockStepMultiplayerController<string>({
+            gameId: 'lock-step-no-frame-handler-test',
+        });
+        const mod = createAnthaMultiplayerP2pLockStepMod<string>();
+        const state: Partial<TestEngineState> = {
+            multiplayerLockstepTick: 0,
+            multiplayerP2pLockStep: {
+                connectionState: emptyApiAndRoomConnectionState,
+                multiplayerController,
+            },
+        };
+
+        await mod.execute({
+            ...executeParams,
+            executionTrigger: {
+                events: [
+                    new MultiplayerControllerFrameEvent<string>({
+                        detail: [
+                            {
+                                packet: 'test-frame',
+                                sourceClientId: createMultiplayerId.client(),
+                            },
+                        ],
+                    }),
+                ],
+                type: ModExecutionTriggerType.Event,
+            },
+            state,
+        });
+
+        assert.strictEquals(state.multiplayerLockstepTick, 0);
+        multiplayerController.destroy();
+    });
+
+    it('ignores queued frames after client status handling removes the controller', async () => {
+        const multiplayerController = new P2pLockStepMultiplayerController<string>({
+            gameId: 'lock-step-event-removal-test',
+        });
+        const state: Partial<ClientEventTestEngineState> = {
+            multiplayerLockstepTick: 0,
+            multiplayerP2pLockStep: {
+                connectionState: emptyApiAndRoomConnectionState,
+                multiplayerController,
+            },
+            statusHandlerCount: 0,
+        };
+        const mod = createAnthaMultiplayerP2pLockStepMod<string, ClientEventTestEngineState>({
+            handleClientStatus({state}) {
+                state.statusHandlerCount = (state.statusHandlerCount || 0) + 1;
+                delete state.multiplayerP2pLockStep;
+            },
+            handlePacket() {},
+        });
+
+        await mod.execute({
+            ...executeParams,
+            executionTrigger: {
+                events: [
+                    new MultiplayerControllerClientStatusEvent({
+                        detail: {
+                            newMember: createMultiplayerId.client(),
+                        },
+                    }),
+                    new MultiplayerControllerFrameEvent<string>({
+                        detail: [
+                            {
+                                packet: 'test-frame',
+                                sourceClientId: createMultiplayerId.client(),
+                            },
+                        ],
+                    }),
+                ],
+                type: ModExecutionTriggerType.Event,
+            },
+            state,
+        });
+
+        assert.deepEquals(state, {
+            multiplayerLockstepTick: 0,
+            statusHandlerCount: 1,
+        });
+
+        multiplayerController.destroy();
     });
 
     it('simulates every received frame in serial order', async () => {

@@ -23,7 +23,7 @@ class TestAudioPlayer extends AudioPlayer {
     public rejectPlayForTest = false as boolean;
     public allowPlayForTest = false as boolean;
     public readonly stoppedAudioKeys: string[] = [];
-    private currentPlayback: DeferredPromise<boolean> | undefined;
+    protected currentPlayback: DeferredPromise<boolean> | undefined;
 
     public override play(params: Parameters<AudioPlayer['play']>[0]) {
         this.playedAudioKeys.push(createAudioSourceKey(params));
@@ -59,7 +59,7 @@ describe(createAnthaBackgroundAudioMod.name, () => {
         assert.deepEquals(engine.state, {});
     });
 
-    it('stops the previous background audio before playing the next one', async () => {
+    it('stops replaced and cleared background audio', async () => {
         const audioPlayer = new TestAudioPlayer();
         const engine = new AnthaEngine<AnthaBackgroundAudioState>({
             initState: {
@@ -73,6 +73,8 @@ describe(createAnthaBackgroundAudioMod.name, () => {
             await engine.runSingleTick();
             engine.state.currentBackgroundAudio = secondBackgroundAudio;
             await engine.runSingleTick();
+            engine.state.currentBackgroundAudio = undefined;
+            await engine.runSingleTick();
 
             assert.deepEquals(
                 {
@@ -84,7 +86,10 @@ describe(createAnthaBackgroundAudioMod.name, () => {
                         createAudioSourceKey(firstBackgroundAudio),
                         createAudioSourceKey(secondBackgroundAudio),
                     ],
-                    stoppedAudioKeys: [createAudioSourceKey(firstBackgroundAudio)],
+                    stoppedAudioKeys: [
+                        createAudioSourceKey(firstBackgroundAudio),
+                        createAudioSourceKey(secondBackgroundAudio),
+                    ],
                 },
             );
         } finally {
