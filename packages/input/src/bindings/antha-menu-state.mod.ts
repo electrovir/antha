@@ -9,13 +9,13 @@ import {
 } from './antha-menu-nav.mod.js';
 
 /**
- * Menu navigation state with an optional parent destination for back navigation.
+ * Menu navigation state whose return path lists parent menus from the outermost to the nearest.
  *
  * @category Internal
  */
 export type AnthaMenuState<MenuKey extends string = string> = {
     activeMenu: MenuKey | undefined;
-    returnTo: MenuKey | undefined;
+    returnTo: MenuKey[];
 };
 
 /**
@@ -29,14 +29,17 @@ export type AnthaMenuStateModState<MenuKey extends string = string> = MenuNavMod
     };
 
 /**
- * Returns the parent menu, or closes menu mode when there is no parent.
+ * Returns to the nearest parent menu and removes it from the path, or closes menu mode when the
+ * path is empty.
  *
  * @category Internal
  */
-export function getAnthaMenuReturnState<MenuKey extends string>(returnTo: MenuKey | undefined) {
+export function getAnthaMenuReturnState<MenuKey extends string>(
+    currentState: Readonly<AnthaMenuState<MenuKey>> | undefined,
+): AnthaMenuState<MenuKey> {
     return {
-        activeMenu: returnTo,
-        returnTo: undefined,
+        activeMenu: currentState?.returnTo.at(-1),
+        returnTo: currentState?.returnTo.slice(0, -1) || [],
     };
 }
 
@@ -62,13 +65,13 @@ export function getAnthaMenuStateForNavigation<MenuKey extends string>({
         return openPauseMenuWasTriggered
             ? {
                   activeMenu: pauseMenu,
-                  returnTo: undefined,
+                  returnTo: [],
               }
             : undefined;
     }
 
     return openPauseMenuWasTriggered || menuExitWasTriggered
-        ? getAnthaMenuReturnState(menuState?.returnTo)
+        ? getAnthaMenuReturnState(menuState)
         : undefined;
 }
 

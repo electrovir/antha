@@ -4,6 +4,7 @@ import {describe, it} from '@augment-vir/test';
 import {MenuNavBinding} from './antha-menu-nav.mod.js';
 import {
     createAnthaMenuStateMod,
+    getAnthaMenuReturnState,
     getAnthaMenuStateForNavigation,
     type AnthaMenuStateModState,
 } from './antha-menu-state.mod.js';
@@ -29,6 +30,15 @@ function createActiveBinding() {
     };
 }
 
+describe(getAnthaMenuReturnState.name, () => {
+    it('returns an empty path when the current state is missing', () => {
+        assert.deepEquals(getAnthaMenuReturnState<TestMenuKey>(undefined), {
+            activeMenu: undefined,
+            returnTo: [],
+        });
+    });
+});
+
 describe(getAnthaMenuStateForNavigation.name, () => {
     it('opens pause and returns to a parent menu or closes menu mode', () => {
         assert.deepEquals(
@@ -40,7 +50,7 @@ describe(getAnthaMenuStateForNavigation.name, () => {
             }),
             {
                 activeMenu: TestMenuKey.Pause,
-                returnTo: undefined,
+                returnTo: [],
             },
         );
         assert.deepEquals(
@@ -48,14 +58,14 @@ describe(getAnthaMenuStateForNavigation.name, () => {
                 menuExitWasTriggered: true,
                 menuState: {
                     activeMenu: TestMenuKey.Options,
-                    returnTo: TestMenuKey.Pause,
+                    returnTo: [TestMenuKey.Pause],
                 },
                 openPauseMenuWasTriggered: false,
                 pauseMenu: TestMenuKey.Pause,
             }),
             {
                 activeMenu: TestMenuKey.Pause,
-                returnTo: undefined,
+                returnTo: [],
             },
         );
         assert.deepEquals(
@@ -63,14 +73,14 @@ describe(getAnthaMenuStateForNavigation.name, () => {
                 menuExitWasTriggered: true,
                 menuState: {
                     activeMenu: TestMenuKey.Pause,
-                    returnTo: undefined,
+                    returnTo: [],
                 },
                 openPauseMenuWasTriggered: false,
                 pauseMenu: TestMenuKey.Pause,
             }),
             {
                 activeMenu: undefined,
-                returnTo: undefined,
+                returnTo: [],
             },
         );
     });
@@ -89,7 +99,7 @@ describe(getAnthaMenuStateForNavigation.name, () => {
                 menuExitWasTriggered: false,
                 menuState: {
                     activeMenu: TestMenuKey.Options,
-                    returnTo: TestMenuKey.Pause,
+                    returnTo: [TestMenuKey.Pause],
                 },
                 openPauseMenuWasTriggered: false,
                 pauseMenu: TestMenuKey.Pause,
@@ -147,7 +157,7 @@ describe(createAnthaMenuStateMod.name, () => {
 
         engine.state.menuState = {
             activeMenu: TestMenuKey.Options,
-            returnTo: TestMenuKey.Pause,
+            returnTo: [TestMenuKey.Pause],
         };
         engine.state.activeBindings = {
             '1': {
@@ -175,7 +185,7 @@ describe(createAnthaMenuStateMod.name, () => {
 
         engine.state.menuState = {
             activeMenu: TestMenuKey.Pause,
-            returnTo: undefined,
+            returnTo: [],
         };
         engine.state.activeBindings = {
             '1': {
