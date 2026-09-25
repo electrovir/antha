@@ -34,12 +34,31 @@ export type AnthaMenuStateModState<MenuKey extends string = string> = MenuNavMod
  *
  * @category Internal
  */
-export function getAnthaMenuReturnState<MenuKey extends string>(
+export function popAnthaMenuState<MenuKey extends string>(
     currentState: Readonly<AnthaMenuState<MenuKey>> | undefined,
 ): AnthaMenuState<MenuKey> {
     return {
         activeMenu: currentState?.returnTo.at(-1),
         returnTo: currentState?.returnTo.slice(0, -1) || [],
+    };
+}
+
+/**
+ * Opens `submenu` and appends the current menu to the return path so backing out of `submenu`
+ * returns to it. When no menu is open, `submenu` opens with an empty return path.
+ *
+ * @category Internal
+ */
+export function pushAnthaMenuState<MenuKey extends string>(
+    currentState: Readonly<AnthaMenuState<MenuKey>> | undefined,
+    submenu: NoInfer<MenuKey>,
+) {
+    return {
+        activeMenu: submenu,
+        returnTo: [
+            ...(currentState?.returnTo || []),
+            ...(check.isDefined(currentState?.activeMenu) ? [currentState.activeMenu] : []),
+        ],
     };
 }
 
@@ -71,7 +90,7 @@ export function getAnthaMenuStateForNavigation<MenuKey extends string>({
     }
 
     return openPauseMenuWasTriggered || menuExitWasTriggered
-        ? getAnthaMenuReturnState(menuState)
+        ? popAnthaMenuState(menuState)
         : undefined;
 }
 

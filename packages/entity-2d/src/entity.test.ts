@@ -119,6 +119,21 @@ describe('EntityStore', () => {
         );
     });
 
+    it('throws when creating a snapshot of a destroyed store', () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        store.destroy();
+
+        assert.throws(
+            () => {
+                return store.createSnapshot();
+            },
+            {
+                matchMessage: 'Cannot operate on a destroyed entity store.',
+            },
+        );
+    });
+
     it('stops rendering after reaching a destroyed entity', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
@@ -685,6 +700,88 @@ describe('EntityStore', () => {
             x: 10,
             y: 20,
         });
+    });
+
+    it('restores a snapshot into another store in order', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+
+        class SnapshotEntity extends suite.defineLogicEntity({
+            key: 'SnapshotEntity',
+            paramsShape: entityPositionParamsShape,
+        }) {
+            public override update(): void {}
+        }
+
+        class NoParamsSnapshotEntity extends suite.defineLogicEntity({
+            key: 'NoParamsSnapshotEntity',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {}
+        }
+
+        await store.addEntity(SnapshotEntity, {
+            x: 1,
+            y: 2,
+        });
+        await store.addEntity(NoParamsSnapshotEntity);
+        (
+            await store.addEntity(SnapshotEntity, {
+                x: 3,
+                y: 4,
+            })
+        ).destroy();
+        await store.addEntity(SnapshotEntity, {
+            x: 5,
+            y: 6,
+        });
+
+        const targetStore = new EntityStore2d({
+            assetLoader: new AssetLoader(),
+            pixi: createMockPixi(),
+            preregisteredEntities: [
+                SnapshotEntity,
+                NoParamsSnapshotEntity,
+            ],
+            state: {},
+        });
+        const staleEntity = await targetStore.addEntity(SnapshotEntity, {
+            x: 7,
+            y: 8,
+        });
+
+        const restored = await targetStore.loadSnapshot(store.createSnapshot());
+
+        assert.isTrue(staleEntity.isDestroyed);
+        assert.deepEquals([...targetStore.currentEntityInstances], restored);
+        assert.deepEquals(
+            restored.map((entity) => {
+                return {
+                    entityKey: entity.entityDefinition.entityKey,
+                    params: entity.params,
+                };
+            }),
+            [
+                {
+                    entityKey: 'SnapshotEntity',
+                    params: {
+                        x: 1,
+                        y: 2,
+                    },
+                },
+                {
+                    entityKey: 'NoParamsSnapshotEntity',
+                    params: undefined,
+                },
+                {
+                    entityKey: 'SnapshotEntity',
+                    params: {
+                        x: 5,
+                        y: 6,
+                    },
+                },
+            ],
+        );
     });
 
     it('deserializes preregistered entities', async () => {

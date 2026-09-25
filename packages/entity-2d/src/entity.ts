@@ -3,6 +3,7 @@ import {type ModExecuteParams} from '@antha/engine';
 import {type PixiApplication} from '@antha/graphics-2d';
 import {assert, check} from '@augment-vir/assert';
 import {
+    awaitedBlockingMap,
     ConstructorInstanceMap,
     getObjectTypedEntries,
     getOrSet,
@@ -28,7 +29,7 @@ import {
     type Response as Collision,
     type Body as Hitbox,
 } from 'detect-collisions';
-import {assertValidShape, defineShape, type Shape} from 'object-shape-tester';
+import {assertValidShape, defineShape, optionalShape, type Shape} from 'object-shape-tester';
 import {ParticleContainer, type Container, type ViewContainer} from 'pixi.js';
 import {defineTypedCustomEvent, GenericListenTarget} from 'typed-event-target';
 
@@ -568,6 +569,47 @@ export class EntityStore2d<State extends AnyObject = any> {
         );
     }
 
+    /**
+     * Serializes every current entity, in update order, for {@link EntityStore2d.loadSnapshot}.
+     * Entities that are marked destroyed but not yet removed are skipped.
+     */
+    public createSnapshot(): SerializedEntity2d[] {
+        if (this.isDestroyed) {
+            throw new Error('Cannot operate on a destroyed entity store.');
+        }
+
+        return [...this.currentEntityInstances]
+            .filter((entity) => !entity.isDestroyed)
+            .map((entity) => {
+                return {
+                    entityKey: entity.entityDefinition.entityKey,
+                    serializedParams: entity.serialize(),
+                };
+            });
+    }
+
+    /**
+     * Immediately destroys every current entity and recreates the entities from a snapshot made by
+     * {@link EntityStore2d.createSnapshot}, in the same order. Only entity params are restored: any
+     * state an entity keeps outside of its params is lost, so lock-step peers must all load the
+     * snapshot on the same frame to stay in sync. Every entity class in the snapshot must be
+     * registered in this store (see `preregisteredEntities`).
+     */
+    public async loadSnapshot(snapshot: ReadonlyArray<Readonly<SerializedEntity2d>>) {
+        this.destroyAllEntities();
+
+        /**
+         * `addEntity` inserts each entity only after its async init finishes, so creating them in
+         * parallel could order the store differently on each peer.
+         */
+        return await awaitedBlockingMap(snapshot, async (serializedEntity) => {
+            return await this.deserializeEntity(
+                serializedEntity.entityKey,
+                serializedEntity.serializedParams,
+            );
+        });
+    }
+
     /** Create a new instance of the given entity class and add it to this entity store. */
     public async addEntity<const NewEntityConstructor extends Entity2dConstructor>(
         entityClass: NewEntityConstructor,
@@ -617,6 +659,25 @@ export class EntityStore2d<State extends AnyObject = any> {
         delete (this as Writable<Partial<EntityStore2d>>).listenTarget;
     }
 }
+
+/**
+ * Shape definition for {@link SerializedEntity2d}.
+ *
+ * @category Internal
+ */
+export const serializedEntity2dShape = defineShape({
+    entityKey: '',
+    serializedParams: optionalShape('', {
+        alsoUndefined: true,
+    }),
+});
+
+/**
+ * One entity in a snapshot from {@link EntityStore2d.createSnapshot}.
+ *
+ * @category Internal
+ */
+export type SerializedEntity2d = typeof serializedEntity2dShape.runtimeType;
 
 /**
  * Shape definition for {@link EntityPositionParams}.

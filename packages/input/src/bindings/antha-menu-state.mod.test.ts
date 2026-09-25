@@ -4,8 +4,9 @@ import {describe, it} from '@augment-vir/test';
 import {MenuNavBinding} from './antha-menu-nav.mod.js';
 import {
     createAnthaMenuStateMod,
-    getAnthaMenuReturnState,
     getAnthaMenuStateForNavigation,
+    popAnthaMenuState,
+    pushAnthaMenuState,
     type AnthaMenuStateModState,
 } from './antha-menu-state.mod.js';
 
@@ -30,10 +31,45 @@ function createActiveBinding() {
     };
 }
 
-describe(getAnthaMenuReturnState.name, () => {
+describe(popAnthaMenuState.name, () => {
     it('returns an empty path when the current state is missing', () => {
-        assert.deepEquals(getAnthaMenuReturnState<TestMenuKey>(undefined), {
+        assert.deepEquals(popAnthaMenuState<TestMenuKey>(undefined), {
             activeMenu: undefined,
+            returnTo: [],
+        });
+    });
+});
+
+describe(pushAnthaMenuState.name, () => {
+    it('appends the current menu to the return path', () => {
+        const submenuState = pushAnthaMenuState(
+            {
+                activeMenu: TestMenuKey.Options,
+                returnTo: [
+                    TestMenuKey.Pause,
+                ],
+            },
+            TestMenuKey.Pause,
+        );
+
+        assert.deepEquals(submenuState, {
+            activeMenu: TestMenuKey.Pause,
+            returnTo: [
+                TestMenuKey.Pause,
+                TestMenuKey.Options,
+            ],
+        });
+        assert.deepEquals(popAnthaMenuState(submenuState), {
+            activeMenu: TestMenuKey.Options,
+            returnTo: [
+                TestMenuKey.Pause,
+            ],
+        });
+    });
+
+    it('opens with an empty return path when no menu is open', () => {
+        assert.deepEquals(pushAnthaMenuState<TestMenuKey>(undefined, TestMenuKey.Options), {
+            activeMenu: TestMenuKey.Options,
             returnTo: [],
         });
     });
