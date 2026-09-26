@@ -1,11 +1,11 @@
 import {AnthaEngine} from '@antha/engine';
 import {createAnthaFpsMod} from '@antha/fps';
+import {KnownInput} from '@antha/gamepad-type';
 import {
     AnyGamepad,
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
     InputDirection,
-    KnownInput,
     type PlayersBindingAssignments,
 } from '@antha/input';
 import {createUtcFullDate} from 'date-vir';

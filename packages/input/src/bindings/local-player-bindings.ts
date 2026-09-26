@@ -1,4 +1,5 @@
 import {KnownInput} from '@antha/gamepad-type';
+import {LocalPlayerPosition} from '@antha/util';
 import {arrayToObject, getObjectTypedEntries, mapObjectValues} from '@augment-vir/common';
 import {type GamepadInputDeviceKey} from 'input-device-handler';
 import {InputDirection} from '../raw-inputs/raw-input.js';
@@ -9,7 +10,6 @@ import {
     type BindingAssignment,
     type BindingAssignments,
     defaultPlayerGamepads,
-    PlayerPosition,
     type PlayersBindingAssignments,
 } from './player-bindings.js';
 
@@ -194,7 +194,7 @@ function createMenuNavBindings({
 /**
  * Builds per-slot gamepad movement and menu bindings. `playerGamepads` defaults to
  * {@link defaultPlayerGamepads} for all four players. Keyboard controls default to
- * `PlayerPosition.One`; set `keyboardPlayerPosition` to `undefined` to disable them.
+ * `LocalPlayerPosition.One`; set `keyboardPlayerPosition` to `undefined` to disable them.
  *
  * @category Util
  */
@@ -214,11 +214,11 @@ export function createDefaultLocalPlayerBindings<BindingName extends string>({
     ...keyboardOptions
 }: Readonly<{
     directionalBindingNames: Readonly<DirectionalBindingNames<BindingName>>;
-    keyboardPlayerPosition?: PlayerPosition | undefined;
+    keyboardPlayerPosition?: LocalPlayerPosition | undefined;
     playerGamepads?:
         | ReadonlyArray<
               Readonly<{
-                  playerPosition: PlayerPosition;
+                  playerPosition: LocalPlayerPosition;
                   gamepadDeviceKey: GamepadInputDeviceKey;
               }>
           >
@@ -227,7 +227,7 @@ export function createDefaultLocalPlayerBindings<BindingName extends string>({
     const keyboardPlayerPosition =
         'keyboardPlayerPosition' in keyboardOptions
             ? keyboardOptions.keyboardPlayerPosition
-            : PlayerPosition.One;
+            : LocalPlayerPosition.One;
 
     return playerGamepads.reduce<PlayersBindingAssignments<BindingName | MenuNavBinding>>(
         (playerBindingAssignments, {gamepadDeviceKey, playerPosition}) => {

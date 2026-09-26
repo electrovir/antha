@@ -1,5 +1,6 @@
 import {defineAnthaMod} from '@antha/engine';
 import {KnownInput} from '@antha/gamepad-type';
+import {type LocalPlayerPosition} from '@antha/util';
 import {check} from '@augment-vir/assert';
 import {getObjectTypedEntries} from '@augment-vir/common';
 import {type AnyDuration, convertDuration} from 'date-vir';
@@ -9,7 +10,6 @@ import {
     AnyGamepad,
     type BindingAssignments,
     markBindingActed,
-    type PlayerPosition,
     type PlayersActiveBindings,
 } from './player-bindings.js';
 
@@ -288,7 +288,7 @@ export type MenuNavModState = {
      * When defined, only players explicitly set to true may use menu navigation. Omit this or set
      * to `undefined` to allow every player to run menu navigation.
      */
-    allowedPlayerMenuNavigation: Partial<Record<PlayerPosition, boolean>> | undefined;
+    allowedPlayerMenuNavigation: Partial<Record<LocalPlayerPosition, boolean>> | undefined;
     /** Omit or set to `undefined` to disable menu nav. */
     menuNavOptions: Required<MenuNavOptions> | undefined;
     /** All active bindings for all players. */
@@ -511,7 +511,7 @@ export function isPlayerMenuNavigationAllowed({
     playerPosition,
 }: Readonly<{
     allowedPlayerMenuNavigation: MenuNavModState['allowedPlayerMenuNavigation'];
-    playerPosition: PlayerPosition;
+    playerPosition: LocalPlayerPosition;
 }>) {
     return (
         allowedPlayerMenuNavigation == undefined || !!allowedPlayerMenuNavigation[playerPosition]

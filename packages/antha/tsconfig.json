@@ -34,6 +34,9 @@
         },
         {
             "path": "../graphics-2d"
+        },
+        {
+            "path": "../util"
         }
     ]
 }

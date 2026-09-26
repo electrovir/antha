@@ -30,6 +30,9 @@
             "path": "../fps"
         },
         {
+            "path": "../gamepad-type"
+        },
+        {
             "path": "../graphics-2d"
         },
         {

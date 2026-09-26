@@ -1,4 +1,3 @@
-export * from '@antha/gamepad-type';
 export * from 'input-device-handler';
 export * from './bindings/antha-active-bindings-debug.element.js';
 export * from './bindings/antha-binding-assignments-debug.element.js';

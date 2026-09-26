@@ -1,5 +1,6 @@
 export * from './hash-object.js';
 export * from './listen-to-object.js';
+export * from './local-player-position.js';
 export * from './select-item-by-hash.js';
 export * from './stable-math.js';
 export * from './stable-random.js';

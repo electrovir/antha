@@ -4,7 +4,7 @@ import {type AtLeastTuple} from '@augment-vir/common';
 /**
  * Selects a stable item for a key without requiring a shared random-number generator.
  *
- * @category Antha Util
+ * @category Util
  */
 export function selectItemByHash<Item>({
     items,

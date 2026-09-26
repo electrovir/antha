@@ -1,10 +1,10 @@
 import {AnthaEngine, defineAnthaMod} from '@antha/engine';
+import {LocalPlayerPosition} from '@antha/util';
 import {
     type AnthaInputBindingsModState,
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
     InputDirection,
-    PlayerPosition,
 } from '../index.js';
 
 enum GameAction {
@@ -16,7 +16,7 @@ type GameState = AnthaInputBindingsModState<GameAction>;
 const engine = new AnthaEngine<GameState>({
     initState: {
         bindingAssignments: {
-            [PlayerPosition.One]: {
+            [LocalPlayerPosition.One]: {
                 [GameAction.Jump]: [
                     {
                         deviceKey: 'keyboard',
@@ -33,7 +33,7 @@ const engine = new AnthaEngine<GameState>({
         defineAnthaMod<GameState>({
             modName: 'game-logic',
             execute({state}) {
-                const jump = state.activeBindings?.[PlayerPosition.One]?.[GameAction.Jump];
+                const jump = state.activeBindings?.[LocalPlayerPosition.One]?.[GameAction.Jump];
 
                 return jump?.value ? `Jump strength: ${jump.value}` : undefined;
             },

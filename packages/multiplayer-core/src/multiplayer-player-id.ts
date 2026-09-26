@@ -1,4 +1,5 @@
-import {assert} from '@augment-vir/assert';
+import {LocalPlayerPosition} from '@antha/util';
+import {assert, assertWrap} from '@augment-vir/assert';
 import {applyBrand, type Branded} from '@augment-vir/common';
 import {assertWrapValidShape, typedStringShape} from 'object-shape-tester';
 import {type ClientId, multiplayerIdShapes} from './multiplayer-id.js';
@@ -39,7 +40,7 @@ export const multiplayerPlayerIdShape = typedStringShape<MultiplayerPlayerId>();
  */
 export type MultiplayerPlayerIdParts = {
     clientId: ClientId;
-    playerPosition: string;
+    playerPosition: LocalPlayerPosition;
 };
 
 /**
@@ -52,14 +53,13 @@ export function createMultiplayerPlayerId({
     playerPosition,
 }: Readonly<{
     clientId: ClientId;
-    playerPosition: string;
+    playerPosition: LocalPlayerPosition;
 }>) {
     const validatedClientId = assertWrapValidShape(clientId, multiplayerIdShapes.client());
     const playerId: RawMultiplayerIdString = `${validatedClientId}${multiplayerPlayerIdSeparator}${playerPosition}`;
 
     assert.isNotIn(multiplayerPlayerIdSeparator, validatedClientId, 'Invalid client id.');
-    assert.isNotIn(multiplayerPlayerIdSeparator, playerPosition, 'Invalid client id.');
-    assert.isNotEmpty(playerPosition, 'Invalid player position.');
+    assert.isEnumValue(playerPosition, LocalPlayerPosition, 'Invalid player position.');
 
     return applyBrand<MultiplayerPlayerId>(playerId);
 }
@@ -81,11 +81,14 @@ export function extractMultiplayerPlayerIdParts({
     ] = playerId.split(multiplayerPlayerIdSeparator);
 
     assert.isTruthy(clientId, 'Invalid multiplayer id.');
-    assert.isTruthy(playerPosition, 'Invalid multiplayer id.');
     assert.isEmpty(extraParts, 'Invalid multiplayer id.');
 
     return {
         clientId: assertWrapValidShape(clientId, multiplayerIdShapes.client()),
-        playerPosition,
+        playerPosition: assertWrap.isEnumValue(
+            playerPosition,
+            LocalPlayerPosition,
+            'Invalid multiplayer id.',
+        ),
     };
 }

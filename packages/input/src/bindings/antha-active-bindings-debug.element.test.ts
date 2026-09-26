@@ -1,8 +1,8 @@
+import {LocalPlayerPosition} from '@antha/util';
 import {assert} from '@augment-vir/assert';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
 import {AnthaActiveBindingsDebug} from './antha-active-bindings-debug.element.js';
-import {PlayerPosition} from './player-bindings.js';
 
 describe(AnthaActiveBindingsDebug.tagName, () => {
     it('renders with undefined active bindings', async () => {
@@ -21,7 +21,7 @@ describe(AnthaActiveBindingsDebug.tagName, () => {
         const fixture = await testWeb.render(html`
             <${AnthaActiveBindingsDebug.assign({
                 activeBindings: {
-                    [PlayerPosition.One]: {
+                    [LocalPlayerPosition.One]: {
                         moveUp: {
                             holdDuration: {
                                 milliseconds: 100,

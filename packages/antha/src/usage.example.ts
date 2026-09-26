@@ -5,9 +5,9 @@ import {
     AnyGamepad,
     getDirectionalInputVector,
     InputDirection,
-    PlayerPosition,
     type PlayersActiveBindings,
 } from '@antha/input';
+import {LocalPlayerPosition} from '@antha/util';
 import {clamp} from '@augment-vir/common';
 import {createDefaultAnthaEngine} from './default-engine.js';
 
@@ -25,7 +25,7 @@ const {defineEntity, engine, StateType} = createDefaultAnthaEngine<
     PlayerAction
 >({
     bindingAssignments: {
-        [PlayerPosition.One]: {
+        [LocalPlayerPosition.One]: {
             [PlayerAction.Up]: [
                 {
                     deviceKey: AnyGamepad,
@@ -179,7 +179,7 @@ function calculatePlayerMovement(
     activeBindings: Readonly<PlayersActiveBindings<PlayerAction>>,
 ) {
     const movement = getDirectionalInputVector({
-        activeBindings: activeBindings[PlayerPosition.One],
+        activeBindings: activeBindings[LocalPlayerPosition.One],
         bindingNames: {
             down: PlayerAction.Down,
             left: PlayerAction.Left,

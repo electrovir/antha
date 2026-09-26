@@ -1,4 +1,5 @@
 import {KnownInput} from '@antha/gamepad-type';
+import {LocalPlayerPosition} from '@antha/util';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {getObjectTypedEntries, getObjectTypedValues} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
@@ -6,7 +7,6 @@ import {GamepadInputDeviceKey} from 'input-device-handler';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {MenuNavBinding} from './antha-menu-nav.mod.js';
 import {createDefaultLocalPlayerBindings} from './local-player-bindings.js';
-import {PlayerPosition} from './player-bindings.js';
 
 enum PlayerAction {
     Down = 'move-down',
@@ -25,11 +25,11 @@ const directionalBindingNames = {
 const playerGamepads = [
     {
         gamepadDeviceKey: GamepadInputDeviceKey.Gamepad1,
-        playerPosition: PlayerPosition.One,
+        playerPosition: LocalPlayerPosition.One,
     },
     {
         gamepadDeviceKey: GamepadInputDeviceKey.Gamepad2,
-        playerPosition: PlayerPosition.Two,
+        playerPosition: LocalPlayerPosition.Two,
     },
 ] as const;
 
@@ -39,8 +39,8 @@ describe(createDefaultLocalPlayerBindings.name, () => {
             directionalBindingNames,
             playerGamepads,
         });
-        const playerOneBindings = assertWrap.isDefined(bindingAssignments[PlayerPosition.One]);
-        const playerTwoBindings = assertWrap.isDefined(bindingAssignments[PlayerPosition.Two]);
+        const playerOneBindings = assertWrap.isDefined(bindingAssignments[LocalPlayerPosition.One]);
+        const playerTwoBindings = assertWrap.isDefined(bindingAssignments[LocalPlayerPosition.Two]);
         const playerTwoMenuEnterBindings = assertWrap.isDefined(
             playerTwoBindings[MenuNavBinding.MenuEnter],
         );
@@ -112,19 +112,19 @@ describe(createDefaultLocalPlayerBindings.name, () => {
             ),
             [
                 [
-                    PlayerPosition.One,
+                    LocalPlayerPosition.One,
                     GamepadInputDeviceKey.Gamepad1,
                 ],
                 [
-                    PlayerPosition.Two,
+                    LocalPlayerPosition.Two,
                     GamepadInputDeviceKey.Gamepad2,
                 ],
                 [
-                    PlayerPosition.Three,
+                    LocalPlayerPosition.Three,
                     GamepadInputDeviceKey.Gamepad3,
                 ],
                 [
-                    PlayerPosition.Four,
+                    LocalPlayerPosition.Four,
                     GamepadInputDeviceKey.Gamepad4,
                 ],
             ],

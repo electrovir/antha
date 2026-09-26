@@ -8,7 +8,7 @@ export const defaultStableMathDigits = 12;
 /**
  * Options for stable math helpers.
  *
- * @category Antha Util
+ * @category Util
  */
 export type StableMathOptions = {
     /**
@@ -22,7 +22,7 @@ export type StableMathOptions = {
 /**
  * Stable, rounded math variants of `Math` object.
  *
- * @category Antha Util
+ * @category Util
  */
 export const StableMath = {
     /**

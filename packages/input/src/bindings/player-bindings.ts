@@ -1,3 +1,4 @@
+import {LocalPlayerPosition} from '@antha/util';
 import {getObjectTypedEntries, pickObjectKeys} from '@augment-vir/common';
 import {GamepadInputDeviceKey, InputDeviceKey} from 'input-device-handler';
 import {
@@ -57,28 +58,16 @@ export type BindingAssignment = {
 };
 
 /**
- * A local player slot.
- *
- * @category Util
- */
-export enum PlayerPosition {
-    One = '1',
-    Two = '2',
-    Three = '3',
-    Four = '4',
-}
-
-/**
- * The gamepad each {@link PlayerPosition} uses when none is specified, such as in
+ * The gamepad each `LocalPlayerPosition` uses when none is specified, such as in
  * `createDefaultLocalPlayerBindings`.
  *
  * @category Util
  */
-export const defaultPlayerGamepads: Readonly<Record<PlayerPosition, GamepadInputDeviceKey>> = {
-    [PlayerPosition.One]: GamepadInputDeviceKey.Gamepad1,
-    [PlayerPosition.Two]: GamepadInputDeviceKey.Gamepad2,
-    [PlayerPosition.Three]: GamepadInputDeviceKey.Gamepad3,
-    [PlayerPosition.Four]: GamepadInputDeviceKey.Gamepad4,
+export const defaultPlayerGamepads: Readonly<Record<LocalPlayerPosition, GamepadInputDeviceKey>> = {
+    [LocalPlayerPosition.One]: GamepadInputDeviceKey.Gamepad1,
+    [LocalPlayerPosition.Two]: GamepadInputDeviceKey.Gamepad2,
+    [LocalPlayerPosition.Three]: GamepadInputDeviceKey.Gamepad3,
+    [LocalPlayerPosition.Four]: GamepadInputDeviceKey.Gamepad4,
 };
 
 /**
@@ -102,7 +91,7 @@ export const bindingAssignmentShape = defineShape({
  * @category Internal
  */
 export const playersBindingAssignmentsShape = recordShape({
-    keys: enumShape(PlayerPosition),
+    keys: enumShape(LocalPlayerPosition),
     partial: true,
     values: recordShape({
         keys: '',
@@ -128,7 +117,7 @@ export type BindingAssignments<BindingNames extends string = string> = Partial<
  * @category Internal
  */
 export type PlayersBindingAssignments<BindingNames extends string = string> = Partial<
-    Record<PlayerPosition, BindingAssignments<BindingNames>>
+    Record<LocalPlayerPosition, BindingAssignments<BindingNames>>
 >;
 
 /**
@@ -141,7 +130,9 @@ export function filterToAllowedActions<BindingNames extends string>({
     bindingAssignments,
 }: Readonly<{
     allowedBindingNames: ReadonlyArray<BindingNames>;
-    bindingAssignments: Readonly<Partial<Record<PlayerPosition, Readonly<BindingAssignments>>>>;
+    bindingAssignments: Readonly<
+        Partial<Record<LocalPlayerPosition, Readonly<BindingAssignments>>>
+    >;
 }>) {
     return getObjectTypedEntries(bindingAssignments).reduce<
         PlayersBindingAssignments<BindingNames>
@@ -230,5 +221,5 @@ export type ActiveBindings<BindingNames extends string = string> = Partial<
  * @category Internal
  */
 export type PlayersActiveBindings<BindingNames extends string = string> = Partial<
-    Record<PlayerPosition, ActiveBindings<BindingNames>>
+    Record<LocalPlayerPosition, ActiveBindings<BindingNames>>
 >;

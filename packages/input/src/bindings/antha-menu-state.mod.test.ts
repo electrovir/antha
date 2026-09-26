@@ -1,4 +1,5 @@
 import {AnthaEngine} from '@antha/engine';
+import {LocalPlayerPosition} from '@antha/util';
 import {assert} from '@augment-vir/assert';
 import {describe, it, itCases} from '@augment-vir/test';
 import {MenuNavBinding} from './antha-menu-nav.mod.js';
@@ -10,7 +11,6 @@ import {
     pushAnthaMenuState,
     type AnthaMenuStateModState,
 } from './antha-menu-state.mod.js';
-import {PlayerPosition} from './player-bindings.js';
 
 enum TestMenuKey {
     Options = 'options',
@@ -197,7 +197,7 @@ describe(createAnthaMenuStateMod.name, () => {
         const engine = new AnthaEngine<TestMenuState>({
             initState: {
                 activeBindings: {
-                    [PlayerPosition.One]: {
+                    [LocalPlayerPosition.One]: {
                         [MenuNavBinding.OpenPauseMenu]: createActiveBinding(),
                     },
                 },
@@ -222,11 +222,11 @@ describe(createAnthaMenuStateMod.name, () => {
                 activeMenu: engine.state.menuState?.activeMenu,
                 isInMenu: engine.state.isInMenu,
                 lastActDuration:
-                    engine.state.activeBindings?.[PlayerPosition.One]?.[
+                    engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
                         MenuNavBinding.OpenPauseMenu
                     ]?.lastActDuration,
                 openPauseMenuActCount:
-                    engine.state.activeBindings?.[PlayerPosition.One]?.[
+                    engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
                         MenuNavBinding.OpenPauseMenu
                     ]?.actCount,
                 rawInputConsumer: engine.state.rawInputConsumer,
@@ -247,7 +247,7 @@ describe(createAnthaMenuStateMod.name, () => {
             returnTo: [TestMenuKey.Pause],
         };
         engine.state.activeBindings = {
-            [PlayerPosition.One]: {
+            [LocalPlayerPosition.One]: {
                 [MenuNavBinding.MenuExit]: createActiveBinding(),
             },
         };
@@ -259,7 +259,7 @@ describe(createAnthaMenuStateMod.name, () => {
                 activeMenu: engine.state.menuState.activeMenu,
                 isInMenu: engine.state.isInMenu,
                 menuExitActCount:
-                    engine.state.activeBindings[PlayerPosition.One]?.[MenuNavBinding.MenuExit]
+                    engine.state.activeBindings[LocalPlayerPosition.One]?.[MenuNavBinding.MenuExit]
                         ?.actCount,
                 rawInputConsumer: engine.state.rawInputConsumer,
             },
@@ -276,7 +276,7 @@ describe(createAnthaMenuStateMod.name, () => {
             returnTo: [],
         };
         engine.state.activeBindings = {
-            [PlayerPosition.One]: {
+            [LocalPlayerPosition.One]: {
                 [MenuNavBinding.MenuExit]: createActiveBinding(),
             },
         };
@@ -332,7 +332,7 @@ describe(createAnthaMenuStateMod.name, () => {
         );
 
         engine.state.activeBindings = {
-            [PlayerPosition.One]: {},
+            [LocalPlayerPosition.One]: {},
         };
         await engine.runSingleTick();
 
@@ -356,12 +356,12 @@ describe(createAnthaMenuStateMod.name, () => {
         const engine = new AnthaEngine<TestMenuState>({
             initState: {
                 activeBindings: {
-                    [PlayerPosition.One]: {
+                    [LocalPlayerPosition.One]: {
                         [MenuNavBinding.OpenPauseMenu]: createActiveBinding(),
                     },
                 },
                 allowedPlayerMenuNavigation: {
-                    [PlayerPosition.One]: false,
+                    [LocalPlayerPosition.One]: false,
                 },
                 isInMenu: false,
                 menuState: undefined,
@@ -382,7 +382,7 @@ describe(createAnthaMenuStateMod.name, () => {
             {
                 activeMenu: engine.state.menuState?.activeMenu,
                 openPauseMenuActCount:
-                    engine.state.activeBindings?.[PlayerPosition.One]?.[
+                    engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
                         MenuNavBinding.OpenPauseMenu
                     ]?.actCount,
                 rawInputConsumer: engine.state.rawInputConsumer,

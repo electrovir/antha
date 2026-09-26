@@ -1,3 +1,4 @@
+import {LocalPlayerPosition} from '@antha/util';
 import {assert} from '@augment-vir/assert';
 import {selectFrom} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
@@ -7,7 +8,6 @@ import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
     filterToAllowedActions,
     markBindingActed,
-    PlayerPosition,
     playersBindingAssignmentsShape,
 } from './player-bindings.js';
 
@@ -22,7 +22,7 @@ describe('playersBindingAssignmentsShape', () => {
         assert.isTrue(
             checkValidShape(
                 {
-                    [PlayerPosition.One]: {
+                    [LocalPlayerPosition.One]: {
                         jump: [
                             {
                                 deviceKey: InputDeviceKey.Keyboard,
@@ -41,7 +41,7 @@ describe('playersBindingAssignmentsShape', () => {
         assert.isFalse(
             checkValidShape(
                 {
-                    [PlayerPosition.One]: {
+                    [LocalPlayerPosition.One]: {
                         customAction: [
                             {
                                 deviceKey: InputDeviceKey.Keyboard,
@@ -65,14 +65,14 @@ describe(filterToAllowedActions.name, () => {
                     'jump',
                 ],
                 bindingAssignments: {
-                    [PlayerPosition.One]: {
+                    [LocalPlayerPosition.One]: {
                         jump: [testBindingAssignment],
                         unsupportedAction: [testBindingAssignment],
                     },
                 },
             }),
             {
-                [PlayerPosition.One]: {
+                [LocalPlayerPosition.One]: {
                     jump: [testBindingAssignment],
                 },
             },
