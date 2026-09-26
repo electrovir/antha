@@ -39,6 +39,7 @@ import {
 export enum P2pLockStepMessageType {
     Actions = 'actions',
     Frame = 'frame',
+    StateSyncRequest = 'state-sync-request',
 }
 
 /**
@@ -69,6 +70,12 @@ export type MultiplayerFrame<MultiplayerPacket extends JsonCompatibleValue> = {
      * {@link P2pLockStepMultiplayerController.reportStateHash} right after applying it.
      */
     shouldReportNextFrameHash: boolean;
+    /**
+     * On the host, whether to pass the state from right after applying this frame to
+     * {@link P2pLockStepMultiplayerController.sendStateSync}. The host produces no more frames until
+     * it does.
+     */
+    shouldSendStateSync: boolean;
 }>;
 
 /**
@@ -98,7 +105,14 @@ export type P2pLockStepMessage<MultiplayerPacket extends JsonCompatibleValue> =
           shouldReportNextFrameHash: boolean;
           /** The host's state hash from right after the most recent desync check frame. */
           stateHash: number;
-      }>);
+          /** On synchronization frames, the host's state for the receiving client to load. */
+          stateSync: JsonCompatibleValue;
+      }>)
+
+    /** Sent from a child client to the host to ask for the host's current state. */
+    | {
+          type: P2pLockStepMessageType.StateSyncRequest;
+      };
 
 /**
  * Each {@link P2pLockStepMessage} variant, keyed by its message type.
@@ -156,6 +170,25 @@ export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatible
     debugMultiplayer?: boolean | undefined;
 
     /**
+     * Sends the host's state to each client that joins. When a client joins, the host's next frame
+     * event has `shouldSendStateSync` set, and the host produces no more frames until that state is
+     * passed to {@link P2pLockStepMultiplayerController.sendStateSync}. The joining client emits
+     * {@link MultiplayerControllerStateSyncEvent} with that state, and ignores every frame before it
+     * (see {@link P2pLockStepMultiplayerController.awaitingStateSync}).
+     *
+     * @default joining clients receive no state
+     */
+    enableStateSync?: boolean | undefined;
+
+    /**
+     * When `enableStateSync` is also set, a client that detects a desync asks the host for its
+     * state with {@link P2pLockStepMultiplayerController.requestStateSync}.
+     *
+     * @default desyncs are only reported
+     */
+    resyncOnDesync?: boolean | undefined;
+
+    /**
      * The duration between desync check frames, rounded to a whole number of frames. Ignored when
      * `frameDuration` is zero, because then frames only run manually. Every peer's frame event for
      * a check frame has `shouldReportNextFrameHash` set: pass the state hash from right after
@@ -205,6 +238,19 @@ export class MultiplayerControllerFrameEvent<
 export class MultiplayerControllerDesyncEvent extends defineTypedCustomEvent<
     Readonly<MultiplayerDesync>
 >()('multiplayer-controller-desync') {}
+
+/**
+ * This is fired on a client when it receives the host's state, when it joins or after it calls
+ * {@link P2pLockStepMultiplayerController.requestStateSync}. Load the state, then call
+ * {@link P2pLockStepMultiplayerController.finishStateSync} before applying any later frame.
+ *
+ * @category Events
+ */
+export class MultiplayerControllerStateSyncEvent extends defineTypedCustomEvent<
+    Readonly<{
+        stateSync: JsonCompatibleValue;
+    }>
+>()('multiplayer-controller-state-sync') {}
 /**
  * All events emitted by this controller.
  *
@@ -215,6 +261,7 @@ export type AllP2pLockStepMultiplayerControllerEvents<
 > =
     | MultiplayerControllerFrameEvent<MultiplayerPacket>
     | MultiplayerControllerDesyncEvent
+    | MultiplayerControllerStateSyncEvent
     | MultiplayerControllerRoomListEvent
     | MultiplayerControllerClientStatusEvent
     | MultiplayerControllerConnectionEvent;
@@ -246,6 +293,7 @@ export class P2pLockStepMultiplayerController<
     public static readonly events = {
         MultiplayerControllerDesyncEvent,
         MultiplayerControllerFrameEvent,
+        MultiplayerControllerStateSyncEvent,
     };
     /** All events emitted by this controller. */
     public readonly events = P2pLockStepMultiplayerController.events;
@@ -278,6 +326,17 @@ export class P2pLockStepMultiplayerController<
     protected nextFrameStateHash: number | undefined;
     /** On clients, this client's state hash from the most recent check frame. */
     protected localStateHash: number | undefined;
+    /** On the host, clients whose state sync will be requested by the next frame. */
+    protected stateSyncRequestClientIds: ClientId[] = [];
+    /** On the host, clients waiting for {@link P2pLockStepMultiplayerController.sendStateSync}. */
+    protected stateSyncFrameClientIds: ClientId[] = [];
+    /**
+     * Whether this client is waiting for the host's state, after joining a room with
+     * `enableStateSync` set or after {@link P2pLockStepMultiplayerController.requestStateSync}.
+     * Frame events received while waiting should not be applied: the host's state already includes
+     * them. Desync checks are skipped while waiting.
+     */
+    public awaitingStateSync = false;
     protected joiningRoom = false;
     protected lastFpsCalculation = {
         timestamp: 0,
@@ -425,6 +484,7 @@ export class P2pLockStepMultiplayerController<
         }
 
         this.debugLog('starting singleplayer connection');
+        this.resetStateSync();
         this.singleplayer = true;
         this.finishFrame();
         this.dispatch(
@@ -495,7 +555,9 @@ export class P2pLockStepMultiplayerController<
         frameEvent: Readonly<MultiplayerControllerFrameEvent<MultiplayerPacket>>;
         stateHash: number | undefined;
     }>) {
-        if (!this.isHost()) {
+        if (this.awaitingStateSync) {
+            return;
+        } else if (!this.isHost()) {
             this.localStateHash = stateHash;
         } else if (frameEvent === this.latestCheckFrameEvent) {
             this.latestCheckFrameEvent = undefined;
@@ -512,6 +574,7 @@ export class P2pLockStepMultiplayerController<
         frameEvent: Readonly<MultiplayerControllerFrameEvent<MultiplayerPacket>>,
     ) {
         if (
+            this.awaitingStateSync ||
             frameEvent.detail.hostStateHash == undefined ||
             this.localStateHash == undefined ||
             frameEvent.detail.hostStateHash === this.localStateHash
@@ -532,6 +595,61 @@ export class P2pLockStepMultiplayerController<
                 detail: desync,
             }),
         );
+
+        if (this.params.resyncOnDesync) {
+            this.requestStateSync();
+        }
+    }
+
+    /**
+     * On clients, asks the host for its current state, which arrives as a
+     * {@link MultiplayerControllerStateSyncEvent}. Requires `enableStateSync`. Does nothing on the
+     * host or while already waiting.
+     */
+    public requestStateSync() {
+        if (!this.params.enableStateSync || this.isHost() || this.awaitingStateSync) {
+            return;
+        }
+
+        this.debugLog('requesting state sync from host');
+        this.awaitingStateSync = true;
+        this.localStateHash = undefined;
+        this.roomConnection?.sendMessage({
+            type: P2pLockStepMessageType.StateSyncRequest,
+        });
+    }
+
+    /**
+     * Call on clients right after loading the state from a
+     * {@link MultiplayerControllerStateSyncEvent}, so that later frames are applied again.
+     */
+    public finishStateSync() {
+        this.awaitingStateSync = false;
+        this.localStateHash = undefined;
+    }
+
+    /**
+     * Call on the host right after applying a frame event whose `shouldSendStateSync` is set. Sends
+     * the state to every client waiting for it, then resumes frame production.
+     */
+    public sendStateSync(stateSync: JsonCompatibleValue) {
+        const connectedClientIds = this.getConnectedClientIds();
+
+        this.stateSyncFrameClientIds
+            .filter((clientId) => {
+                return connectedClientIds.includes(clientId);
+            })
+            .forEach((clientId) => {
+                this.debugLog(`sending state sync to ${clientId}`);
+                this.roomConnection?.sendToOnlyOneClient(clientId, {
+                    type: P2pLockStepMessageType.Frame,
+                    packets: [],
+                    isSynchronizationFrame: true,
+                    stateSync,
+                });
+            });
+        this.stateSyncFrameClientIds = [];
+        this.maybeFinishFrame();
     }
 
     /** Detects if this controller is the room host or not. */
@@ -569,6 +687,7 @@ export class P2pLockStepMultiplayerController<
             });
 
             this.resetDesyncCheck();
+            this.resetStateSync();
             if (previousRoomConnection) {
                 globalThis.clearTimeout(this.timeoutId);
                 this.clientsResponded = {};
@@ -579,6 +698,7 @@ export class P2pLockStepMultiplayerController<
                 this.frameTickReady = true;
             }
             this.singleplayer = false;
+            this.awaitingStateSync = !!this.params.enableStateSync && !roomConnection.isHost();
             this.attachMultiplayerRoomConnection(roomConnection);
             this.debugLog(
                 `attached p2p-lock-step connection; client=${this.getClientId() || 'unknown'} host=${this.isHost()} connected=${this.isConnected()}`,
@@ -626,6 +746,7 @@ export class P2pLockStepMultiplayerController<
 
         this.debugLog(`leaving room '${this.roomId || 'unknown'}'`);
         globalThis.clearTimeout(this.timeoutId);
+        this.resetStateSync();
         this.roomConnection = undefined;
         this.singleplayer = false;
         this.roomController.leaveRoom();
@@ -696,14 +817,20 @@ export class P2pLockStepMultiplayerController<
         globalThis.clearTimeout(this.timeoutId);
         this.clientsResponded = {};
         this.resetDesyncCheck();
+        this.resetStateSync();
         this.frameTickReady = true;
         this.finishFrame();
     }
 
-    /** Send an empty frame to a newly connected member so it can join the frame flow. */
+    /**
+     * Send an empty frame to a newly connected member so it can join the frame flow, or queue a
+     * state sync for it when `enableStateSync` is set.
+     */
     protected syncNewMember(clientId: ClientId) {
         this.debugLog(`syncNewMember called for ${clientId}; host=${this.isHost()}`);
-        if (this.roomConnection && this.isHost()) {
+        if (this.params.enableStateSync) {
+            this.queueStateSync(clientId);
+        } else if (this.roomConnection && this.isHost()) {
             this.roomConnection.sendToOnlyOneClient(clientId, {
                 type: P2pLockStepMessageType.Frame,
                 packets: [],
@@ -766,7 +893,15 @@ export class P2pLockStepMultiplayerController<
                     sourceClientId: this.clientId,
                     type: P2pLockStepMessageType.Actions,
                 });
-                if (!message.isSynchronizationFrame) {
+                if (message.stateSync !== undefined) {
+                    this.dispatch(
+                        new MultiplayerControllerStateSyncEvent({
+                            detail: {
+                                stateSync: message.stateSync,
+                            },
+                        }),
+                    );
+                } else if (!message.isSynchronizationFrame) {
                     this.calculateFps();
                     this.dispatch(
                         new MultiplayerControllerFrameEvent({
@@ -778,6 +913,12 @@ export class P2pLockStepMultiplayerController<
                         }),
                     );
                 }
+            },
+        },
+        [P2pLockStepMessageType.StateSyncRequest]: {
+            isForHost: true,
+            handle: ({sourceClientId}) => {
+                this.queueStateSync(sourceClientId);
             },
         },
     };
@@ -807,6 +948,30 @@ export class P2pLockStepMultiplayerController<
                 sourceClientId,
             });
         }
+    }
+
+    /** On the host, queue a state sync for a client if it isn't already queued. */
+    protected queueStateSync(clientId: ClientId) {
+        if (
+            !this.isHost() ||
+            this.stateSyncRequestClientIds.includes(clientId) ||
+            this.stateSyncFrameClientIds.includes(clientId)
+        ) {
+            return;
+        }
+
+        this.debugLog(`queueing state sync for ${clientId}`);
+        this.stateSyncRequestClientIds = [
+            ...this.stateSyncRequestClientIds,
+            clientId,
+        ];
+    }
+
+    /** Forget pending state syncs, such as when frames restart under a new host or room. */
+    protected resetStateSync() {
+        this.stateSyncRequestClientIds = [];
+        this.stateSyncFrameClientIds = [];
+        this.awaitingStateSync = false;
     }
 
     /** Forget pending state hashes, such as when frames restart under a new host or room. */
@@ -845,6 +1010,12 @@ export class P2pLockStepMultiplayerController<
             !!this.desyncCheckFrameInterval &&
             !(this.producedFrameCount % this.desyncCheckFrameInterval) &&
             this.getAllClientIds().length > 1;
+        const shouldSendStateSync = !!this.stateSyncRequestClientIds.length;
+        this.stateSyncFrameClientIds = [
+            ...this.stateSyncFrameClientIds,
+            ...this.stateSyncRequestClientIds,
+        ];
+        this.stateSyncRequestClientIds = [];
         this.roomConnection?.sendMessage({
             type: P2pLockStepMessageType.Frame,
             packets: currentFrameActions,
@@ -859,6 +1030,9 @@ export class P2pLockStepMultiplayerController<
             detail: {
                 packets: currentFrameActions,
                 shouldReportNextFrameHash,
+                ...(shouldSendStateSync && {
+                    shouldSendStateSync,
+                }),
             },
         });
         if (shouldReportNextFrameHash) {
@@ -890,9 +1064,9 @@ export class P2pLockStepMultiplayerController<
                 return this.clientsResponded[clientId];
             });
 
-        if (!this.frameTickReady || !clientsReady) {
+        if (!this.frameTickReady || !clientsReady || this.stateSyncFrameClientIds.length) {
             this.debugLog(
-                `maybeFinishFrame waiting: frameTickReady=${this.frameTickReady} clientsReady=${!!clientsReady}`,
+                `maybeFinishFrame waiting: frameTickReady=${this.frameTickReady} clientsReady=${!!clientsReady} stateSyncs=${this.stateSyncFrameClientIds.length}`,
             );
             return;
         }

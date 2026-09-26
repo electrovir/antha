@@ -16,6 +16,7 @@ import {
 import {type AnyDuration} from 'date-vir';
 import {
     MultiplayerControllerFrameEvent,
+    MultiplayerControllerStateSyncEvent,
     type MultiplayerFramePacket,
     P2pLockStepMultiplayerController,
     type P2pLockStepMultiplayerControllerParams,
@@ -63,6 +64,7 @@ export type AnthaMultiplayerP2pLockStepOptions<
     MultiplayerPacket extends JsonCompatibleValue = any,
     State extends
         AnthaMultiplayerP2pLockStepState<MultiplayerPacket> = AnthaMultiplayerP2pLockStepState<MultiplayerPacket>,
+    StateSync extends JsonCompatibleValue = JsonCompatibleValue,
 > = PartialWithUndefined<
     SelectFrom<
         P2pLockStepMultiplayerControllerParams<MultiplayerPacket>,
@@ -96,6 +98,36 @@ export type AnthaMultiplayerP2pLockStepOptions<
                     state: Partial<State>;
                 }>,
             ) => MaybePromise<number | undefined>;
+        };
+        /**
+         * Sends the host's state to each peer that joins, so games don't need their own sync
+         * packets. A joining peer skips every frame until its state is loaded, and desync checks
+         * skip it until then too. The host pauses frames while `createStateSync` runs.
+         *
+         * @default joining peers receive no state
+         */
+        stateSync: {
+            /** Called on the host, right after applying a frame, to capture the state to send. */
+            createStateSync: (
+                params: Readonly<{
+                    state: Partial<State>;
+                }>,
+            ) => MaybePromise<StateSync>;
+            /** Called on a joining (or resyncing) peer to replace its state with the host's. */
+            loadStateSync: (
+                params: Readonly<{
+                    stateSync: StateSync;
+                    multiplayerController: P2pLockStepMultiplayerController<MultiplayerPacket>;
+                    state: Partial<State>;
+                }>,
+            ) => MaybePromise<void>;
+            /**
+             * When `desyncCheck` is also set, a peer that detects a desync reloads the host's state
+             * (after `MultiplayerControllerDesyncEvent` is emitted).
+             *
+             * @default desyncs are only reported
+             */
+            resyncOnDesync?: boolean | undefined;
         };
         /** Applies an individual action from within a frame event. */
         handlePacket: (
@@ -134,7 +166,19 @@ export function createAnthaMultiplayerP2pLockStepMod<
     const MultiplayerPacket extends JsonCompatibleValue = any,
     State extends
         AnthaMultiplayerP2pLockStepState<MultiplayerPacket> = AnthaMultiplayerP2pLockStepState<MultiplayerPacket>,
->(options: Readonly<AnthaMultiplayerP2pLockStepOptions<MultiplayerPacket, NoInfer<State>>> = {}) {
+    StateSync extends JsonCompatibleValue = JsonCompatibleValue,
+>(
+    options: Readonly<
+        AnthaMultiplayerP2pLockStepOptions<MultiplayerPacket, NoInfer<State>, NoInfer<StateSync>>
+    > = {},
+) {
+    const shouldHandleFrames = !!(
+        options.handlePacket ||
+        options.runFrameUpdate ||
+        options.desyncCheck ||
+        options.stateSync
+    );
+
     return defineAnthaMod<NoInfer<State>>({
         modName: 'antha-multiplayer-p2p-lock-step',
         initState: {
@@ -142,14 +186,18 @@ export function createAnthaMultiplayerP2pLockStepMod<
             multiplayerLockstepTick: 0,
         } satisfies Partial<AnthaMultiplayerP2pLockStepState> as Partial<NoInfer<State>>,
         trigger:
-            options.handlePacket ||
-            options.runFrameUpdate ||
-            options.desyncCheck ||
-            options.handleClientStatus
+            shouldHandleFrames || options.handleClientStatus
                 ? {
                       event: [
-                          ...(options.handlePacket || options.runFrameUpdate || options.desyncCheck
-                              ? [MultiplayerControllerFrameEvent]
+                          ...(shouldHandleFrames
+                              ? [
+                                    MultiplayerControllerFrameEvent,
+                                ]
+                              : []),
+                          ...(options.stateSync
+                              ? [
+                                    MultiplayerControllerStateSyncEvent,
+                                ]
                               : []),
                           ...(options.handleClientStatus
                               ? [MultiplayerControllerClientStatusEvent]
@@ -176,7 +224,9 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         acceptConnection: options.acceptConnection,
                         debugMultiplayer: state.debugMultiplayer,
                         desyncCheckInterval: options.desyncCheck?.interval,
+                        enableStateSync: !!options.stateSync,
                         frameDuration: options.frameDuration,
+                        resyncOnDesync: options.stateSync?.resyncOnDesync,
                     }),
                     connectionState: emptyApiAndRoomConnectionState,
                 };
@@ -212,9 +262,20 @@ export function createAnthaMultiplayerP2pLockStepMod<
                             state,
                         });
                         return;
+                    } else if (event instanceof MultiplayerControllerStateSyncEvent) {
+                        await options.stateSync?.loadStateSync({
+                            stateSync: event.detail
+                                .stateSync satisfies JsonCompatibleValue as StateSync,
+                            multiplayerController:
+                                state.multiplayerP2pLockStep.multiplayerController,
+                            state,
+                        });
+                        state.multiplayerP2pLockStep.multiplayerController.finishStateSync();
+                        return;
                     } else if (
                         event instanceof MultiplayerControllerFrameEvent &&
-                        (options.handlePacket || options.runFrameUpdate || options.desyncCheck)
+                        shouldHandleFrames &&
+                        !state.multiplayerP2pLockStep.multiplayerController.awaitingStateSync
                     ) {
                         state.multiplayerP2pLockStep.multiplayerController.checkStateHash(event);
 
@@ -259,6 +320,14 @@ export function createAnthaMultiplayerP2pLockStepMod<
                                     state,
                                 }),
                             });
+                        }
+
+                        if (event.detail.shouldSendStateSync && options.stateSync) {
+                            state.multiplayerP2pLockStep.multiplayerController.sendStateSync(
+                                await options.stateSync.createStateSync({
+                                    state,
+                                }),
+                            );
                         }
                     }
                 });

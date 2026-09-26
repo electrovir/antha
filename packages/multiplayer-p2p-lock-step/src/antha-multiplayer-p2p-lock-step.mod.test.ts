@@ -24,6 +24,7 @@ import {
 } from './antha-multiplayer-p2p-lock-step.mod.js';
 import {
     MultiplayerControllerFrameEvent,
+    MultiplayerControllerStateSyncEvent,
     P2pLockStepMultiplayerController,
 } from './p2p-lock-step-multiplayer-controller.js';
 
@@ -66,6 +67,13 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
                 interval: {
                     seconds: 1,
                 },
+            },
+            stateSync: {
+                createStateSync() {
+                    return 0;
+                },
+                loadStateSync() {},
+                resyncOnDesync: true,
             },
         });
         const engine = new AnthaEngine<TestEngineState>({
@@ -512,6 +520,106 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             'report 2',
             'check undefined',
         ]);
+        multiplayerController.destroy();
+    });
+
+    it('sends state syncs from the host and skips frames until a client loads one', async () => {
+        class StateSyncRecordingController extends P2pLockStepMultiplayerController<TestPacket> {
+            public sentStateSyncs: JsonCompatibleValue[] = [];
+            public override awaitingStateSync = true;
+
+            public override finishStateSync() {
+                this.awaitingStateSync = false;
+            }
+
+            public override sendStateSync(stateSync: JsonCompatibleValue) {
+                this.sentStateSyncs = [
+                    ...this.sentStateSyncs,
+                    stateSync,
+                ];
+            }
+        }
+
+        const mod = createAnthaMultiplayerP2pLockStepMod<TestPacket, FrameTestState, number[]>({
+            handlePacket({packet, state}) {
+                state.receivedAmounts = [
+                    ...(state.receivedAmounts || []),
+                    packet.packet.amount,
+                ];
+            },
+            stateSync: {
+                createStateSync({state}) {
+                    return state.receivedAmounts || [];
+                },
+                loadStateSync({state, stateSync}) {
+                    state.receivedAmounts = stateSync;
+                },
+            },
+        });
+        const multiplayerController = new StateSyncRecordingController({
+            gameId: 'state-sync-mod-test',
+        });
+        const sourceClientId = createMultiplayerId.client();
+        const state: Partial<FrameTestState> = {
+            multiplayerP2pLockStep: {
+                connectionState: emptyApiAndRoomConnectionState,
+                multiplayerController,
+            },
+        };
+
+        function createFrameEvent(amount: number, shouldSendStateSync?: boolean | undefined) {
+            return new MultiplayerControllerFrameEvent<TestPacket>({
+                detail: {
+                    packets: [
+                        {
+                            packet: {
+                                amount,
+                            },
+                            sourceClientId,
+                        },
+                    ],
+                    shouldSendStateSync,
+                },
+            });
+        }
+
+        await mod.execute({
+            ...executeParams,
+            executionTrigger: {
+                events: [
+                    createFrameEvent(1),
+                    new MultiplayerControllerStateSyncEvent({
+                        detail: {
+                            stateSync: [
+                                5,
+                            ],
+                        },
+                    }),
+                    createFrameEvent(2, true),
+                ],
+                type: ModExecutionTriggerType.Event,
+            },
+            state,
+        });
+
+        assert.deepEquals(
+            {
+                receivedAmounts: state.receivedAmounts,
+                sentStateSyncs: multiplayerController.sentStateSyncs,
+            },
+            {
+                receivedAmounts: [
+                    5,
+                    2,
+                ],
+                sentStateSyncs: [
+                    [
+                        5,
+                        2,
+                    ],
+                ],
+            },
+        );
         multiplayerController.destroy();
     });
 

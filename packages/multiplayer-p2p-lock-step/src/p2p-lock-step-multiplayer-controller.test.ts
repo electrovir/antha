@@ -12,12 +12,18 @@ import {
     multiplayerRoomsEndpoint,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
-import {type MaybePromise, type PartialWithUndefined, wait} from '@augment-vir/common';
+import {
+    type JsonCompatibleValue,
+    type MaybePromise,
+    type PartialWithUndefined,
+    wait,
+} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {type AnyDuration} from 'date-vir';
 import {
     MultiplayerControllerDesyncEvent,
     MultiplayerControllerFrameEvent,
+    MultiplayerControllerStateSyncEvent,
     type MultiplayerDesync,
     type MultiplayerFramePacket,
     type P2pLockStepMessage,
@@ -184,17 +190,26 @@ function createController({
     acceptConnection,
     debugMultiplayer = false,
     desyncCheckInterval,
+    enableStateSync,
     gameId = 'lock-step-test',
-}: Readonly<{
-    acceptConnection?: ((connectingClientId: ClientId) => MaybePromise<boolean>) | undefined;
-    debugMultiplayer?: boolean | undefined;
-    desyncCheckInterval?: AnyDuration | undefined;
-    gameId?: string | undefined;
-}> = {}) {
+    resyncOnDesync,
+}: Readonly<
+    {
+        acceptConnection?: ((connectingClientId: ClientId) => MaybePromise<boolean>) | undefined;
+    } & PartialWithUndefined<{
+        debugMultiplayer: boolean;
+        desyncCheckInterval: AnyDuration;
+        enableStateSync: boolean;
+        gameId: string;
+        resyncOnDesync: boolean;
+    }>
+> = {}) {
     return new MockP2pLockStepMultiplayerController({
         gameId,
         debugMultiplayer,
         desyncCheckInterval,
+        enableStateSync,
+        resyncOnDesync,
         ...(acceptConnection && {
             acceptConnection,
         }),
@@ -383,6 +398,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 staticEvents: [
                     'MultiplayerControllerDesyncEvent',
                     'MultiplayerControllerFrameEvent',
+                    'MultiplayerControllerStateSyncEvent',
                 ],
                 staticKnownErrors: controller.knownErrors,
             },
@@ -908,6 +924,234 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 ],
             },
         );
+        controller.destroy();
+    });
+
+    it('pauses host frames until the state sync for a new member is sent', () => {
+        const controller = createController({
+            enableStateSync: true,
+        });
+        const memberClientId = createMultiplayerId.client();
+        const fakeConnection = createFakeConnection({
+            connectedClientIds: [
+                memberClientId,
+            ],
+        });
+        const shouldSendStateSyncFlags: Array<boolean | undefined> = [];
+
+        controller.listen(MultiplayerControllerFrameEvent, (event) => {
+            shouldSendStateSyncFlags.push(event.detail.shouldSendStateSync);
+        });
+        controller.setFrameMsForTest(0);
+        controller.setRoomConnectionForTest(fakeConnection);
+        controller.roomController.dispatch(
+            new MultiplayerControllerMessageEvent(
+                memberClientId,
+                createActionsMessage({
+                    actions: [],
+                    sourceClientId: memberClientId,
+                }),
+            ),
+        );
+        controller.roomController.dispatch(
+            new MultiplayerControllerClientStatusEvent({
+                detail: {
+                    newMember: memberClientId,
+                },
+            }),
+        );
+        controller.runFrame();
+        /** Paused: the state sync hasn't been sent yet. */
+        controller.runFrame();
+        const sentFramesWhilePaused = fakeConnection.sentMessages.length;
+        controller.sendStateSync({
+            count: 3,
+        });
+
+        assert.deepEquals(
+            {
+                onlyOneClientMessages: fakeConnection.onlyOneClientMessages,
+                sentFramesAfterSync: fakeConnection.sentMessages.length,
+                sentFramesWhilePaused,
+                shouldSendStateSyncFlags,
+            },
+            {
+                onlyOneClientMessages: [
+                    {
+                        clientId: memberClientId,
+                        message: {
+                            isSynchronizationFrame: true,
+                            packets: [],
+                            stateSync: {
+                                count: 3,
+                            },
+                            type: P2pLockStepMessageType.Frame,
+                        },
+                    },
+                ],
+                sentFramesAfterSync: 3,
+                sentFramesWhilePaused: 2,
+                shouldSendStateSyncFlags: [
+                    undefined,
+                    true,
+                    undefined,
+                ],
+            },
+        );
+        controller.destroy();
+    });
+
+    it('requests a state sync on desync and ignores hashes until it is loaded', () => {
+        const controller = createController({
+            enableStateSync: true,
+            resyncOnDesync: true,
+        });
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        const frameEvents: MultiplayerControllerFrameEvent<string>[] = [];
+        const stateSyncs: JsonCompatibleValue[] = [];
+        let desyncCount = 0;
+
+        controller.listen(MultiplayerControllerFrameEvent, (event) => {
+            frameEvents.push(event);
+        });
+        controller.listen(MultiplayerControllerStateSyncEvent, (event) => {
+            stateSyncs.push(event.detail.stateSync);
+        });
+        controller.listen(MultiplayerControllerDesyncEvent, () => {
+            desyncCount++;
+        });
+        controller.setRoomConnectionForTest(fakeConnection);
+
+        function receiveFrame(
+            frameMessage: PartialWithUndefined<{
+                isSynchronizationFrame: boolean;
+                shouldReportNextFrameHash: boolean;
+                stateHash: number;
+                stateSync: JsonCompatibleValue;
+            }>,
+        ) {
+            controller.roomController.dispatch(
+                new MultiplayerControllerMessageEvent<P2pLockStepMessage<string>>(
+                    createMultiplayerId.client(),
+                    {
+                        ...frameMessage,
+                        packets: [],
+                        type: P2pLockStepMessageType.Frame,
+                    },
+                ),
+            );
+            return frameEvents.at(-1);
+        }
+
+        const checkFrameEvent = assertWrap.isDefined(
+            receiveFrame({
+                shouldReportNextFrameHash: true,
+            }),
+        );
+        controller.reportStateHash({
+            frameEvent: checkFrameEvent,
+            stateHash: 5,
+        });
+        controller.checkStateHash(
+            assertWrap.isDefined(
+                receiveFrame({
+                    stateHash: 6,
+                }),
+            ),
+        );
+        const isAwaitingAfterDesync = controller.awaitingStateSync;
+        /** Ignored because a state sync request is already pending. */
+        controller.requestStateSync();
+        /** Ignored while waiting for the host's state. */
+        controller.reportStateHash({
+            frameEvent: checkFrameEvent,
+            stateHash: 8,
+        });
+        controller.checkStateHash(
+            assertWrap.isDefined(
+                receiveFrame({
+                    stateHash: 7,
+                }),
+            ),
+        );
+        receiveFrame({
+            isSynchronizationFrame: true,
+            stateSync: 'host state',
+        });
+        controller.finishStateSync();
+
+        assert.deepEquals(
+            {
+                desyncCount,
+                isAwaitingAfterDesync,
+                isAwaitingAfterSync: controller.awaitingStateSync,
+                stateSyncRequests: fakeConnection.sentMessages.filter((message) => {
+                    return message.type === P2pLockStepMessageType.StateSyncRequest;
+                }),
+                stateSyncs,
+            },
+            {
+                desyncCount: 1,
+                isAwaitingAfterDesync: true,
+                isAwaitingAfterSync: false,
+                stateSyncRequests: [
+                    {
+                        type: P2pLockStepMessageType.StateSyncRequest,
+                    },
+                ],
+                stateSyncs: [
+                    'host state',
+                ],
+            },
+        );
+        controller.destroy();
+    });
+
+    it('queues a state sync when a member requests one', () => {
+        const controller = createController({
+            enableStateSync: true,
+        });
+        const memberClientId = createMultiplayerId.client();
+        const fakeConnection = createFakeConnection({
+            connectedClientIds: [
+                memberClientId,
+            ],
+        });
+        const shouldSendStateSyncFlags: Array<boolean | undefined> = [];
+
+        controller.listen(MultiplayerControllerFrameEvent, (event) => {
+            shouldSendStateSyncFlags.push(event.detail.shouldSendStateSync);
+        });
+        controller.setFrameMsForTest(0);
+        controller.setRoomConnectionForTest(fakeConnection);
+        controller.roomController.dispatch(
+            new MultiplayerControllerMessageEvent(
+                memberClientId,
+                createActionsMessage({
+                    actions: [],
+                    sourceClientId: memberClientId,
+                }),
+            ),
+        );
+        controller.roomController.dispatch(
+            new MultiplayerControllerMessageEvent<P2pLockStepMessage<string>>(memberClientId, {
+                type: P2pLockStepMessageType.StateSyncRequest,
+            }),
+        );
+        /** Ignored because this member's state sync is already queued. */
+        controller.roomController.dispatch(
+            new MultiplayerControllerMessageEvent<P2pLockStepMessage<string>>(memberClientId, {
+                type: P2pLockStepMessageType.StateSyncRequest,
+            }),
+        );
+        controller.runFrame();
+
+        assert.deepEquals(shouldSendStateSyncFlags, [
+            undefined,
+            true,
+        ]);
         controller.destroy();
     });
 
