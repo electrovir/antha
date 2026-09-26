@@ -29,10 +29,6 @@ import {
  */
 export type AnthaMultiplayerP2pLockStepState<MultiplayerPacket extends JsonCompatibleValue = any> =
     {
-        /** Enables verbose multiplayer debug logs. */
-        debugMultiplayer?: boolean | undefined;
-        /** Number of completed lock-step frame updates. */
-        multiplayerLockstepTick: number;
         /** P2p-lock-step controller state. */
         multiplayerP2pLockStep: {
             /** Multiplayer controller used to drive singleplayer or multiplayer frame sync. */
@@ -137,7 +133,11 @@ export type AnthaMultiplayerP2pLockStepOptions<
                 state: Partial<State>;
             }>,
         ) => MaybePromise<void>;
-        /** Called after all actions in a frame have been applied, in singleplayer and multiplayer. */
+        /**
+         * Called after all actions in a frame have been applied, in singleplayer and multiplayer.
+         * `currentTick` is the controller's `frameCount`, which the controller resets whenever a
+         * session starts.
+         */
         runFrameUpdate: (
             params: Readonly<
                 {
@@ -181,10 +181,6 @@ export function createAnthaMultiplayerP2pLockStepMod<
 
     return defineAnthaMod<NoInfer<State>>({
         modName: 'antha-multiplayer-p2p-lock-step',
-        initState: {
-            debugMultiplayer: options.debugMultiplayer,
-            multiplayerLockstepTick: 0,
-        } satisfies Partial<AnthaMultiplayerP2pLockStepState> as Partial<NoInfer<State>>,
         trigger:
             shouldHandleFrames || options.handleClientStatus
                 ? {
@@ -207,22 +203,20 @@ export function createAnthaMultiplayerP2pLockStepMod<
                   }
                 : undefined,
         cleanup({state}) {
-            log.if(!!state.debugMultiplayer).faint('[multiplayer] cleaning up p2p-lock-step mod');
+            log.if(!!state.multiplayerP2pLockStep?.multiplayerController.debugMultiplayer).faint(
+                '[multiplayer] cleaning up p2p-lock-step mod',
+            );
             state.multiplayerP2pLockStep?.multiplayerController.destroy();
         },
         async execute(executeParams) {
             const {engine, state} = executeParams;
 
             if (!state.multiplayerP2pLockStep) {
-                log.if(!!state.debugMultiplayer).faint(
-                    '[multiplayer] creating p2p-lock-step mod state',
-                );
-
                 state.multiplayerP2pLockStep = {
                     multiplayerController: new P2pLockStepMultiplayerController<MultiplayerPacket>({
                         gameId: options.gameId || 'antha',
                         acceptConnection: options.acceptConnection,
-                        debugMultiplayer: state.debugMultiplayer,
+                        debugMultiplayer: options.debugMultiplayer,
                         desyncCheckInterval: options.desyncCheck?.interval,
                         enableStateSync: !!options.stateSync,
                         frameDuration: options.frameDuration,
@@ -238,7 +232,9 @@ export function createAnthaMultiplayerP2pLockStepMod<
                             return;
                         }
 
-                        log.if(!!state.debugMultiplayer).faint(
+                        log.if(
+                            state.multiplayerP2pLockStep.multiplayerController.debugMultiplayer,
+                        ).faint(
                             `[multiplayer] mod connection state updated: api=${String(newConnectionState.api)} room=${String(newConnectionState.room)}`,
                         );
 
@@ -278,6 +274,8 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         !state.multiplayerP2pLockStep.multiplayerController.awaitingStateSync
                     ) {
                         state.multiplayerP2pLockStep.multiplayerController.checkStateHash(event);
+                        const frameCount =
+                            state.multiplayerP2pLockStep.multiplayerController.countAppliedFrame();
 
                         if (options.handlePacket) {
                             for (const detail of event.detail.packets) {
@@ -290,10 +288,9 @@ export function createAnthaMultiplayerP2pLockStepMod<
                             }
                         }
 
-                        state.multiplayerLockstepTick = (state.multiplayerLockstepTick || 0) + 1;
                         await options.runFrameUpdate?.({
                             ...executeParams,
-                            currentTick: state.multiplayerLockstepTick,
+                            currentTick: frameCount,
                             executionTrigger: {
                                 events: [
                                     event,

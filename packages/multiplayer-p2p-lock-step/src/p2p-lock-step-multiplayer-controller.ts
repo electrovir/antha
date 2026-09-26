@@ -1,19 +1,14 @@
 import {
-    type ApiAndRoomConnectionState,
     type ClientId,
-    createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
-    MultiplayerControllerClientStatusEvent,
+    type MultiplayerConnectionUpdate,
     MultiplayerControllerConnectionEvent,
-    MultiplayerControllerMessageEvent,
-    MultiplayerControllerRoomListEvent,
-    type MultiplayerControllerRoomListListener,
-    type MultiplayerInitParams,
     type MultiplayerRoomConnection,
-    MultiplayerRoomController,
+    P2pMultiplayerController,
+    type P2pMultiplayerControllerParams,
+    type P2pMultiplayerControllerRoomEvents,
     type RoomInput,
-    RoomRejectionError,
 } from '@antha/multiplayer-core';
 import {
     ensureArray,
@@ -24,12 +19,7 @@ import {
     type PartialWithUndefined,
 } from '@augment-vir/common';
 import {type AnyDuration, convertDuration} from 'date-vir';
-import {
-    defineTypedCustomEvent,
-    ListenTarget,
-    type RemoveListenerCallback,
-    type TypedCustomEventInit,
-} from 'typed-event-target';
+import {defineTypedCustomEvent, type TypedCustomEventInit} from 'typed-event-target';
 
 /**
  * Message type for {@link P2pLockStepMessage}.
@@ -107,6 +97,8 @@ export type P2pLockStepMessage<MultiplayerPacket extends JsonCompatibleValue> =
           stateHash: number;
           /** On synchronization frames, the host's state for the receiving client to load. */
           stateSync: JsonCompatibleValue;
+          /** On synchronization frames, the host's frame count when it captured `stateSync`. */
+          frameCount: number;
       }>)
 
     /** Sent from a child client to the host to ask for the host's current state. */
@@ -145,71 +137,52 @@ export type MultiplayerDesync = {
  *
  * @category Internal
  */
-export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatibleValue> = {
-    /**
-     * A unique string id that represents your game so that your lobby server can serve multiple
-     * games at once. Your lobby server will need to know this game id ahead of time and match it to
-     * your frontend's origin.
-     */
-    gameId: string;
-} & PartialWithUndefined<{
-    /**
-     * This is fired when a WebRTC peer attempts to connect to the host client. Return `true` to
-     * accept the connection. Return `false` to reject it.
-     *
-     * @default accept all connections
-     */
-    acceptConnection?:
-        | ((
-              connectingClientId: ClientId,
-              multiplayerController: P2pLockStepMultiplayerController<Action>,
-          ) => MaybePromise<boolean>)
-        | undefined;
+export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatibleValue> =
+    P2pMultiplayerControllerParams<P2pLockStepMultiplayerController<Action>> &
+        PartialWithUndefined<{
+            /**
+             * Sends the host's state to each client that joins. When a client joins, the host's
+             * next frame event has `shouldSendStateSync` set, and the host produces no more frames
+             * until that state is passed to {@link P2pLockStepMultiplayerController.sendStateSync}.
+             * The joining client emits {@link MultiplayerControllerStateSyncEvent} with that state,
+             * and ignores every frame before it (see
+             * {@link P2pLockStepMultiplayerController.awaitingStateSync}).
+             *
+             * @default joining clients receive no state
+             */
+            enableStateSync?: boolean | undefined;
 
-    /** Enables verbose multiplayer debug logs. */
-    debugMultiplayer?: boolean | undefined;
+            /**
+             * When `enableStateSync` is also set, a client that detects a desync asks the host for
+             * its state with {@link P2pLockStepMultiplayerController.requestStateSync}.
+             *
+             * @default desyncs are only reported
+             */
+            resyncOnDesync?: boolean | undefined;
 
-    /**
-     * Sends the host's state to each client that joins. When a client joins, the host's next frame
-     * event has `shouldSendStateSync` set, and the host produces no more frames until that state is
-     * passed to {@link P2pLockStepMultiplayerController.sendStateSync}. The joining client emits
-     * {@link MultiplayerControllerStateSyncEvent} with that state, and ignores every frame before it
-     * (see {@link P2pLockStepMultiplayerController.awaitingStateSync}).
-     *
-     * @default joining clients receive no state
-     */
-    enableStateSync?: boolean | undefined;
+            /**
+             * The duration between desync check frames, rounded to a whole number of frames.
+             * Ignored when `frameDuration` is zero, because then frames only run manually. Every
+             * peer's frame event for a check frame has `shouldReportNextFrameHash` set: pass the
+             * state hash from right after applying that frame to
+             * {@link P2pLockStepMultiplayerController.reportStateHash}. The host sends its hash with
+             * the next frame it produces, and clients compare it against their own hash with
+             * {@link P2pLockStepMultiplayerController.checkStateHash} before applying that frame.
+             * Frames are never held for a hash: if the host doesn't report one before its next
+             * check frame, that check is skipped.
+             *
+             * @default no desync checks
+             */
+            desyncCheckInterval?: AnyDuration | undefined;
 
-    /**
-     * When `enableStateSync` is also set, a client that detects a desync asks the host for its
-     * state with {@link P2pLockStepMultiplayerController.requestStateSync}.
-     *
-     * @default desyncs are only reported
-     */
-    resyncOnDesync?: boolean | undefined;
-
-    /**
-     * The duration between desync check frames, rounded to a whole number of frames. Ignored when
-     * `frameDuration` is zero, because then frames only run manually. Every peer's frame event for
-     * a check frame has `shouldReportNextFrameHash` set: pass the state hash from right after
-     * applying that frame to {@link P2pLockStepMultiplayerController.reportStateHash}. The host
-     * sends its hash with the next frame it produces, and clients compare it against their own hash
-     * with {@link P2pLockStepMultiplayerController.checkStateHash} before applying that frame.
-     * Frames are never held for a hash: if the host doesn't report one before its next check frame,
-     * that check is skipped.
-     *
-     * @default no desync checks
-     */
-    desyncCheckInterval?: AnyDuration | undefined;
-
-    /**
-     * The duration between each frame. This should probably always be smaller than your supported
-     * render frame duration.
-     *
-     * @default {milliseconds: 10}
-     */
-    frameDuration?: AnyDuration | undefined;
-}>;
+            /**
+             * The duration between each frame. This should probably always be smaller than your
+             * supported render frame duration.
+             *
+             * @default {milliseconds: 10}
+             */
+            frameDuration?: AnyDuration | undefined;
+        }>;
 
 /**
  * This is fired whenever a new p2p-lock-step frame is received from the host client.
@@ -262,9 +235,7 @@ export type AllP2pLockStepMultiplayerControllerEvents<
     | MultiplayerControllerFrameEvent<MultiplayerPacket>
     | MultiplayerControllerDesyncEvent
     | MultiplayerControllerStateSyncEvent
-    | MultiplayerControllerRoomListEvent
-    | MultiplayerControllerClientStatusEvent
-    | MultiplayerControllerConnectionEvent;
+    | P2pMultiplayerControllerRoomEvents;
 
 /**
  * Listener callback for p2p-lock-step frame events.
@@ -286,7 +257,10 @@ const defaultFrameDuration: AnyDuration = {
  */
 export class P2pLockStepMultiplayerController<
     MultiplayerPacket extends JsonCompatibleValue = any,
-> extends ListenTarget<AllP2pLockStepMultiplayerControllerEvents<MultiplayerPacket>> {
+> extends P2pMultiplayerController<
+    P2pLockStepMessage<MultiplayerPacket>,
+    AllP2pLockStepMultiplayerControllerEvents<MultiplayerPacket>
+> {
     /** The current data flow FPS. */
     public readonly currentFps: number = 0;
     /** All events emitted by this controller. */
@@ -297,20 +271,13 @@ export class P2pLockStepMultiplayerController<
     };
     /** All events emitted by this controller. */
     public readonly events = P2pLockStepMultiplayerController.events;
+    /**
+     * Number of frames applied in the current session, counted by
+     * {@link P2pLockStepMultiplayerController.countAppliedFrame}. Starting singleplayer or joining a
+     * room resets it to 0, and loading a state sync sets it to the host's count.
+     */
+    public readonly frameCount: number = 0;
 
-    public static readonly knownErrors = {
-        RoomRejectionError,
-    };
-    public readonly knownErrors = P2pLockStepMultiplayerController.knownErrors;
-
-    /** Core multiplayer room controller that owns API, room polling, signaling, and transport. */
-    public readonly roomController: MultiplayerRoomController<
-        P2pLockStepMessage<MultiplayerPacket>
-    >;
-    protected readonly localClientId = createMultiplayerId.client();
-    protected roomConnection:
-        | MultiplayerRoomConnection<P2pLockStepMessage<MultiplayerPacket>>
-        | undefined;
     protected clientsResponded: Record<ClientId, boolean> = {};
     protected frameActions: MultiplayerFramePacket<MultiplayerPacket>[] = [];
     protected timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
@@ -342,13 +309,13 @@ export class P2pLockStepMultiplayerController<
         timestamp: 0,
         frameCount: 0,
     };
-    protected singleplayer = false;
+    /** On clients, the host's frame count from the received state sync. */
+    protected stateSyncFrameCount: number | undefined;
 
     constructor(
         protected readonly params: P2pLockStepMultiplayerControllerParams<MultiplayerPacket>,
     ) {
-        super();
-        this.debugLog(`constructing controller for game '${params.gameId}'`);
+        super(params);
         const frameDuration = params.frameDuration || defaultFrameDuration;
         this.frameMs = convertDuration(frameDuration, {
             milliseconds: true,
@@ -364,117 +331,10 @@ export class P2pLockStepMultiplayerController<
                       ),
                   )
                 : undefined;
-        this.roomController = new MultiplayerRoomController<P2pLockStepMessage<MultiplayerPacket>>({
-            gameId: params.gameId,
-            clientId: this.localClientId,
-            acceptConnection: params.acceptConnection
-                ? (connectingClientId) => {
-                      this.debugLog(`checking incoming connection from ${connectingClientId}`);
-                      return params.acceptConnection?.(connectingClientId, this) ?? true;
-                  }
-                : undefined,
-        });
-        this.listenToRoomController();
     }
 
-    /** Current p2p-lock-step connection, exposed for compatibility checks. */
-    public get currentConnection(): this | undefined {
-        return this.isConnected() ? this : undefined;
-    }
-
-    /** The current client id. */
-    public get clientId(): ClientId {
-        return this.roomConnection?.clientId || this.localClientId;
-    }
-
-    /**
-     * Listen for room list updates, including while connected to a room.
-     *
-     * If a callback is provided, it is called each time the room list is updated.
-     */
-    public startRoomUpdates(
-        callback: MultiplayerControllerRoomListListener,
-    ): RemoveListenerCallback;
-    public startRoomUpdates(callback?: undefined): undefined;
-    public startRoomUpdates(
-        callback?: MultiplayerControllerRoomListListener | undefined,
-    ): RemoveListenerCallback | undefined;
-    public startRoomUpdates(
-        callback?: MultiplayerControllerRoomListListener | undefined,
-    ): RemoveListenerCallback | undefined {
-        return this.roomController.startRoomUpdates(callback);
-    }
-
-    /** Turn off room list updates and remove callbacks added via `startRoomUpdates`. */
-    public stopRoomUpdates() {
-        this.roomController.stopRoomUpdates();
-    }
-
-    /** Currently joined room id. If a room has not been joined yet, this will be empty. */
-    public get roomId() {
-        return this.roomController.roomId;
-    }
-
-    /** The current connection state of the controller's connection to a backend API. */
-    public get apiConnectionState(): ApiAndRoomConnectionState['api'] {
-        return this.roomController.apiConnectionState;
-    }
-
-    /** The current connection state of the controller's connection to a multiplayer room. */
-    public get roomConnectionState(): ApiAndRoomConnectionState['room'] {
-        return this.roomController.roomConnectionState;
-    }
-
-    /** The current multiplayer API client. This will be `undefined` if playing in single player. */
-    public get multiplayerApiClient() {
-        return this.roomController.multiplayerApiClient;
-    }
-
-    /**
-     * Get the current client's WebRTC client id. This will return `undefined` if there is no
-     * current connection.
-     */
-    public getClientId(): ClientId | undefined {
-        if (this.singleplayer) {
-            return this.localClientId;
-        }
-
-        return this.roomConnection?.clientId || this.roomController.getClientId();
-    }
-
-    /**
-     * Get all connected client ids.
-     *
-     * - For host clients, this indicates how many member clients are connected to the host client,
-     *   _not_ including the host itself.
-     * - For non-host clients, this only lists the local connection used to reach the host.
-     */
-    public getConnectedClientIds(): ClientId[] {
-        return this.roomConnection?.getConnectedClientIds() || [];
-    }
-
-    /**
-     * Get all room client ids.
-     *
-     * - For host clients, this indicates how many clients are connected to the room, including the
-     *   host client itself.
-     * - For non-host clients, this includes the member client and the host client once connected.
-     */
-    public getAllClientIds(): ClientId[] {
-        if (this.singleplayer) {
-            return [
-                this.localClientId,
-            ];
-        }
-
-        return this.roomConnection?.getAllClientIds() || [];
-    }
-
-    /** Initialize multiplayer API access without opening a room or starting host pings. */
-    public async initMultiplayer(params: Readonly<MultiplayerInitParams>) {
-        this.debugLog(`initializing multiplayer with backend ${params.backendOrigin}`);
-        await this.roomController.initMultiplayer(params);
-        this.debugLog('multiplayer API initialized');
+    protected override shouldAcceptConnection(connectingClientId: ClientId) {
+        return this.params.acceptConnection?.(connectingClientId, this) ?? true;
     }
 
     /** Start local play without contacting the multiplayer API. This can later open into a room. */
@@ -485,6 +345,7 @@ export class P2pLockStepMultiplayerController<
 
         this.debugLog('starting singleplayer connection');
         this.resetStateSync();
+        this.setFrameCount(0);
         this.singleplayer = true;
         this.finishFrame();
         this.dispatch(
@@ -540,6 +401,17 @@ export class P2pLockStepMultiplayerController<
                 };
             }),
         ];
+    }
+
+    /**
+     * Call on every peer right before applying each frame event, after
+     * {@link P2pLockStepMultiplayerController.checkStateHash}. Returns the new
+     * {@link P2pLockStepMultiplayerController.frameCount}. The p2p-lock-step mod calls this for
+     * you.
+     */
+    public countAppliedFrame() {
+        this.setFrameCount(this.frameCount + 1);
+        return this.frameCount;
     }
 
     /**
@@ -626,6 +498,8 @@ export class P2pLockStepMultiplayerController<
     public finishStateSync() {
         this.awaitingStateSync = false;
         this.localStateHash = undefined;
+        this.setFrameCount(this.stateSyncFrameCount ?? 0);
+        this.stateSyncFrameCount = undefined;
     }
 
     /**
@@ -646,29 +520,16 @@ export class P2pLockStepMultiplayerController<
                     packets: [],
                     isSynchronizationFrame: true,
                     stateSync,
+                    frameCount: this.frameCount,
                 });
             });
         this.stateSyncFrameClientIds = [];
         this.maybeFinishFrame();
     }
 
-    /** Detects if this controller is the room host or not. */
-    public isHost(): boolean {
-        return this.singleplayer || this.roomConnection?.isHost() || false;
-    }
-
-    /** Detects if this controller is connected to a room or not. */
-    public isConnected(): boolean {
-        return this.singleplayer || this.roomConnection?.isConnected() || false;
-    }
-
     /** Cleanup everything. */
     public override destroy() {
-        this.debugLog('destroying controller');
         globalThis.clearTimeout(this.timeoutId);
-        this.roomConnection = undefined;
-        this.singleplayer = false;
-        this.roomController.destroy();
         super.destroy();
     }
 
@@ -698,6 +559,7 @@ export class P2pLockStepMultiplayerController<
                 this.frameTickReady = true;
             }
             this.singleplayer = false;
+            this.setFrameCount(0);
             this.awaitingStateSync = !!this.params.enableStateSync && !roomConnection.isHost();
             this.attachMultiplayerRoomConnection(roomConnection);
             this.debugLog(
@@ -738,49 +600,21 @@ export class P2pLockStepMultiplayerController<
     }
 
     /** Leave the current room or single player connection. */
-    public leaveRoom() {
-        if (!this.currentConnection) {
-            this.debugLog('leaveRoom called without a current connection');
-            return;
+    public override leaveRoom() {
+        if (this.currentConnection) {
+            globalThis.clearTimeout(this.timeoutId);
+            this.resetStateSync();
         }
 
-        this.debugLog(`leaving room '${this.roomId || 'unknown'}'`);
-        globalThis.clearTimeout(this.timeoutId);
-        this.resetStateSync();
-        this.roomConnection = undefined;
-        this.singleplayer = false;
-        this.roomController.leaveRoom();
+        super.leaveRoom();
     }
 
-    /** Forward core room-controller events into this frame-sync controller. */
-    protected listenToRoomController() {
-        this.roomController.listen(MultiplayerControllerRoomListEvent, (event) => {
-            this.dispatch(event);
-        });
-        this.roomController.listen(MultiplayerControllerConnectionEvent, (event) => {
-            this.debugLog(
-                `connection event received: api=${String(event.detail.api)} room=${String(event.detail.room)}`,
-            );
-            this.dispatch(event);
-        });
-        this.roomController.listen(MultiplayerControllerClientStatusEvent, (event) => {
-            this.debugLog(`client event received: ${JSON.stringify(event.detail)}`);
-            if ('newMember' in event.detail) {
-                this.syncNewMember(event.detail.newMember);
-            } else if ('newHost' in event.detail) {
-                this.handleNewHost(event.detail.newHost);
-            }
-            this.dispatch(event);
-        });
-        this.roomController.listen(
-            MultiplayerControllerMessageEvent<P2pLockStepMessage<MultiplayerPacket>>,
-            (event) => {
-                this.debugLog(
-                    `message event received from ${event.sourceClientId}: type=${event.detail.type}`,
-                );
-                this.handleReceivedMessage(event.sourceClientId, event.detail);
-            },
-        );
+    protected override handleClientStatus(status: Readonly<MultiplayerConnectionUpdate>) {
+        if ('newMember' in status) {
+            this.syncNewMember(status.newMember);
+        } else if ('newHost' in status) {
+            this.handleNewHost(status.newHost);
+        }
     }
 
     /** Attach an established room transport and publish initial frame readiness. */
@@ -894,6 +728,7 @@ export class P2pLockStepMultiplayerController<
                     type: P2pLockStepMessageType.Actions,
                 });
                 if (message.stateSync !== undefined) {
+                    this.stateSyncFrameCount = message.frameCount;
                     this.dispatch(
                         new MultiplayerControllerStateSyncEvent({
                             detail: {
@@ -927,7 +762,7 @@ export class P2pLockStepMultiplayerController<
      * Route a received message to its handler in
      * {@link P2pLockStepMultiplayerController.messageHandlers}.
      */
-    protected handleReceivedMessage<Type extends P2pLockStepMessageType>(
+    protected override handleReceivedMessage<Type extends P2pLockStepMessageType>(
         sourceClientId: ClientId,
         message: P2pLockStepMessageByType<MultiplayerPacket>[Type],
     ) {
@@ -971,7 +806,13 @@ export class P2pLockStepMultiplayerController<
     protected resetStateSync() {
         this.stateSyncRequestClientIds = [];
         this.stateSyncFrameClientIds = [];
+        this.stateSyncFrameCount = undefined;
         this.awaitingStateSync = false;
+    }
+
+    /** Writes the public readonly {@link P2pLockStepMultiplayerController.frameCount}. */
+    protected setFrameCount(frameCount: number) {
+        makeWritable(this).frameCount = frameCount;
     }
 
     /** Forget pending state hashes, such as when frames restart under a new host or room. */
@@ -1071,10 +912,5 @@ export class P2pLockStepMultiplayerController<
             return;
         }
         this.finishFrame();
-    }
-
-    /** Write a multiplayer debug log when debug logging is enabled. */
-    protected debugLog(message: string) {
-        log.if(!!this.params.debugMultiplayer).faint(`[multiplayer] ${message}`);
     }
 }

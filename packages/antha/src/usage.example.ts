@@ -1,8 +1,14 @@
 import {defineAnthaMod, type ModExecuteParams, SkipExecution} from '@antha/engine';
 import {position2dParamsMap, position2dParamsShape} from '@antha/entity-2d';
 import {Graphics} from '@antha/graphics-2d';
-import {AnyGamepad, InputDirection, type PlayersActiveBindings} from '@antha/input';
-import {clamp, type Coords} from '@augment-vir/common';
+import {
+    AnyGamepad,
+    getDirectionalInputVector,
+    InputDirection,
+    PlayerPosition,
+    type PlayersActiveBindings,
+} from '@antha/input';
+import {clamp} from '@augment-vir/common';
 import {createDefaultAnthaEngine} from './default-engine.js';
 
 enum PlayerAction {
@@ -19,7 +25,7 @@ const {defineEntity, engine, StateType} = createDefaultAnthaEngine<
     PlayerAction
 >({
     bindingAssignments: {
-        1: {
+        [PlayerPosition.One]: {
             [PlayerAction.Up]: [
                 {
                     deviceKey: AnyGamepad,
@@ -153,8 +159,6 @@ class PlayerEntity extends defineEntity({
         const moveDiff = calculatePlayerMovement(msSinceLastExecute, this.state.activeBindings);
 
         if (moveDiff) {
-            const {width: screenWidth, height: screenHeight} = this.pixi.screen;
-
             this.params.x += moveDiff.x;
             this.params.y += moveDiff.y;
         }
@@ -170,70 +174,28 @@ class PlayerEntity extends defineEntity({
     }
 }
 
-/**
- * Set player X and Y movement based on which input was most recently triggered, and ensure that the
- * movement vector's magnitude remains constant.
- */
 function calculatePlayerMovement(
     msSinceLastUpdate: number,
     activeBindings: Readonly<PlayersActiveBindings<PlayerAction>>,
 ) {
-    const playerBindings = activeBindings['1'];
+    const movement = getDirectionalInputVector({
+        activeBindings: activeBindings[PlayerPosition.One],
+        bindingNames: {
+            down: PlayerAction.Down,
+            left: PlayerAction.Left,
+            right: PlayerAction.Right,
+            up: PlayerAction.Up,
+        },
+    });
 
-    if (!playerBindings) {
-        return;
+    if (!movement) {
+        return undefined;
     }
 
-    const upMovement = {
-        value: playerBindings.up?.value || 0,
-        durationMs: playerBindings.up?.holdDuration.milliseconds || Infinity,
+    return {
+        x: movement.x * msSinceLastUpdate * 0.4,
+        y: movement.y * msSinceLastUpdate * 0.4,
     };
-    const downMovement = {
-        value: playerBindings.down?.value || 0,
-        durationMs: playerBindings.down?.holdDuration.milliseconds || Infinity,
-    };
-    const leftMovement = {
-        value: playerBindings.left?.value || 0,
-        durationMs: playerBindings.left?.holdDuration.milliseconds || Infinity,
-    };
-    const rightMovement = {
-        value: playerBindings.right?.value || 0,
-        durationMs: playerBindings.right?.holdDuration.milliseconds || Infinity,
-    };
-
-    const movementY =
-        upMovement.value && upMovement.durationMs < downMovement.durationMs
-            ? -upMovement.value
-            : downMovement.value && downMovement.durationMs < upMovement.durationMs
-              ? downMovement.value
-              : 0;
-
-    const movementX =
-        leftMovement.value && leftMovement.durationMs < rightMovement.durationMs
-            ? -leftMovement.value
-            : rightMovement.value && rightMovement.durationMs < leftMovement.durationMs
-              ? rightMovement.value
-              : 0;
-
-    const movement: Coords = {
-        x: movementX,
-        y: movementY,
-    };
-
-    const magnitude = Math.hypot(movement.x, movement.y);
-
-    if (magnitude > 0) {
-        const normalized: Coords = {
-            x: movement.x / magnitude,
-            y: movement.y / magnitude,
-        };
-        return {
-            x: normalized.x * msSinceLastUpdate * 0.4,
-            y: normalized.y * msSinceLastUpdate * 0.4,
-        };
-    }
-
-    return undefined;
 }
 
 const myGame = defineAnthaMod<typeof StateType>({

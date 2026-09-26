@@ -2,7 +2,8 @@ import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {wait} from '@augment-vir/common';
 import {describe, it, itCases, testWeb} from '@augment-vir/test';
 import {extractNavEntry, NavController} from 'device-navigation';
-import {AnthaKeyboard, AnthaKeyboardSpecialKey, handleKeyPress} from './antha-keyboard.element.js';
+import {AnthaKeyboardSpecialKey} from './antha-keyboard-layout.js';
+import {AnthaKeyboard, handleKeyPress} from './antha-keyboard.element.js';
 
 /** Stripped of newlines this becomes `'X Y Z'` (length 5). */
 const fakeClipboardText = 'X\nY\rZ';

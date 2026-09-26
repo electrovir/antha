@@ -3,6 +3,7 @@ export * from './multiplayer-api/multiplayer-api.js';
 export * from './multiplayer-api/multiplayer-client.js';
 export * from './multiplayer-api/multiplayer-controller.js';
 export * from './multiplayer-api/multiplayer-socket-messages.js';
+export * from './multiplayer-api/p2p-multiplayer-controller.js';
 export * from './multiplayer-id.js';
 export * from './multiplayer-player-id.js';
 export * from './room-handler-server/mock-room-handler-server-api-client.js';

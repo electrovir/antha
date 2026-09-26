@@ -3,31 +3,26 @@ import {
     createNewRoom,
     type RoomInput,
 } from '@antha/multiplayer-core';
-import {MultiplayerControllerFrameEvent} from '@antha/multiplayer-p2p-lock-step';
 import {combineErrorMessages, log} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, defineElement, html, listen, nothing} from 'element-vir';
 import {ViraError} from 'vira';
 import {type AnthaDemo} from '../demo.js';
 import {
-    applyDemoCounterFrame,
     connectDemoCounterController,
     createDemoCounterController,
     initializeDemoMultiplayer,
-    syncDemoCounterState,
-    type DemoCounterInput,
+    listenToDemoCounter,
 } from '../util/multiplayer-transition.js';
 
 const roomSwitchingGameId = 'multiplayer-room-switching-demo';
-const roomAInitialCount = 100;
-const roomBInitialCount = 200;
 
 const DemoMultiplayerRoomSwitching = defineElement()({
     tagName: 'demo-multiplayer-room-switching',
     state() {
         return {
             apiClient: createMockRoomHandlerServerApiClient(),
-            cleanup: undefined as (() => void) | undefined,
+            cleanups: [] as (() => void)[],
             currentCount: 0,
             currentRoom: undefined as Readonly<RoomInput> | undefined,
             errorMessage: '',
@@ -42,9 +37,11 @@ const DemoMultiplayerRoomSwitching = defineElement()({
             roomA: createNewRoom({
                 roomName: 'Room A',
             }),
+            roomACount: 100,
             roomB: createNewRoom({
                 roomName: 'Room B',
             }),
+            roomBCount: 200,
             traveler: createDemoCounterController({
                 gameId: roomSwitchingGameId,
             }),
@@ -78,17 +75,41 @@ const DemoMultiplayerRoomSwitching = defineElement()({
     `,
     init({state, updateState}) {
         updateState({
-            cleanup: state.traveler.listen(
-                MultiplayerControllerFrameEvent<DemoCounterInput>,
-                ({detail}) => {
-                    updateState({
-                        currentCount: applyDemoCounterFrame({
-                            actions: detail.packets,
-                            state: state.currentCount,
-                        }),
-                    });
-                },
-            ),
+            cleanups: [
+                listenToDemoCounter({
+                    controller: state.traveler,
+                    getCount() {
+                        return state.currentCount;
+                    },
+                    setCount(currentCount) {
+                        updateState({
+                            currentCount,
+                        });
+                    },
+                }),
+                listenToDemoCounter({
+                    controller: state.hostA,
+                    getCount() {
+                        return state.roomACount;
+                    },
+                    setCount(roomACount) {
+                        updateState({
+                            roomACount,
+                        });
+                    },
+                }),
+                listenToDemoCounter({
+                    controller: state.hostB,
+                    getCount() {
+                        return state.roomBCount;
+                    },
+                    setCount(roomBCount) {
+                        updateState({
+                            roomBCount,
+                        });
+                    },
+                }),
+            ],
         });
 
         async function initializeRooms() {
@@ -110,10 +131,6 @@ const DemoMultiplayerRoomSwitching = defineElement()({
                     }),
                 ]);
                 await state.traveler.joinOrCreateRoom(state.roomA);
-                syncDemoCounterState({
-                    controller: state.hostA,
-                    count: roomAInitialCount,
-                });
                 updateState({
                     currentRoom: state.roomA,
                     isReady: true,
@@ -132,7 +149,9 @@ const DemoMultiplayerRoomSwitching = defineElement()({
         void initializeRooms();
     },
     cleanup({state}) {
-        state.cleanup?.();
+        state.cleanups.forEach((cleanup) => {
+            cleanup();
+        });
         state.hostA.destroy();
         state.hostB.destroy();
         state.traveler.destroy();
@@ -150,11 +169,6 @@ const DemoMultiplayerRoomSwitching = defineElement()({
 
             try {
                 await state.traveler.joinOrCreateRoom(room);
-                syncDemoCounterState({
-                    controller: room.roomId === state.roomA.roomId ? state.hostA : state.hostB,
-                    count:
-                        room.roomId === state.roomA.roomId ? roomAInitialCount : roomBInitialCount,
-                });
                 updateState({
                     currentRoom: room,
                     isSwitching: false,
@@ -191,8 +205,8 @@ const DemoMultiplayerRoomSwitching = defineElement()({
                                   : `Connected to ${state.currentRoom?.roomName || 'unknown room'}`}
                           </strong>
                           <span>Client ID: ${state.traveler.getClientId() || 'pending...'}</span>
-                          <span>Room A state: ${roomAInitialCount}</span>
-                          <span>Room B state: ${roomBInitialCount}</span>
+                          <span>Room A state: ${state.roomACount}</span>
+                          <span>Room B state: ${state.roomBCount}</span>
                       </div>
                   `
                 : html`

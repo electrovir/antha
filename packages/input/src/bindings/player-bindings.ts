@@ -1,12 +1,11 @@
 import {getObjectTypedEntries, pickObjectKeys} from '@augment-vir/common';
-import {InputDeviceKey, type GamepadInputDeviceKey} from 'input-device-handler';
+import {GamepadInputDeviceKey, InputDeviceKey} from 'input-device-handler';
 import {
     defineShape,
     enumShape,
     nonEmptyStringShape,
     optionalShape,
     recordShape,
-    typedStringShape,
 } from 'object-shape-tester';
 import {InputDirection, type RawInput} from '../raw-inputs/raw-input.js';
 
@@ -58,11 +57,29 @@ export type BindingAssignment = {
 };
 
 /**
- * Starts at `'1'`.
+ * A local player slot.
  *
- * @category Internal
+ * @category Util
  */
-export type PlayerPosition = `${number}`;
+export enum PlayerPosition {
+    One = '1',
+    Two = '2',
+    Three = '3',
+    Four = '4',
+}
+
+/**
+ * The gamepad each {@link PlayerPosition} uses when none is specified, such as in
+ * `createDefaultLocalPlayerBindings`.
+ *
+ * @category Util
+ */
+export const defaultPlayerGamepads: Readonly<Record<PlayerPosition, GamepadInputDeviceKey>> = {
+    [PlayerPosition.One]: GamepadInputDeviceKey.Gamepad1,
+    [PlayerPosition.Two]: GamepadInputDeviceKey.Gamepad2,
+    [PlayerPosition.Three]: GamepadInputDeviceKey.Gamepad3,
+    [PlayerPosition.Four]: GamepadInputDeviceKey.Gamepad4,
+};
 
 /**
  * Shape definition for {@link BindingAssignment}.
@@ -85,7 +102,7 @@ export const bindingAssignmentShape = defineShape({
  * @category Internal
  */
 export const playersBindingAssignmentsShape = recordShape({
-    keys: typedStringShape<PlayerPosition>(),
+    keys: enumShape(PlayerPosition),
     partial: true,
     values: recordShape({
         keys: '',
@@ -110,9 +127,8 @@ export type BindingAssignments<BindingNames extends string = string> = Partial<
  *
  * @category Internal
  */
-export type PlayersBindingAssignments<BindingNames extends string = string> = Record<
-    PlayerPosition,
-    BindingAssignments<BindingNames>
+export type PlayersBindingAssignments<BindingNames extends string = string> = Partial<
+    Record<PlayerPosition, BindingAssignments<BindingNames>>
 >;
 
 /**
@@ -183,6 +199,21 @@ export type ActiveBinding = {
 };
 
 /**
+ * Marks `activeBinding`'s current press as acted upon so later consumers in the same hold ignore
+ * it. Does nothing when `activeBinding` is `undefined` or has already been acted upon.
+ *
+ * @category Util
+ */
+export function markBindingActed(activeBinding: ActiveBinding | undefined) {
+    if (!activeBinding || activeBinding.actCount) {
+        return;
+    }
+
+    activeBinding.actCount = 1;
+    activeBinding.lastActDuration = activeBinding.holdDuration;
+}
+
+/**
  * A collection of all active bindings for an individual player. Used in
  * `createAnthaReadBindingsMod` and {@link PlayersActiveBindings}.
  *
@@ -198,7 +229,6 @@ export type ActiveBindings<BindingNames extends string = string> = Partial<
  *
  * @category Internal
  */
-export type PlayersActiveBindings<BindingNames extends string = string> = Record<
-    PlayerPosition,
-    ActiveBindings<BindingNames>
+export type PlayersActiveBindings<BindingNames extends string = string> = Partial<
+    Record<PlayerPosition, ActiveBindings<BindingNames>>
 >;

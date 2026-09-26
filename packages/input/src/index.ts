@@ -8,6 +8,7 @@ export * from './bindings/antha-menu-state.mod.js';
 export * from './bindings/directional-input.js';
 export * from './bindings/local-player-bindings.js';
 export * from './bindings/player-bindings.js';
+export * from './elements/antha-keyboard-layout.js';
 export * from './elements/antha-keyboard.element.js';
 export * from './raw-inputs/antha-raw-input-debug.element.js';
 export * from './raw-inputs/antha-read-raw-input.mod.js';

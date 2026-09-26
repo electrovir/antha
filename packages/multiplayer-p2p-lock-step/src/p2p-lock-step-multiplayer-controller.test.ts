@@ -964,6 +964,8 @@ describe(P2pLockStepMultiplayerController.name, () => {
         /** Paused: the state sync hasn't been sent yet. */
         controller.runFrame();
         const sentFramesWhilePaused = fakeConnection.sentMessages.length;
+        controller.countAppliedFrame();
+        controller.countAppliedFrame();
         controller.sendStateSync({
             count: 3,
         });
@@ -980,6 +982,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                     {
                         clientId: memberClientId,
                         message: {
+                            frameCount: 2,
                             isSynchronizationFrame: true,
                             packets: [],
                             stateSync: {
@@ -1026,6 +1029,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
 
         function receiveFrame(
             frameMessage: PartialWithUndefined<{
+                frameCount: number;
                 isSynchronizationFrame: boolean;
                 shouldReportNextFrameHash: boolean;
                 stateHash: number;
@@ -1076,7 +1080,9 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 }),
             ),
         );
+        controller.countAppliedFrame();
         receiveFrame({
+            frameCount: 42,
             isSynchronizationFrame: true,
             stateSync: 'host state',
         });
@@ -1084,6 +1090,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
 
         assert.deepEquals(
             {
+                frameCount: controller.frameCount,
                 desyncCount,
                 isAwaitingAfterDesync,
                 isAwaitingAfterSync: controller.awaitingStateSync,
@@ -1093,6 +1100,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 stateSyncs,
             },
             {
+                frameCount: 42,
                 desyncCount: 1,
                 isAwaitingAfterDesync: true,
                 isAwaitingAfterSync: false,
@@ -1438,6 +1446,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
 
         controller.setRoomConnectionForTest(previousConnection);
         controller.setFrameTickReadyForTest(false);
+        controller.countAppliedFrame();
         controller.roomController.joinOrCreateRoom = () => {
             controller.roomController.currentConnection = nextConnection;
 
@@ -1448,10 +1457,12 @@ describe(P2pLockStepMultiplayerController.name, () => {
 
         assert.deepEquals(
             {
+                frameCount: controller.frameCount,
                 nextConnectionMessages: nextConnection.sentMessages,
                 roomConnection: controller.roomConnectionForTest,
             },
             {
+                frameCount: 0,
                 nextConnectionMessages: [
                     {
                         actions: [],
@@ -1462,6 +1473,16 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 roomConnection: nextConnection,
             },
         );
+    });
+
+    it('resets the frame count when singleplayer starts', () => {
+        const controller = createController();
+
+        controller.countAppliedFrame();
+        controller.startSingleplayer();
+
+        assert.strictEquals(controller.frameCount, 0);
+        controller.destroy();
     });
 
     it('preserves room connection on join failures while connected', async () => {

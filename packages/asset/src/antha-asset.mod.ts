@@ -11,12 +11,6 @@ import {
     type AnthaVirtualViewportState,
 } from './virtual-viewport.js';
 
-export {
-    AnthaAssetLoadingScreen,
-    defaultLoadingScreenFadeMs,
-    loadingScreenProgressGrowMs,
-} from './antha-asset-loading-screen.element.js';
-
 /**
  * State for {@link AnthaAssetMod}.
  *

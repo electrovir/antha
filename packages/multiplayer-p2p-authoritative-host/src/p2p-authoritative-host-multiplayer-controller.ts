@@ -1,33 +1,19 @@
 import {
-    type ApiAndRoomConnectionState,
     type ClientId,
     createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
-    MultiplayerControllerClientStatusEvent,
     MultiplayerControllerConnectionEvent,
-    MultiplayerControllerMessageEvent,
-    MultiplayerControllerRoomListEvent,
-    type MultiplayerControllerRoomListListener,
-    type MultiplayerInitParams,
     type MultiplayerRoomConnection,
-    MultiplayerRoomController,
+    P2pMultiplayerController,
+    type P2pMultiplayerControllerParams,
+    type P2pMultiplayerControllerRoomEvents,
     type RoomInput,
-    RoomRejectionError,
     type SocketMessageId,
 } from '@antha/multiplayer-core';
 import {assertWrap, waitUntil} from '@augment-vir/assert';
-import {
-    type JsonCompatibleValue,
-    type MaybePromise,
-    type PartialWithUndefined,
-} from '@augment-vir/common';
-import {
-    defineTypedCustomEvent,
-    ListenTarget,
-    type RemoveListenerCallback,
-    type TypedCustomEventInit,
-} from 'typed-event-target';
+import {type JsonCompatibleValue, type PartialWithUndefined} from '@augment-vir/common';
+import {defineTypedCustomEvent, type TypedCustomEventInit} from 'typed-event-target';
 
 /**
  * Message type for {@link P2pAuthoritativeHostMessage}.
@@ -132,31 +118,10 @@ export type P2pAuthoritativeHostGameDefinition<
 export type P2pAuthoritativeHostMultiplayerControllerParams<
     Input extends JsonCompatibleValue,
     MultiplayerGameState extends JsonCompatibleValue,
-> = {
-    /**
-     * A unique string id that represents your game so that your lobby server can serve multiple
-     * games at once. Your lobby server will need to know this game id ahead of time and match it to
-     * your frontend's origin.
-     */
-    gameId: string;
-} & P2pAuthoritativeHostGameDefinition<Input, MultiplayerGameState> &
-    PartialWithUndefined<{
-        /**
-         * This is fired when a WebRTC peer attempts to connect to the host client. Return `true` to
-         * accept the connection. Return `false` to reject it.
-         *
-         * @default accept all connections
-         */
-        acceptConnection?:
-            | ((
-                  connectingClientId: ClientId,
-                  multiplayerController: P2pAuthoritativeHostMultiplayerController<
-                      Input,
-                      MultiplayerGameState
-                  >,
-              ) => MaybePromise<boolean>)
-            | undefined;
-    }>;
+> = P2pMultiplayerControllerParams<
+    P2pAuthoritativeHostMultiplayerController<Input, MultiplayerGameState>
+> &
+    P2pAuthoritativeHostGameDefinition<Input, MultiplayerGameState>;
 
 /**
  * This is fired whenever the local authoritative-host state view updates.
@@ -188,9 +153,7 @@ export type AllP2pAuthoritativeHostMultiplayerControllerEvents<
     MultiplayerGameState extends JsonCompatibleValue,
 > =
     | MultiplayerControllerStateEvent<MultiplayerGameState, Input>
-    | MultiplayerControllerRoomListEvent
-    | MultiplayerControllerClientStatusEvent
-    | MultiplayerControllerConnectionEvent;
+    | P2pMultiplayerControllerRoomEvents;
 
 /**
  * An all-in-one controller for singleplayer or p2p-authoritative-host multiplayer game state.
@@ -200,7 +163,8 @@ export type AllP2pAuthoritativeHostMultiplayerControllerEvents<
 export class P2pAuthoritativeHostMultiplayerController<
     Input extends JsonCompatibleValue = any,
     MultiplayerGameState extends JsonCompatibleValue = any,
-> extends ListenTarget<
+> extends P2pMultiplayerController<
+    P2pAuthoritativeHostMessage<Input, MultiplayerGameState>,
     AllP2pAuthoritativeHostMultiplayerControllerEvents<Input, MultiplayerGameState>
 > {
     /** All events emitted by this controller. */
@@ -210,23 +174,9 @@ export class P2pAuthoritativeHostMultiplayerController<
     /** All events emitted by this controller. */
     public readonly events = P2pAuthoritativeHostMultiplayerController.events;
 
-    public static readonly knownErrors = {
-        RoomRejectionError,
-    };
-    public readonly knownErrors = P2pAuthoritativeHostMultiplayerController.knownErrors;
-
-    /** Core multiplayer room controller that owns API, room polling, signaling, and transport. */
-    public readonly roomController: MultiplayerRoomController<
-        P2pAuthoritativeHostMessage<Input, MultiplayerGameState>
-    >;
-    protected readonly localClientId = createMultiplayerId.client();
-    protected roomConnection:
-        | MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>
-        | undefined;
     protected currentState: MultiplayerGameState;
     protected currentSequence = 0;
     protected pendingStateSyncId: SocketMessageId | undefined;
-    protected singleplayer = false;
 
     constructor(
         protected readonly params: P2pAuthoritativeHostMultiplayerControllerParams<
@@ -234,126 +184,17 @@ export class P2pAuthoritativeHostMultiplayerController<
             MultiplayerGameState
         >,
     ) {
-        super();
+        super(params);
         this.currentState = params.createInitialState();
-        this.roomController = new MultiplayerRoomController<
-            P2pAuthoritativeHostMessage<Input, MultiplayerGameState>
-        >({
-            gameId: params.gameId,
-            clientId: this.localClientId,
-            prepareConnection: async (connection) => {
-                await this.prepareRoomConnection(connection);
-            },
-            acceptConnection: params.acceptConnection
-                ? (connectingClientId) => {
-                      return params.acceptConnection?.(connectingClientId, this) ?? true;
-                  }
-                : undefined,
-        });
-        this.listenToRoomController();
     }
 
-    /** Current p2p-authoritative-host connection, exposed for compatibility checks. */
-    public get currentConnection(): this | undefined {
-        return this.isConnected() ? this : undefined;
-    }
-
-    /** The current client id. */
-    public get clientId(): ClientId {
-        return this.roomConnection?.clientId || this.localClientId;
-    }
-
-    /**
-     * Listen for room list updates, including while connected to a room.
-     *
-     * If a callback is provided, it is called each time the room list is updated.
-     */
-    public startRoomUpdates(
-        callback: MultiplayerControllerRoomListListener,
-    ): RemoveListenerCallback;
-    public startRoomUpdates(callback?: undefined): undefined;
-    public startRoomUpdates(
-        callback?: MultiplayerControllerRoomListListener | undefined,
-    ): RemoveListenerCallback | undefined;
-    public startRoomUpdates(
-        callback?: MultiplayerControllerRoomListListener | undefined,
-    ): RemoveListenerCallback | undefined {
-        return this.roomController.startRoomUpdates(callback);
-    }
-
-    /** Turn off room list updates and remove callbacks added via `startRoomUpdates`. */
-    public stopRoomUpdates() {
-        this.roomController.stopRoomUpdates();
-    }
-
-    /** Currently joined room id. If a room has not been joined yet, this will be empty. */
-    public get roomId() {
-        return this.roomController.roomId;
-    }
-
-    /** The current connection state of the controller's connection to a backend API. */
-    public get apiConnectionState(): ApiAndRoomConnectionState['api'] {
-        return this.roomController.apiConnectionState;
-    }
-
-    /** The current connection state of the controller's connection to a multiplayer room. */
-    public get roomConnectionState(): ApiAndRoomConnectionState['room'] {
-        return this.roomController.roomConnectionState;
-    }
-
-    /** The current multiplayer API client. This will be `undefined` if playing in single player. */
-    public get multiplayerApiClient() {
-        return this.roomController.multiplayerApiClient;
-    }
-
-    /**
-     * Get the current client's WebRTC client id. This will return `undefined` if there is no
-     * current connection.
-     */
-    public getClientId(): ClientId | undefined {
-        if (this.singleplayer) {
-            return this.localClientId;
-        }
-
-        return this.roomConnection?.clientId || this.roomController.getClientId();
-    }
-
-    /**
-     * Get all connected client ids.
-     *
-     * - For host clients, this indicates how many member clients are connected to the host client,
-     *   _not_ including the host itself.
-     * - For non-host clients, this only lists the local connection used to reach the host.
-     */
-    public getConnectedClientIds(): ClientId[] {
-        return this.roomConnection?.getConnectedClientIds() || [];
-    }
-
-    /**
-     * Get all room client ids.
-     *
-     * - For host clients, this indicates how many clients are connected to the room, including the
-     *   host client itself.
-     * - For non-host clients, this includes the member client and the host client once connected.
-     */
-    public getAllClientIds(): ClientId[] {
-        if (this.singleplayer) {
-            return [
-                this.localClientId,
-            ];
-        }
-
-        return this.roomConnection?.getAllClientIds() || [];
+    protected override shouldAcceptConnection(connectingClientId: ClientId) {
+        return this.params.acceptConnection?.(connectingClientId, this) ?? true;
     }
 
     /** Get the latest local state view. */
     public getState(): MultiplayerGameState {
         return this.currentState;
-    }
-
-    /** Initialize multiplayer API access without opening a room or starting host pings. */
-    public async initMultiplayer(params: Readonly<MultiplayerInitParams>) {
-        await this.roomController.initMultiplayer(params);
     }
 
     /** Start local play without contacting the multiplayer API. This can later open into a room. */
@@ -407,24 +248,6 @@ export class P2pAuthoritativeHostMultiplayerController<
         );
     }
 
-    /** Detects if this controller is the room host or not. */
-    public isHost(): boolean {
-        return this.singleplayer || this.roomConnection?.isHost() || false;
-    }
-
-    /** Detects if this controller is connected to a room or not. */
-    public isConnected(): boolean {
-        return this.singleplayer || this.roomConnection?.isConnected() || false;
-    }
-
-    /** Cleanup everything. */
-    public override destroy() {
-        this.roomConnection = undefined;
-        this.singleplayer = false;
-        this.roomController.destroy();
-        super.destroy();
-    }
-
     /** Join or create a room. */
     public async joinOrCreateRoom(room: Readonly<RoomInput>) {
         const roomConnection = await this.joinRoom(room);
@@ -443,38 +266,6 @@ export class P2pAuthoritativeHostMultiplayerController<
         return this.roomController.currentConnection;
     }
 
-    /** Leave the current room or single player connection. */
-    public leaveRoom() {
-        if (!this.currentConnection) {
-            return;
-        }
-
-        this.roomConnection = undefined;
-        this.singleplayer = false;
-        this.roomController.leaveRoom();
-    }
-
-    /** Forward core room-controller events into this state-sync controller. */
-    protected listenToRoomController() {
-        this.roomController.listen(MultiplayerControllerRoomListEvent, (event) => {
-            this.dispatch(event);
-        });
-        this.roomController.listen(MultiplayerControllerConnectionEvent, (event) => {
-            this.dispatch(event);
-        });
-        this.roomController.listen(MultiplayerControllerClientStatusEvent, (event) => {
-            this.dispatch(event);
-        });
-        this.roomController.listen(
-            MultiplayerControllerMessageEvent<
-                P2pAuthoritativeHostMessage<Input, MultiplayerGameState>
-            >,
-            (event) => {
-                this.handleReceivedMessage(event.sourceClientId, event.detail);
-            },
-        );
-    }
-
     /** Attach an established room transport and publish the current state view. */
     protected attachMultiplayerRoomConnection(
         roomConnection: Readonly<
@@ -490,7 +281,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     }
 
     /** Apply received inputs on the host or received state snapshots on member clients. */
-    protected handleReceivedMessage(
+    protected override handleReceivedMessage(
         sourceClientId: ClientId,
         message: Readonly<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>,
     ) {
@@ -541,7 +332,7 @@ export class P2pAuthoritativeHostMultiplayerController<
     }
 
     /** Attach and synchronize a candidate room before the core controller commits to it. */
-    protected async prepareRoomConnection(
+    protected override async prepareRoomConnection(
         roomConnection: Readonly<
             MultiplayerRoomConnection<P2pAuthoritativeHostMessage<Input, MultiplayerGameState>>
         >,

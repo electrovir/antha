@@ -8,6 +8,7 @@ import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
     AnyGamepad,
     type BindingAssignments,
+    markBindingActed,
     type PlayerPosition,
     type PlayersActiveBindings,
 } from './player-bindings.js';
@@ -494,14 +495,7 @@ function consumeInactiveMenuActivationBindings({
                 MenuNavBinding.MenuEnter,
                 MenuNavBinding.MenuExit,
             ].forEach((bindingName) => {
-                const activeBinding = playerActiveBindings[bindingName];
-
-                if (!activeBinding || activeBinding.actCount) {
-                    return;
-                }
-
-                activeBinding.actCount++;
-                activeBinding.lastActDuration = activeBinding.holdDuration;
+                markBindingActed(playerActiveBindings[bindingName]);
             });
         },
     );

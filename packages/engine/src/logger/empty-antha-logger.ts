@@ -12,8 +12,9 @@ export const baseEmptyAnthaLogger: BaseAnthaLogger = {
 };
 
 /**
- * A pre-built {@link AnthaLogger} that simply logs everything to the browser's console. This is the
- * default logger in `AnthaEngine`.
+ * A pre-built {@link AnthaLogger} that discards every log, including those made through `.if()`.
+ * Pass it as the `logger` option to silence `AnthaEngine`, which otherwise defaults to
+ * `browserAnthaLogger`.
  *
  * @category Logger
  */

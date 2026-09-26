@@ -246,7 +246,6 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         });
         const mod = createAnthaMultiplayerP2pLockStepMod<string>();
         const state: Partial<TestEngineState> = {
-            multiplayerLockstepTick: 0,
             multiplayerP2pLockStep: {
                 connectionState: emptyApiAndRoomConnectionState,
                 multiplayerController,
@@ -273,7 +272,7 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             state,
         });
 
-        assert.strictEquals(state.multiplayerLockstepTick, 0);
+        assert.strictEquals(multiplayerController.frameCount, 0);
         multiplayerController.destroy();
     });
 
@@ -282,7 +281,6 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             gameId: 'lock-step-event-removal-test',
         });
         const state: Partial<ClientEventTestEngineState> = {
-            multiplayerLockstepTick: 0,
             multiplayerP2pLockStep: {
                 connectionState: emptyApiAndRoomConnectionState,
                 multiplayerController,
@@ -322,10 +320,18 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             state,
         });
 
-        assert.deepEquals(state, {
-            multiplayerLockstepTick: 0,
-            statusHandlerCount: 1,
-        });
+        assert.deepEquals(
+            {
+                frameCount: multiplayerController.frameCount,
+                state,
+            },
+            {
+                frameCount: 0,
+                state: {
+                    statusHandlerCount: 1,
+                },
+            },
+        );
 
         multiplayerController.destroy();
     });
@@ -399,12 +405,12 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
 
         assert.deepEquals(
             {
-                multiplayerLockstepTick: engine.state.multiplayerLockstepTick,
+                frameCount: multiplayerController.frameCount,
                 receivedAmounts: engine.state.receivedAmounts,
                 simulationTicks: engine.state.simulationTicks,
             },
             {
-                multiplayerLockstepTick: 2,
+                frameCount: 2,
                 receivedAmounts: [
                     1,
                     2,

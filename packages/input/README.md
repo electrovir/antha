@@ -19,6 +19,7 @@ import {
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
     InputDirection,
+    PlayerPosition,
 } from '@antha/input';
 
 enum GameAction {
@@ -30,7 +31,7 @@ type GameState = AnthaInputBindingsModState<GameAction>;
 const engine = new AnthaEngine<GameState>({
     initState: {
         bindingAssignments: {
-            '1': {
+            [PlayerPosition.One]: {
                 [GameAction.Jump]: [
                     {
                         deviceKey: 'keyboard',
@@ -47,7 +48,7 @@ const engine = new AnthaEngine<GameState>({
         defineAnthaMod<GameState>({
             modName: 'game-logic',
             execute({state}) {
-                const jump = state.activeBindings?.['1']?.[GameAction.Jump];
+                const jump = state.activeBindings?.[PlayerPosition.One]?.[GameAction.Jump];
 
                 return jump?.value ? `Jump strength: ${jump.value}` : undefined;
             },

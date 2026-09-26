@@ -3,6 +3,7 @@ import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {AnthaBindingAssignmentsDebug} from './antha-binding-assignments-debug.element.js';
+import {PlayerPosition} from './player-bindings.js';
 
 describe(AnthaBindingAssignmentsDebug.tagName, () => {
     it('renders with undefined binding assignments', async () => {
@@ -21,7 +22,7 @@ describe(AnthaBindingAssignmentsDebug.tagName, () => {
         const fixture = await testWeb.render(html`
             <${AnthaBindingAssignmentsDebug.assign({
                 bindingAssignments: {
-                    '1': {
+                    [PlayerPosition.One]: {
                         moveUp: [
                             {
                                 deviceKey: 'keyboard',
@@ -43,7 +44,7 @@ describe(AnthaBindingAssignmentsDebug.tagName, () => {
         const fixture = await testWeb.render(html`
             <${AnthaBindingAssignmentsDebug.assign({
                 bindingAssignments: {
-                    '1': {
+                    [PlayerPosition.One]: {
                         moveUp: [
                             {
                                 deviceKey: '0',

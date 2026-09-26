@@ -1,11 +1,12 @@
 import {KnownInput} from '@antha/gamepad-type';
 import {assert, assertWrap} from '@augment-vir/assert';
-import {getObjectTypedValues} from '@augment-vir/common';
+import {getObjectTypedEntries, getObjectTypedValues} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {GamepadInputDeviceKey} from 'input-device-handler';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {MenuNavBinding} from './antha-menu-nav.mod.js';
 import {createDefaultLocalPlayerBindings} from './local-player-bindings.js';
+import {PlayerPosition} from './player-bindings.js';
 
 enum PlayerAction {
     Down = 'move-down',
@@ -24,11 +25,11 @@ const directionalBindingNames = {
 const playerGamepads = [
     {
         gamepadDeviceKey: GamepadInputDeviceKey.Gamepad1,
-        playerPosition: '1',
+        playerPosition: PlayerPosition.One,
     },
     {
         gamepadDeviceKey: GamepadInputDeviceKey.Gamepad2,
-        playerPosition: '2',
+        playerPosition: PlayerPosition.Two,
     },
 ] as const;
 
@@ -38,8 +39,8 @@ describe(createDefaultLocalPlayerBindings.name, () => {
             directionalBindingNames,
             playerGamepads,
         });
-        const playerOneBindings = assertWrap.isDefined(bindingAssignments['1']);
-        const playerTwoBindings = assertWrap.isDefined(bindingAssignments['2']);
+        const playerOneBindings = assertWrap.isDefined(bindingAssignments[PlayerPosition.One]);
+        const playerTwoBindings = assertWrap.isDefined(bindingAssignments[PlayerPosition.Two]);
         const playerTwoMenuEnterBindings = assertWrap.isDefined(
             playerTwoBindings[MenuNavBinding.MenuEnter],
         );
@@ -88,5 +89,45 @@ describe(createDefaultLocalPlayerBindings.name, () => {
             .flat();
 
         assert.isFalse(allAssignments.some(({deviceKey}) => deviceKey === 'keyboard'));
+    });
+
+    it('defaults each player to their own gamepad', () => {
+        const bindingAssignments = createDefaultLocalPlayerBindings({
+            directionalBindingNames,
+        });
+
+        assert.deepEquals(
+            getObjectTypedEntries(bindingAssignments).map(
+                ([
+                    playerPosition,
+                    playerBindings,
+                ]) => {
+                    return [
+                        playerPosition,
+                        playerBindings[PlayerAction.Up]?.find(
+                            ({deviceKey}) => deviceKey !== 'keyboard',
+                        )?.deviceKey,
+                    ];
+                },
+            ),
+            [
+                [
+                    PlayerPosition.One,
+                    GamepadInputDeviceKey.Gamepad1,
+                ],
+                [
+                    PlayerPosition.Two,
+                    GamepadInputDeviceKey.Gamepad2,
+                ],
+                [
+                    PlayerPosition.Three,
+                    GamepadInputDeviceKey.Gamepad3,
+                ],
+                [
+                    PlayerPosition.Four,
+                    GamepadInputDeviceKey.Gamepad4,
+                ],
+            ],
+        );
     });
 });

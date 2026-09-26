@@ -7,6 +7,7 @@ import {
     MenuNavBinding,
     type MenuNavModState,
 } from './antha-menu-nav.mod.js';
+import {markBindingActed} from './player-bindings.js';
 
 /**
  * Menu navigation state whose return path lists parent menus from the outermost to the nearest.
@@ -29,10 +30,22 @@ export type AnthaMenuStateModState<MenuKey extends string = string> = MenuNavMod
     };
 
 /**
+ * The menu state with no menu open.
+ *
+ * @category Util
+ */
+export function closeAnthaMenus<MenuKey extends string>(): AnthaMenuState<MenuKey> {
+    return {
+        activeMenu: undefined,
+        returnTo: [],
+    };
+}
+
+/**
  * Returns to the nearest parent menu and removes it from the path, or closes menu mode when the
  * path is empty.
  *
- * @category Internal
+ * @category Util
  */
 export function popAnthaMenuState<MenuKey extends string>(
     currentState: Readonly<AnthaMenuState<MenuKey>> | undefined,
@@ -47,7 +60,7 @@ export function popAnthaMenuState<MenuKey extends string>(
  * Opens `submenu` and appends the current menu to the return path so backing out of `submenu`
  * returns to it. When no menu is open, `submenu` opens with an empty return path.
  *
- * @category Internal
+ * @category Util
  */
 export function pushAnthaMenuState<MenuKey extends string>(
     currentState: Readonly<AnthaMenuState<MenuKey>> | undefined,
@@ -65,7 +78,7 @@ export function pushAnthaMenuState<MenuKey extends string>(
 /**
  * Resolves pause and back inputs into a menu-state transition.
  *
- * @category Internal
+ * @category Util
  */
 export function getAnthaMenuStateForNavigation<MenuKey extends string>({
     menuExitWasTriggered,
@@ -159,12 +172,7 @@ export function createAnthaMenuStateMod<
                               [
                                   openPauseMenuBinding,
                                   menuExitBinding,
-                              ].forEach((menuBinding) => {
-                                  if (menuBinding && !menuBinding.actCount) {
-                                      menuBinding.actCount = 1;
-                                      menuBinding.lastActDuration = menuBinding.holdDuration;
-                                  }
-                              });
+                              ].forEach(markBindingActed);
 
                               return nextMenuState;
                           },

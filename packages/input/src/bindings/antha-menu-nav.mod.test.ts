@@ -11,7 +11,7 @@ import {
     type NavigationInputs,
 } from 'device-navigation';
 import {createAnthaMenuNavMod, MenuNavBinding, type MenuNavModState} from './antha-menu-nav.mod.js';
-import {type ActiveBinding, type PlayersActiveBindings} from './player-bindings.js';
+import {PlayerPosition, type ActiveBinding, type PlayersActiveBindings} from './player-bindings.js';
 
 type RecordingNavController = NavController & {
     calls: string[];
@@ -179,15 +179,15 @@ describe(createAnthaMenuNavMod.name, () => {
 
         await runMenuNav({
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuRight]: allowedBinding,
                 },
-                '2': {
+                [PlayerPosition.Two]: {
                     [MenuNavBinding.MenuLeft]: deniedBinding,
                 },
             },
             allowedPlayerMenuNavigation: {
-                '1': true,
+                [PlayerPosition.One]: true,
             },
             navController,
         });
@@ -218,12 +218,12 @@ describe(createAnthaMenuNavMod.name, () => {
         });
         const {engine} = await runMenuNav({
             activeBindings: {
-                '2': {
+                [PlayerPosition.Two]: {
                     [MenuNavBinding.MenuEnter]: deniedEnterBinding,
                 },
             },
             allowedPlayerMenuNavigation: {
-                '1': true,
+                [PlayerPosition.One]: true,
             },
             isInMenu: false,
             navController,
@@ -252,7 +252,7 @@ describe(createAnthaMenuNavMod.name, () => {
 
         const {engine} = await runMenuNav({
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuRight]: createActiveBinding(),
                 },
             },
@@ -294,7 +294,7 @@ describe(createAnthaMenuNavMod.name, () => {
 
         engine.state.isInMenu = true;
         engine.state.activeBindings = {
-            '1': {
+            [PlayerPosition.One]: {
                 [MenuNavBinding.MenuRight]: {
                     holdDuration: {
                         milliseconds: 120,
@@ -312,7 +312,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await engine.runSingleTick();
 
         const activeBinding = assertWrap.isDefined(
-            engine.state.activeBindings['1']?.[MenuNavBinding.MenuRight],
+            engine.state.activeBindings[PlayerPosition.One]?.[MenuNavBinding.MenuRight],
         );
 
         assert.deepEquals(activeBinding, {
@@ -362,7 +362,7 @@ describe(createAnthaMenuNavMod.name, () => {
                 isInMenu: true,
                 navController,
                 activeBindings: {
-                    '1': {
+                    [PlayerPosition.One]: {
                         [MenuNavBinding.MenuRight]: {
                             holdDuration: {
                                 milliseconds: 0,
@@ -395,7 +395,7 @@ describe(createAnthaMenuNavMod.name, () => {
             isInMenu: false,
             navController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuEnter]: createActiveBinding(),
                 },
             },
@@ -426,7 +426,7 @@ describe(createAnthaMenuNavMod.name, () => {
             isInMenu: false,
             navController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuEnter]: enterBinding,
                     [MenuNavBinding.MenuExit]: exitBinding,
                 },
@@ -465,7 +465,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     other: createActiveBinding(),
                 },
             },
@@ -479,7 +479,7 @@ describe(createAnthaMenuNavMod.name, () => {
         const engine = new AnthaEngine<MenuNavModState>({
             initState: {
                 activeBindings: {
-                    '1': {
+                    [PlayerPosition.One]: {
                         [MenuNavBinding.MenuRight]: createActiveBinding({
                             value: 0.79,
                         }),
@@ -503,7 +503,7 @@ describe(createAnthaMenuNavMod.name, () => {
         const engine = new AnthaEngine<MenuNavModState>({
             initState: {
                 activeBindings: {
-                    '1': {
+                    [PlayerPosition.One]: {
                         [MenuNavBinding.MenuRight]: createActiveBinding({
                             actCount: 1,
                             holdDurationMs: 600,
@@ -533,7 +533,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuRight]: activeBinding,
                 },
             },
@@ -565,7 +565,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuRight]: activeBinding,
                 },
             },
@@ -606,7 +606,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: enterNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuEnter]: enterBinding,
                 },
             },
@@ -614,7 +614,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: exitNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuExit]: exitBinding,
                 },
             },
@@ -659,7 +659,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: enterNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuEnter]: createActiveBinding(),
                     [MenuNavBinding.MenuRight]: createActiveBinding(),
                 },
@@ -668,7 +668,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: exitNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuExit]: createActiveBinding(),
                     [MenuNavBinding.MenuRight]: createActiveBinding(),
                 },
@@ -719,7 +719,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuRight]: createActiveBinding(),
                 },
             },
@@ -739,7 +739,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: nextNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuSectionNext]: createActiveBinding(),
                 },
             },
@@ -747,7 +747,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: previousNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuSectionPrevious]: createActiveBinding(),
                 },
             },
@@ -755,7 +755,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: bothNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuSectionNext]: createActiveBinding(),
                     [MenuNavBinding.MenuSectionPrevious]: createActiveBinding(),
                 },
@@ -788,7 +788,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: upRightNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuUp]: createActiveBinding(),
                     [MenuNavBinding.MenuRight]: createActiveBinding(),
                 },
@@ -797,7 +797,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: downLeftNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuDown]: createActiveBinding(),
                     [MenuNavBinding.MenuLeft]: createActiveBinding(),
                 },
@@ -806,7 +806,7 @@ describe(createAnthaMenuNavMod.name, () => {
         await runMenuNav({
             navController: opposedNavController,
             activeBindings: {
-                '1': {
+                [PlayerPosition.One]: {
                     [MenuNavBinding.MenuUp]: createActiveBinding(),
                     [MenuNavBinding.MenuDown]: createActiveBinding(),
                     [MenuNavBinding.MenuLeft]: createActiveBinding(),

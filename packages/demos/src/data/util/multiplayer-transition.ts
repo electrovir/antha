@@ -1,12 +1,14 @@
 import {type MultiplayerApiClient, type RoomInput} from '@antha/multiplayer-core';
 import {
+    MultiplayerControllerFrameEvent,
+    MultiplayerControllerStateSyncEvent,
     type MultiplayerFramePacket,
     P2pLockStepMultiplayerController,
 } from '@antha/multiplayer-p2p-lock-step';
+import {assertWrap} from '@augment-vir/assert';
 
 export type DemoCounterInput = {
     increment: number;
-    state?: number | undefined;
 };
 
 export type DemoCounterController = P2pLockStepMultiplayerController<DemoCounterInput>;
@@ -19,21 +21,53 @@ export function applyDemoCounterFrame({
     state: number;
 }>) {
     return actions.reduce((currentCount, {packet}) => {
-        return packet.state ?? currentCount + packet.increment;
+        return currentCount + packet.increment;
     }, state);
 }
 
-export function syncDemoCounterState({
+/**
+ * Applies each frame to the count, sends the count to joining clients when hosting, and loads the
+ * host's count after joining a room. Returns a callback that removes the listeners.
+ */
+export function listenToDemoCounter({
     controller,
-    count,
+    getCount,
+    setCount,
 }: Readonly<{
     controller: DemoCounterController;
-    count: number;
+    getCount: () => number;
+    setCount: (count: number) => void;
 }>) {
-    controller.act({
-        increment: 0,
-        state: count,
-    });
+    const removeFrameListener = controller.listen(
+        MultiplayerControllerFrameEvent<DemoCounterInput>,
+        ({detail}) => {
+            if (controller.awaitingStateSync) {
+                return;
+            }
+
+            const count = applyDemoCounterFrame({
+                actions: detail.packets,
+                state: getCount(),
+            });
+            setCount(count);
+
+            if (detail.shouldSendStateSync) {
+                controller.sendStateSync(count);
+            }
+        },
+    );
+    const removeStateSyncListener = controller.listen(
+        MultiplayerControllerStateSyncEvent,
+        ({detail}) => {
+            setCount(assertWrap.isNumber(detail.stateSync));
+            controller.finishStateSync();
+        },
+    );
+
+    return () => {
+        removeFrameListener();
+        removeStateSyncListener();
+    };
 }
 
 export function createDemoCounterController({
@@ -42,6 +76,7 @@ export function createDemoCounterController({
     gameId: string;
 }>) {
     return new P2pLockStepMultiplayerController<DemoCounterInput>({
+        enableStateSync: true,
         gameId,
     });
 }

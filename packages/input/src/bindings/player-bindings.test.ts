@@ -1,9 +1,15 @@
 import {assert} from '@augment-vir/assert';
+import {selectFrom} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {InputDeviceKey} from 'input-device-handler';
 import {checkValidShape} from 'object-shape-tester';
 import {InputDirection} from '../raw-inputs/raw-input.js';
-import {filterToAllowedActions, playersBindingAssignmentsShape} from './player-bindings.js';
+import {
+    filterToAllowedActions,
+    markBindingActed,
+    PlayerPosition,
+    playersBindingAssignmentsShape,
+} from './player-bindings.js';
 
 const testBindingAssignment = {
     deviceKey: InputDeviceKey.Keyboard,
@@ -16,7 +22,7 @@ describe('playersBindingAssignmentsShape', () => {
         assert.isTrue(
             checkValidShape(
                 {
-                    '1': {
+                    [PlayerPosition.One]: {
                         jump: [
                             {
                                 deviceKey: InputDeviceKey.Keyboard,
@@ -35,7 +41,7 @@ describe('playersBindingAssignmentsShape', () => {
         assert.isFalse(
             checkValidShape(
                 {
-                    '1': {
+                    [PlayerPosition.One]: {
                         customAction: [
                             {
                                 deviceKey: InputDeviceKey.Keyboard,
@@ -59,15 +65,75 @@ describe(filterToAllowedActions.name, () => {
                     'jump',
                 ],
                 bindingAssignments: {
-                    '1': {
+                    [PlayerPosition.One]: {
                         jump: [testBindingAssignment],
                         unsupportedAction: [testBindingAssignment],
                     },
                 },
             }),
             {
-                '1': {
+                [PlayerPosition.One]: {
                     jump: [testBindingAssignment],
+                },
+            },
+        );
+    });
+});
+
+describe(markBindingActed.name, () => {
+    it('marks an unused press as acted upon at its current hold duration', () => {
+        const activeBinding = {
+            actCount: 0,
+            holdDuration: {
+                milliseconds: 40,
+            },
+            lastActDuration: {
+                milliseconds: 0,
+            },
+            rawInputs: [],
+            value: 1,
+        };
+
+        markBindingActed(activeBinding);
+
+        assert.deepEquals(
+            selectFrom(activeBinding, {
+                actCount: true,
+                lastActDuration: true,
+            }),
+            {
+                actCount: 1,
+                lastActDuration: {
+                    milliseconds: 40,
+                },
+            },
+        );
+    });
+
+    it('leaves an already acted upon press alone', () => {
+        const activeBinding = {
+            actCount: 3,
+            holdDuration: {
+                milliseconds: 400,
+            },
+            lastActDuration: {
+                milliseconds: 300,
+            },
+            rawInputs: [],
+            value: 1,
+        };
+
+        markBindingActed(activeBinding);
+
+        assert.deepEquals(
+            selectFrom(activeBinding, {
+                actCount: true,
+                lastActDuration: true,
+            }),
+            {
+                actCount: 3,
+                lastActDuration: {
+                    milliseconds: 300,
                 },
             },
         );

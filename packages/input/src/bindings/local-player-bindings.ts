@@ -1,5 +1,5 @@
 import {KnownInput} from '@antha/gamepad-type';
-import {arrayToObject, mapObjectValues} from '@augment-vir/common';
+import {arrayToObject, getObjectTypedEntries, mapObjectValues} from '@augment-vir/common';
 import {type GamepadInputDeviceKey} from 'input-device-handler';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {defaultMenuNavBindings, type MenuNavBinding} from './antha-menu-nav.mod.js';
@@ -8,7 +8,8 @@ import {
     AnyGamepad,
     type BindingAssignment,
     type BindingAssignments,
-    type PlayerPosition,
+    defaultPlayerGamepads,
+    PlayerPosition,
     type PlayersBindingAssignments,
 } from './player-bindings.js';
 
@@ -191,27 +192,42 @@ function createMenuNavBindings({
 }
 
 /**
- * Builds per-slot gamepad movement and menu bindings. Keyboard controls default to slot `'1'`; set
- * `keyboardPlayerPosition` to `undefined` to disable them.
+ * Builds per-slot gamepad movement and menu bindings. `playerGamepads` defaults to
+ * {@link defaultPlayerGamepads} for all four players. Keyboard controls default to
+ * `PlayerPosition.One`; set `keyboardPlayerPosition` to `undefined` to disable them.
  *
  * @category Util
  */
 export function createDefaultLocalPlayerBindings<BindingName extends string>({
     directionalBindingNames,
-    playerGamepads,
+    playerGamepads = getObjectTypedEntries(defaultPlayerGamepads).map(
+        ([
+            playerPosition,
+            gamepadDeviceKey,
+        ]) => {
+            return {
+                playerPosition,
+                gamepadDeviceKey,
+            };
+        },
+    ),
     ...keyboardOptions
 }: Readonly<{
     directionalBindingNames: Readonly<DirectionalBindingNames<BindingName>>;
     keyboardPlayerPosition?: PlayerPosition | undefined;
-    playerGamepads: ReadonlyArray<
-        Readonly<{
-            playerPosition: PlayerPosition;
-            gamepadDeviceKey: GamepadInputDeviceKey;
-        }>
-    >;
+    playerGamepads?:
+        | ReadonlyArray<
+              Readonly<{
+                  playerPosition: PlayerPosition;
+                  gamepadDeviceKey: GamepadInputDeviceKey;
+              }>
+          >
+        | undefined;
 }>) {
     const keyboardPlayerPosition =
-        'keyboardPlayerPosition' in keyboardOptions ? keyboardOptions.keyboardPlayerPosition : '1';
+        'keyboardPlayerPosition' in keyboardOptions
+            ? keyboardOptions.keyboardPlayerPosition
+            : PlayerPosition.One;
 
     return playerGamepads.reduce<PlayersBindingAssignments<BindingName | MenuNavBinding>>(
         (playerBindingAssignments, {gamepadDeviceKey, playerPosition}) => {

@@ -11,15 +11,14 @@ import {
 } from '@augment-vir/common';
 import {html} from 'element-vir';
 import {type Shape} from 'object-shape-tester';
+import {EntityStore2d, type EntityStore2dConstructorParams} from './entity-store-2d.js';
 import {
     BaseEntity2d,
     entityPositionParamsShape,
-    EntityStore2d,
     reverseParamsMap,
     ViewEntity2d,
     type BaseEntityAssetDefinitions,
     type EntityCollisionDefinition,
-    type EntityStore2dConstructorParams,
     type ParamsMap,
     type StaticEntity2dParts,
 } from './entity.js';

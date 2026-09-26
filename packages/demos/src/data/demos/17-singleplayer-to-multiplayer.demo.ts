@@ -1,16 +1,13 @@
 import {createMockRoomHandlerServerApiClient, createNewRoom} from '@antha/multiplayer-core';
-import {MultiplayerControllerFrameEvent} from '@antha/multiplayer-p2p-lock-step';
 import {combineErrorMessages, log} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, defineElement, html, listen, nothing} from 'element-vir';
 import {ViraError} from 'vira';
 import {type AnthaDemo} from '../demo.js';
 import {
-    applyDemoCounterFrame,
     connectDemoCounterController,
     createDemoCounterController,
-    syncDemoCounterState,
-    type DemoCounterInput,
+    listenToDemoCounter,
 } from '../util/multiplayer-transition.js';
 
 const DemoSingleplayerToMultiplayer = defineElement()({
@@ -91,28 +88,28 @@ const DemoSingleplayerToMultiplayer = defineElement()({
     init({state, updateState}) {
         state.controller.startSingleplayer();
         updateState({
-            cleanup: state.controller.listen(
-                MultiplayerControllerFrameEvent<DemoCounterInput>,
-                ({detail}) => {
+            cleanup: listenToDemoCounter({
+                controller: state.controller,
+                getCount() {
+                    return state.count;
+                },
+                setCount(count) {
                     updateState({
-                        count: applyDemoCounterFrame({
-                            actions: detail.packets,
-                            state: state.count,
-                        }),
+                        count,
                     });
                 },
-            ),
-            joiningCleanup: state.joiningController.listen(
-                MultiplayerControllerFrameEvent<DemoCounterInput>,
-                ({detail}) => {
+            }),
+            joiningCleanup: listenToDemoCounter({
+                controller: state.joiningController,
+                getCount() {
+                    return state.joiningCount;
+                },
+                setCount(joiningCount) {
                     updateState({
-                        joiningCount: applyDemoCounterFrame({
-                            actions: detail.packets,
-                            state: state.joiningCount,
-                        }),
+                        joiningCount,
                     });
                 },
-            ),
+            }),
         });
     },
     cleanup({state}) {
@@ -169,10 +166,6 @@ const DemoSingleplayerToMultiplayer = defineElement()({
                     apiClient: state.apiClient,
                     controller: state.joiningController,
                     room: state.room,
-                });
-                syncDemoCounterState({
-                    controller: state.controller,
-                    count: state.count,
                 });
                 updateState({
                     hasJoined: true,
