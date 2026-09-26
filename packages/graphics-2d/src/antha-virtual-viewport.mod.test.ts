@@ -234,9 +234,8 @@ describe(createAnthaVirtualViewportMod.name, () => {
                 engine.state.virtualViewport,
                 hostElement.style.height,
                 hostElement.style.transform,
-                hostElement.style.transformOrigin.includes('top'),
-                hostElement.style.transformOrigin.includes('left'),
                 hostElement.style.width,
+                hostElement.style.zoom,
             ],
             [
                 {
@@ -244,11 +243,10 @@ describe(createAnthaVirtualViewportMod.name, () => {
                     scale: 0.5,
                     width: 2560,
                 },
-                '200%',
-                'scale(0.5)',
-                true,
-                true,
-                '200%',
+                '100%',
+                '',
+                '100%',
+                '0.5',
             ],
         );
 
@@ -259,8 +257,8 @@ describe(createAnthaVirtualViewportMod.name, () => {
                 engine.state.virtualViewport,
                 hostElement.style.height,
                 hostElement.style.transform,
-                hostElement.style.transformOrigin,
                 hostElement.style.width,
+                hostElement.style.zoom,
             ],
             [
                 undefined,
@@ -317,14 +315,14 @@ describe(createAnthaVirtualViewportMod.name, () => {
                 {
                     height: hostElement.style.height,
                     transform: hostElement.style.transform,
-                    transformOrigin: hostElement.style.transformOrigin,
                     width: hostElement.style.width,
+                    zoom: hostElement.style.zoom,
                 },
                 {
                     height: '',
                     transform: '',
-                    transformOrigin: '',
                     width: '',
+                    zoom: '',
                 },
             );
         } finally {
@@ -362,7 +360,7 @@ describe(createAnthaVirtualViewportMod.name, () => {
                     virtualViewport: engine.state.virtualViewport,
                 },
                 {
-                    transform: 'translate(0px, 120px) scale(0.5)',
+                    transform: 'translate(0px, 240px)',
                     virtualViewport: {
                         height: 1440,
                         scale: 0.5,
@@ -420,20 +418,79 @@ describe(createAnthaVirtualViewportMod.name, () => {
 
         await engine.runSingleTick();
 
-        hostElement.style.transform = 'scale(10)';
+        hostElement.style.zoom = '10';
 
         await engine.runSingleTick();
 
         assert.deepEquals(
             [
                 pixiApplication.renderer.resolution,
-                hostElement.style.transform,
+                hostElement.style.zoom,
             ],
             [
                 (globalThis.devicePixelRatio || 1) * 0.5,
-                'scale(0.5)',
+                '0.5',
             ],
         );
+    });
+
+    it('does not resynchronize a scale that the browser rounds', async () => {
+        const resizeCalls: undefined[] = [];
+        const pixiApplication = Object.assign(createMockPixi(), {
+            renderer: {
+                resolution: 1,
+            },
+            resize() {
+                resizeCalls.push(undefined);
+            },
+        });
+        const engine = new AnthaEngine<AnthaVirtualViewportModState>({
+            hostElement: createHostElement({
+                height: 720,
+                width: 1000,
+            }),
+            mods: [
+                createAnthaVirtualViewportMod({
+                    virtualWidth: 3000,
+                }),
+            ],
+        });
+        engine.state.pixi = {
+            pixiApplication,
+        };
+
+        await engine.runSingleTick();
+        await engine.runSingleTick();
+
+        assert.isLengthExactly(resizeCalls, 1);
+    });
+
+    it('re-centers a fixed virtual viewport when only its container changes', async () => {
+        const viewportContainer = document.createElement('div');
+        viewportContainer.style.height = '960px';
+        viewportContainer.style.width = '1280px';
+        const hostElement = document.createElement('div');
+        viewportContainer.append(hostElement);
+        document.body.append(viewportContainer);
+        const engine = new AnthaEngine<AnthaVirtualViewportModState>({
+            hostElement,
+            mods: [
+                createAnthaVirtualViewportMod({
+                    virtualHeight: 1440,
+                    virtualWidth: 2560,
+                }),
+            ],
+        });
+
+        try {
+            await engine.runSingleTick();
+            viewportContainer.style.height = '1001px';
+            await engine.runSingleTick();
+
+            assert.strictEquals(hostElement.style.transform, 'translate(0px, 282px)');
+        } finally {
+            viewportContainer.remove();
+        }
     });
 
     it('uses a pixel density of one when none is available', async () => {

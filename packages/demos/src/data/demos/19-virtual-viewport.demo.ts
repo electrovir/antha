@@ -1,11 +1,14 @@
+import {createAnthaAssetMod} from '@antha/asset';
 import {AnthaEngine, defineAnthaMod, SkipExecution} from '@antha/engine';
 import {createAnthaEntity2dSuite, type AnthaEntity2dModState} from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
 import {
+    Container,
     createAnthaGraphics2dMod,
     createAnthaVirtualViewportMod,
     createVirtualViewportPixiOptions,
     Graphics,
+    Text,
 } from '@antha/graphics-2d';
 import {check} from '@augment-vir/assert';
 import {createUtcFullDate} from 'date-vir';
@@ -27,6 +30,7 @@ const virtualViewportSize = {
 type VirtualViewportDemoGameState = {
     viewportConstraint: VirtualViewportConstraint;
     viewportBorder: VirtualViewportBorderEntity;
+    viewportText: VirtualViewportTextEntity;
 };
 
 type VirtualViewportDemoState = AnthaEntity2dModState<VirtualViewportDemoGameState>;
@@ -86,19 +90,59 @@ class VirtualViewportBorderEntity extends defineEntity({
     }
 }
 
+/** Font sizes to compare between Pixi text and HTML text while the viewport is scaled. */
+const sampleFontSizes = [
+    12,
+    16,
+    24,
+    48,
+];
+
+class VirtualViewportTextEntity extends defineEntity({
+    key: 'virtual-viewport-text',
+}) {
+    public override createView() {
+        return {
+            view: new Container({
+                children: sampleFontSizes.map((fontSize, index) => {
+                    return new Text({
+                        text: `Pixi text (${fontSize}px)`,
+                        style: {
+                            fill: '#ffffff',
+                            fontFamily: 'sans-serif',
+                            fontSize,
+                        },
+                        x: 64,
+                        y: 480 + index * 72,
+                    });
+                }),
+            }),
+        };
+    }
+
+    public override update() {}
+}
+
 const virtualViewportDemoEntityMod = defineAnthaMod<VirtualViewportDemoState>({
     modName: 'virtual-viewport-demo-entity',
     execute({state}) {
         if (!state.entityStore) {
             return SkipExecution;
-        } else if (state.viewportBorder) {
+        } else if (state.viewportBorder && state.viewportText) {
             return undefined;
         } else {
-            return state.entityStore
-                .addEntity(VirtualViewportBorderEntity)
-                .then((viewportBorder) => {
+            return Promise.all([
+                state.entityStore.addEntity(VirtualViewportBorderEntity),
+                state.entityStore.addEntity(VirtualViewportTextEntity),
+            ]).then(
+                ([
+                    viewportBorder,
+                    viewportText,
+                ]) => {
                     state.viewportBorder = viewportBorder;
-                });
+                    state.viewportText = viewportText;
+                },
+            );
         }
     },
 });
@@ -147,6 +191,18 @@ const virtualViewportDemoControlsMod = defineAnthaMod<VirtualViewportDemoState>(
                         state.viewportConstraint = detail;
                     })}
                 ></${ViraSelect}>
+                ${sampleFontSizes.map((fontSize) => {
+                    return html`
+                        <p
+                            style=${css`
+                                font-family: sans-serif;
+                                font-size: ${fontSize}px;
+                            `}
+                        >
+                            HTML text (${fontSize}px)
+                        </p>
+                    `;
+                })}
             </div>
         `;
     },
@@ -170,6 +226,7 @@ export const virtualViewportDemo: AnthaDemo = {
                     pixiOptions: createVirtualViewportPixiOptions(),
                 }),
                 createAnthaFpsMod(),
+                createAnthaAssetMod(),
                 updateEntitiesMod,
                 virtualViewportDemoEntityMod,
                 virtualViewportDemoControlsMod,

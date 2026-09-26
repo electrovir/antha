@@ -28,7 +28,7 @@ function updateLoadingScreenScale({
     options: Readonly<AnthaAssetModOptions>;
     screenSize: Readonly<Pick<DOMRectReadOnly, 'height' | 'width'>>;
 }>) {
-    const renderScale = hostElement.style.transform
+    const renderScale = hostElement.style.zoom
         ? undefined
         : calculateVirtualViewport({
               screenSize,
@@ -37,20 +37,11 @@ function updateLoadingScreenScale({
           })?.scale;
 
     if (renderScale == undefined) {
-        loadingScreenElement.style.removeProperty('height');
-        loadingScreenElement.style.removeProperty('inset');
-        loadingScreenElement.style.removeProperty('transform');
-        loadingScreenElement.style.removeProperty('transform-origin');
-        loadingScreenElement.style.removeProperty('width');
-
-        return;
+        loadingScreenElement.style.removeProperty('zoom');
+    } else {
+        /** `zoom` rather than `transform: scale()` keeps text sharp. */
+        loadingScreenElement.style.zoom = String(renderScale);
     }
-
-    loadingScreenElement.style.height = `${100 / renderScale}%`;
-    loadingScreenElement.style.inset = '0 auto auto 0';
-    loadingScreenElement.style.transform = `scale(${renderScale})`;
-    loadingScreenElement.style.transformOrigin = 'top left';
-    loadingScreenElement.style.width = `${100 / renderScale}%`;
 }
 
 /**

@@ -67,39 +67,12 @@ describe(AnthaAssetLoadingScreen.tagName, () => {
             `);
             const loadingScreen = assertWrap.instanceOf(fixture, AnthaAssetLoadingScreen);
 
-            await waitUntil(() => loadingScreen.style.transform === 'scale(0.5)');
+            await waitUntil(() => loadingScreen.style.zoom === '0.5');
             hostElement.style.width = '3840px';
-            await waitUntil(() => loadingScreen.style.transform === 'scale(1)');
-
-            assert.deepEquals(
-                {
-                    height: loadingScreen.style.height,
-                    transform: loadingScreen.style.transform,
-                    width: loadingScreen.style.width,
-                },
-                {
-                    height: '100%',
-                    transform: 'scale(1)',
-                    width: '100%',
-                },
-            );
-
-            hostElement.style.transform = 'scale(1)';
+            await waitUntil(() => loadingScreen.style.zoom === '1');
+            hostElement.style.zoom = '1';
             hostElement.style.width = '1920px';
-            await waitUntil(() => !loadingScreen.style.transform);
-
-            assert.deepEquals(
-                {
-                    height: loadingScreen.style.height,
-                    transform: loadingScreen.style.transform,
-                    width: loadingScreen.style.width,
-                },
-                {
-                    height: '',
-                    transform: '',
-                    width: '',
-                },
-            );
+            await waitUntil(() => !loadingScreen.style.zoom);
         } finally {
             hostElement.remove();
             testWeb.cleanupRender();

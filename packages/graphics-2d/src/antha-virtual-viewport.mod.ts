@@ -86,32 +86,11 @@ function hasSameVirtualViewport({
     );
 }
 
-function updateVirtualViewportHostElement({
-    hostElement,
-    isFixedViewport,
-    screenSize,
-    virtualViewport,
-}: Readonly<{
-    hostElement: HTMLElement;
-    isFixedViewport: boolean;
-    screenSize: Readonly<VirtualViewportSize>;
-    virtualViewport: VirtualViewport;
-}>) {
-    hostElement.style.height = isFixedViewport
-        ? `${virtualViewport.height}px`
-        : `${100 / virtualViewport.scale}%`;
-    hostElement.style.transform = getVirtualViewportHostTransform({
-        isFixedViewport,
-        screenSize,
-        virtualViewport,
-    });
-    hostElement.style.transformOrigin = 'top left';
-    hostElement.style.width = isFixedViewport
-        ? `${virtualViewport.width}px`
-        : `${100 / virtualViewport.scale}%`;
-}
-
-function getVirtualViewportHostTransform({
+/**
+ * CSS `zoom` is used rather than `transform: scale()` so the browser lays out and draws text at its
+ * final size instead of scaling an already drawn layer, which blurs it.
+ */
+function createVirtualViewportHostStyles({
     isFixedViewport,
     screenSize,
     virtualViewport,
@@ -120,17 +99,45 @@ function getVirtualViewportHostTransform({
     screenSize: Readonly<VirtualViewportSize>;
     virtualViewport: VirtualViewport;
 }>) {
-    const horizontalOffset = isFixedViewport
-        ? (screenSize.width - virtualViewport.width * virtualViewport.scale) / 2
-        : 0;
-    const verticalOffset = isFixedViewport
-        ? (screenSize.height - virtualViewport.height * virtualViewport.scale) / 2
-        : 0;
+    /** Percentages aren't affected by `zoom`, but pixel lengths (including this translate) are. */
+    const horizontalOffset = Math.round(
+        (screenSize.width - virtualViewport.width * virtualViewport.scale) / 2,
+    );
+    const verticalOffset = Math.round(
+        (screenSize.height - virtualViewport.height * virtualViewport.scale) / 2,
+    );
 
-    return isFixedViewport
-        ? `translate(${horizontalOffset}px, ${verticalOffset}px) scale(${virtualViewport.scale})`
-        : `scale(${virtualViewport.scale})`;
+    return {
+        height: isFixedViewport ? `${virtualViewport.height}px` : '100%',
+        transform: isFixedViewport
+            ? `translate(${horizontalOffset / virtualViewport.scale}px, ${verticalOffset / virtualViewport.scale}px)`
+            : '',
+        width: isFixedViewport ? `${virtualViewport.width}px` : '100%',
+        zoom: String(virtualViewport.scale),
+    };
 }
+
+function readVirtualViewportHostStyles(hostElement: HTMLElement) {
+    return [
+        hostElement.style.height,
+        hostElement.style.transform,
+        hostElement.style.width,
+        hostElement.style.zoom,
+    ].join(';');
+}
+
+/**
+ * The browser rounds style values when it stores them (a zoom of `1 / 3` reads back as
+ * `'0.333333'`), so the host's styles can't be compared to freshly created ones. Instead, this
+ * keeps the created styles alongside what the browser read back after applying them.
+ */
+const appliedHostStyles = new WeakMap<
+    HTMLElement,
+    {
+        createdStyles: string;
+        readStyles: string;
+    }
+>();
 
 function getVirtualViewportScreenSize({
     hostElement,
@@ -157,8 +164,9 @@ function resetVirtualViewportHostElement({
 }>) {
     hostElement.style.removeProperty('height');
     hostElement.style.removeProperty('transform');
-    hostElement.style.removeProperty('transform-origin');
     hostElement.style.removeProperty('width');
+    hostElement.style.removeProperty('zoom');
+    appliedHostStyles.delete(hostElement);
 }
 
 /**
@@ -195,24 +203,25 @@ export function createAnthaVirtualViewportMod({
                 return;
             }
 
+            const hostStyles = createVirtualViewportHostStyles({
+                isFixedViewport,
+                screenSize,
+                virtualViewport,
+            });
             const hasViewportChanged =
                 !hasSameVirtualViewport({
                     previousVirtualViewport: state.virtualViewport,
                     virtualViewport,
                 }) ||
-                hostElement.style.transform !==
-                    getVirtualViewportHostTransform({
-                        isFixedViewport,
-                        screenSize,
-                        virtualViewport,
-                    });
+                appliedHostStyles.get(hostElement)?.createdStyles !== JSON.stringify(hostStyles) ||
+                appliedHostStyles.get(hostElement)?.readStyles !==
+                    readVirtualViewportHostStyles(hostElement);
 
             if (hasViewportChanged) {
-                updateVirtualViewportHostElement({
-                    hostElement,
-                    isFixedViewport,
-                    screenSize,
-                    virtualViewport,
+                Object.assign(hostElement.style, hostStyles);
+                appliedHostStyles.set(hostElement, {
+                    createdStyles: JSON.stringify(hostStyles),
+                    readStyles: readVirtualViewportHostStyles(hostElement),
                 });
                 state.virtualViewport = virtualViewport;
             }
