@@ -1,7 +1,7 @@
 import {defineAnthaMod} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
 import {getOrSet, type PartialWithUndefined} from '@augment-vir/common';
-import {css, html, onDomCreated, unsafeCSS, type CSSResult} from 'element-vir';
+import {attachOnResize, css, html, onDomCreated, unsafeCSS, type CSSResult} from 'element-vir';
 import {Application as PixiApplication, type ApplicationOptions} from 'pixi.js';
 
 export {Application as PixiApplication} from 'pixi.js';
@@ -15,6 +15,7 @@ export type AnthaGraphics2dModState = {
     pixi: Partial<{
         pixiApplication: PixiApplication;
         canvas: HTMLCanvasElement;
+        resizeObserver: ResizeObserver;
     }>;
 };
 
@@ -60,6 +61,7 @@ export function createAnthaGraphics2dMod(
     return defineAnthaMod<AnthaGraphics2dModState>({
         modName: 'antha-graphics-2d',
         cleanup({state}) {
+            state.pixi?.resizeObserver?.disconnect();
             state.pixi?.pixiApplication?.destroy(true);
         },
         async execute({hostElement, state}) {
@@ -77,6 +79,10 @@ export function createAnthaGraphics2dMod(
                     canvas,
                 });
                 pixiState.pixiApplication = pixiApplication;
+                /** Pixi's `resizeTo` only re-measures on window resize events. */
+                pixiState.resizeObserver = attachOnResize(hostElement, () => {
+                    pixiApplication.queueResize();
+                }).resizeObserver;
             }
 
             return pixiApplicationOptions.canvas

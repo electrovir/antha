@@ -1,5 +1,5 @@
 import {AnthaEngine, AnthaUi} from '@antha/engine';
-import {assert, waitUntil} from '@augment-vir/assert';
+import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {describe, it, testWeb} from '@augment-vir/test';
 import {html} from 'element-vir';
 import {createAnthaGraphics2dMod, type AnthaGraphics2dModState} from './antha-graphics-2d.mod.js';
@@ -156,5 +156,34 @@ describe(createAnthaGraphics2dMod.name, () => {
         assert.isDefined(engine.currentTemplateMap.get(mod));
 
         await engine.reset();
+    });
+
+    it('resizes the canvas when only the host element resizes', async () => {
+        const hostElement = document.createElement('div');
+        hostElement.style.width = '100px';
+        hostElement.style.height = '100px';
+        document.body.append(hostElement);
+        const engine = new AnthaEngine<AnthaGraphics2dModState>({
+            hostElement,
+            mods: [
+                createAnthaGraphics2dMod(),
+            ],
+        });
+
+        engine.state.pixi = {
+            canvas: document.createElement('canvas'),
+        };
+
+        await engine.runSingleTick();
+
+        const pixiApplication = assertWrap.isDefined(engine.state.pixi.pixiApplication);
+        assert.strictEquals(pixiApplication.screen.width, 100);
+
+        hostElement.style.width = '250px';
+
+        await waitUntil.isTrue(() => pixiApplication.screen.width === 250);
+
+        await engine.reset();
+        hostElement.remove();
     });
 });

@@ -1,6 +1,5 @@
 -   add 3d entity + graphics mods
 -   add extensive readme docs
--   resize dynamic canvas by host element, not the window
 -   investigate using canvas.transferControlToOffscreen to allow fully moving the game loop to a worker
 -   onscreen keyboard
     -   add `<input>` and `<textarea>` element wrappers that allow cursor navigation with the on-screen keyboard
