@@ -13,10 +13,10 @@ import {
     InputDirection,
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
+    getDirectionalInputVector,
     type AnthaInputBindingsModState,
-    type PlayersActiveBindings,
 } from '@antha/input';
-import {clamp, type Coords} from '@augment-vir/common';
+import {clamp} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {Graphics} from 'pixi.js';
 import {type AnthaDemo} from '../demo.js';
@@ -72,11 +72,19 @@ class PlayerEntity extends defineEntity({
     }
 
     public override update({msSinceLastExecute}: Readonly<ModExecuteParams>) {
-        const moveDiff = calculatePlayerMovement(msSinceLastExecute, this.state.activeBindings);
+        const movement = getDirectionalInputVector({
+            activeBindings: this.state.activeBindings['1'],
+            bindingNames: {
+                down: PlayerAction.Down,
+                left: PlayerAction.Left,
+                right: PlayerAction.Right,
+                up: PlayerAction.Up,
+            },
+        });
 
-        if (moveDiff) {
-            this.params.x += moveDiff.x;
-            this.params.y += moveDiff.y;
+        if (movement) {
+            this.params.x += movement.x * msSinceLastExecute * 0.4;
+            this.params.y += movement.y * msSinceLastExecute * 0.4;
         }
 
         this.params.x = clamp(this.params.x, {
@@ -88,72 +96,6 @@ class PlayerEntity extends defineEntity({
             max: this.pixi.screen.height - triangleSize,
         });
     }
-}
-
-/**
- * Set player X and Y movement based on which input was most recently triggered, and ensure that the
- * movement vector's magnitude remains constant.
- */
-function calculatePlayerMovement(
-    msSinceLastExecute: number,
-    activeBindings: Readonly<PlayersActiveBindings<PlayerAction>>,
-) {
-    const playerBindings = activeBindings['1'];
-
-    if (!playerBindings) {
-        return;
-    }
-
-    const upMovement = {
-        value: playerBindings.up?.value || 0,
-        durationMs: playerBindings.up?.holdDuration.milliseconds || Infinity,
-    };
-    const downMovement = {
-        value: playerBindings.down?.value || 0,
-        durationMs: playerBindings.down?.holdDuration.milliseconds || Infinity,
-    };
-    const leftMovement = {
-        value: playerBindings.left?.value || 0,
-        durationMs: playerBindings.left?.holdDuration.milliseconds || Infinity,
-    };
-    const rightMovement = {
-        value: playerBindings.right?.value || 0,
-        durationMs: playerBindings.right?.holdDuration.milliseconds || Infinity,
-    };
-
-    const movementY =
-        upMovement.value && upMovement.durationMs < downMovement.durationMs
-            ? -upMovement.value
-            : downMovement.value && downMovement.durationMs < upMovement.durationMs
-              ? downMovement.value
-              : 0;
-
-    const movementX =
-        leftMovement.value && leftMovement.durationMs < rightMovement.durationMs
-            ? -leftMovement.value
-            : rightMovement.value && rightMovement.durationMs < leftMovement.durationMs
-              ? rightMovement.value
-              : 0;
-
-    const movement: Coords = {
-        x: movementX,
-        y: movementY,
-    };
-
-    const magnitude = Math.hypot(movement.x, movement.y);
-
-    if (magnitude > 0) {
-        const normalized: Coords = {
-            x: movement.x / magnitude,
-            y: movement.y / magnitude,
-        };
-        return {
-            x: normalized.x * msSinceLastExecute * 0.4,
-            y: normalized.y * msSinceLastExecute * 0.4,
-        };
-    }
-
-    return undefined;
 }
 
 const bindingAssignments: Readonly<AnthaInputBindingsModState<PlayerAction>['bindingAssignments']> =
@@ -276,16 +218,15 @@ export const playerMovementDemo: AnthaDemo = {
     demoSortDate: createUtcFullDate('2026-04-04'),
     engine() {
         return new AnthaEngine({
-            initState: {
-                bindingAssignments,
-            } satisfies Partial<AnthaInputBindingsModState<PlayerAction>>,
             mods: [
                 createAnthaGraphics2dMod(),
                 createAnthaFpsMod(),
                 createAnthaAssetMod(),
                 updateEntitiesMod,
                 createAnthaReadRawInputMod(),
-                createAnthaInputBindingsMod<PlayerAction>(),
+                createAnthaInputBindingsMod<PlayerAction>({
+                    bindingAssignments,
+                }),
                 playerMovementMod,
             ],
         });

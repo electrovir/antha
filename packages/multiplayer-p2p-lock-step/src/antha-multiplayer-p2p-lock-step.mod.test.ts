@@ -59,6 +59,14 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             acceptConnection() {
                 return true;
             },
+            desyncCheck: {
+                createStateHash() {
+                    return 0;
+                },
+                interval: {
+                    seconds: 1,
+                },
+            },
         });
         const engine = new AnthaEngine<TestEngineState>({
             mods: [
@@ -242,12 +250,14 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             executionTrigger: {
                 events: [
                     new MultiplayerControllerFrameEvent<string>({
-                        detail: [
-                            {
-                                packet: 'test-frame',
-                                sourceClientId: createMultiplayerId.client(),
-                            },
-                        ],
+                        detail: {
+                            packets: [
+                                {
+                                    packet: 'test-frame',
+                                    sourceClientId: createMultiplayerId.client(),
+                                },
+                            ],
+                        },
                     }),
                 ],
                 type: ModExecutionTriggerType.Event,
@@ -289,12 +299,14 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
                         },
                     }),
                     new MultiplayerControllerFrameEvent<string>({
-                        detail: [
-                            {
-                                packet: 'test-frame',
-                                sourceClientId: createMultiplayerId.client(),
-                            },
-                        ],
+                        detail: {
+                            packets: [
+                                {
+                                    packet: 'test-frame',
+                                    sourceClientId: createMultiplayerId.client(),
+                                },
+                            ],
+                        },
                     }),
                 ],
                 type: ModExecutionTriggerType.Event,
@@ -348,26 +360,30 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
 
         engine.dispatch(
             new MultiplayerControllerFrameEvent<TestPacket>({
-                detail: [
-                    {
-                        packet: {
-                            amount: 1,
+                detail: {
+                    packets: [
+                        {
+                            packet: {
+                                amount: 1,
+                            },
+                            sourceClientId,
                         },
-                        sourceClientId,
-                    },
-                ],
+                    ],
+                },
             }),
         );
         engine.dispatch(
             new MultiplayerControllerFrameEvent<TestPacket>({
-                detail: [
-                    {
-                        packet: {
-                            amount: 2,
+                detail: {
+                    packets: [
+                        {
+                            packet: {
+                                amount: 2,
+                            },
+                            sourceClientId,
                         },
-                        sourceClientId,
-                    },
-                ],
+                    ],
+                },
             }),
         );
 
@@ -396,6 +412,109 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         multiplayerController.destroy();
     });
 
+    it('checks host state hashes before applying frames and reports them after', async () => {
+        class HashRecordingController extends P2pLockStepMultiplayerController<TestPacket> {
+            public stateHashCalls: string[] = [];
+
+            public override checkStateHash(
+                frameEvent: Readonly<MultiplayerControllerFrameEvent<TestPacket>>,
+            ) {
+                this.stateHashCalls = [
+                    ...this.stateHashCalls,
+                    `check ${frameEvent.detail.hostStateHash}`,
+                ];
+            }
+
+            public override reportStateHash({
+                stateHash,
+            }: Readonly<{
+                stateHash: number | undefined;
+            }>) {
+                this.stateHashCalls = [
+                    ...this.stateHashCalls,
+                    `report ${stateHash}`,
+                ];
+            }
+        }
+
+        const mod = createAnthaMultiplayerP2pLockStepMod<TestPacket, FrameTestState>({
+            desyncCheck: {
+                createStateHash({state}) {
+                    return state.receivedAmounts?.length || 0;
+                },
+                interval: {
+                    milliseconds: 1,
+                },
+            },
+            handlePacket({packet, state}) {
+                state.receivedAmounts = [
+                    ...(state.receivedAmounts || []),
+                    packet.packet.amount,
+                ];
+            },
+        });
+        const multiplayerController = new HashRecordingController({
+            gameId: 'desync-check-mod-test',
+        });
+        const sourceClientId = createMultiplayerId.client();
+
+        await mod.execute({
+            ...executeParams,
+            executionTrigger: {
+                events: [
+                    new MultiplayerControllerFrameEvent<TestPacket>({
+                        detail: {
+                            packets: [
+                                {
+                                    packet: {
+                                        amount: 1,
+                                    },
+                                    sourceClientId,
+                                },
+                            ],
+                            shouldReportNextFrameHash: true,
+                        },
+                    }),
+                    new MultiplayerControllerFrameEvent<TestPacket>({
+                        detail: {
+                            packets: [
+                                {
+                                    packet: {
+                                        amount: 2,
+                                    },
+                                    sourceClientId,
+                                },
+                            ],
+                            hostStateHash: 1,
+                            shouldReportNextFrameHash: true,
+                        },
+                    }),
+                    new MultiplayerControllerFrameEvent<TestPacket>({
+                        detail: {
+                            packets: [],
+                        },
+                    }),
+                ],
+                type: ModExecutionTriggerType.Event,
+            },
+            state: {
+                multiplayerP2pLockStep: {
+                    connectionState: emptyApiAndRoomConnectionState,
+                    multiplayerController,
+                },
+            },
+        });
+
+        assert.deepEquals(multiplayerController.stateHashCalls, [
+            'check undefined',
+            'report 1',
+            'check 1',
+            'report 2',
+            'check undefined',
+        ]);
+        multiplayerController.destroy();
+    });
+
     it('runs frame updates without a connected room', async () => {
         let frameUpdateCount = 0;
         const mod = createAnthaMultiplayerP2pLockStepMod<TestPacket, FrameTestState>({
@@ -408,7 +527,9 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
             gameId: 'frame-handler-mod-test',
         });
         const frameEvent = new MultiplayerControllerFrameEvent<TestPacket>({
-            detail: [],
+            detail: {
+                packets: [],
+            },
         });
 
         await mod.execute({

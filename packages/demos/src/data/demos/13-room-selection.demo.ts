@@ -1,6 +1,5 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod} from '@antha/engine';
 import {
-    MultiplayerControllerConnectionEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
     type ApiAndRoomConnectionState,
@@ -23,6 +22,8 @@ const roomSelectionGameId = 'room-selection-demo';
 
 const DemoRoomLobby = defineElement<{
     p2pLockStepMultiplayer: AnthaMultiplayerP2pLockStepState['multiplayerP2pLockStep'];
+    /** Separate from `p2pLockStepMultiplayer` so that this element re-renders when it changes. */
+    connectionState: Readonly<ApiAndRoomConnectionState>;
 }>()({
     tagName: 'demo-room-lobby',
     styles: css`
@@ -34,7 +35,6 @@ const DemoRoomLobby = defineElement<{
     state() {
         return {
             connectionError: '',
-            connectionState: undefined as ApiAndRoomConnectionState | undefined,
             joinedRoom: undefined as Readonly<RoomInput> | undefined,
             cleanup: undefined as (() => void) | undefined,
             availableRooms: {} as Readonly<MultiplayerClientRooms>,
@@ -42,14 +42,6 @@ const DemoRoomLobby = defineElement<{
     },
     init({inputs, updateState, state}) {
         const cleanupCallbacks = [
-            inputs.p2pLockStepMultiplayer.multiplayerController.listen(
-                MultiplayerControllerConnectionEvent,
-                (event) => {
-                    updateState({
-                        connectionState: event.detail,
-                    });
-                },
-            ),
             () => {
                 inputs.p2pLockStepMultiplayer.multiplayerController.stopRoomUpdates();
             },
@@ -91,14 +83,14 @@ const DemoRoomLobby = defineElement<{
 
         if (state.joinedRoom) {
             const apiLabel =
-                state.connectionState?.api instanceof Error
-                    ? `Error: ${state.connectionState.api.message}`
-                    : state.connectionState?.api;
+                inputs.connectionState.api instanceof Error
+                    ? `Error: ${inputs.connectionState.api.message}`
+                    : inputs.connectionState.api;
 
             const roomLabel =
-                state.connectionState?.room instanceof Error
-                    ? `Error: ${state.connectionState.room.message}`
-                    : state.connectionState?.room;
+                inputs.connectionState.room instanceof Error
+                    ? `Error: ${inputs.connectionState.room.message}`
+                    : inputs.connectionState.room;
 
             const statusLines = [
                 `Client ID: ${inputs.p2pLockStepMultiplayer.multiplayerController.getClientId() || 'pending...'}`,
@@ -221,6 +213,7 @@ function createRoomSelectionMod(mockApiClientRef: Readonly<MultiplayerApiClient>
             return html`
                 <${DemoRoomLobby.assign({
                     p2pLockStepMultiplayer: state.multiplayerP2pLockStep,
+                    connectionState: state.multiplayerP2pLockStep.connectionState,
                 })}></${DemoRoomLobby}>
             `;
         },

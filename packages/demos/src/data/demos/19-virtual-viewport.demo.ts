@@ -6,8 +6,6 @@ import {
     createAnthaVirtualViewportMod,
     createVirtualViewportPixiOptions,
     Graphics,
-    type AnthaVirtualViewportModState,
-    type AnthaVirtualViewportOptions,
 } from '@antha/graphics-2d';
 import {check} from '@augment-vir/assert';
 import {createUtcFullDate} from 'date-vir';
@@ -31,8 +29,7 @@ type VirtualViewportDemoGameState = {
     viewportBorder: VirtualViewportBorderEntity;
 };
 
-type VirtualViewportDemoState = AnthaEntity2dModState<VirtualViewportDemoGameState> &
-    AnthaVirtualViewportModState;
+type VirtualViewportDemoState = AnthaEntity2dModState<VirtualViewportDemoGameState>;
 
 const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<VirtualViewportDemoGameState>(
     {},
@@ -53,35 +50,20 @@ const virtualViewportConstraintOptions: ReadonlyArray<Readonly<ViraSelectOption>
     },
 ];
 
-const virtualViewportOptionsByConstraint: Record<
-    VirtualViewportConstraint,
-    AnthaVirtualViewportOptions
-> = {
-    [VirtualViewportConstraint.Both]: {
-        virtualHeight: virtualViewportSize.height,
-        virtualWidth: virtualViewportSize.width,
-    },
-    [VirtualViewportConstraint.Height]: {
-        virtualHeight: virtualViewportSize.height,
-    },
-    [VirtualViewportConstraint.Width]: {
-        virtualWidth: virtualViewportSize.width,
-    },
-};
-
 const virtualViewportModByConstraint: Record<
     VirtualViewportConstraint,
     ReturnType<typeof createAnthaVirtualViewportMod>
 > = {
-    [VirtualViewportConstraint.Both]: createAnthaVirtualViewportMod(
-        virtualViewportOptionsByConstraint[VirtualViewportConstraint.Both],
-    ),
-    [VirtualViewportConstraint.Height]: createAnthaVirtualViewportMod(
-        virtualViewportOptionsByConstraint[VirtualViewportConstraint.Height],
-    ),
-    [VirtualViewportConstraint.Width]: createAnthaVirtualViewportMod(
-        virtualViewportOptionsByConstraint[VirtualViewportConstraint.Width],
-    ),
+    [VirtualViewportConstraint.Both]: createAnthaVirtualViewportMod({
+        virtualHeight: virtualViewportSize.height,
+        virtualWidth: virtualViewportSize.width,
+    }),
+    [VirtualViewportConstraint.Height]: createAnthaVirtualViewportMod({
+        virtualHeight: virtualViewportSize.height,
+    }),
+    [VirtualViewportConstraint.Width]: createAnthaVirtualViewportMod({
+        virtualWidth: virtualViewportSize.width,
+    }),
 };
 
 class VirtualViewportBorderEntity extends defineEntity({
@@ -185,10 +167,7 @@ export const virtualViewportDemo: AnthaDemo = {
                     extraCanvasWrapperStyles: css`
                         z-index: 0;
                     `,
-                    pixiOptions: {
-                        background: 'black',
-                        ...createVirtualViewportPixiOptions(),
-                    },
+                    pixiOptions: createVirtualViewportPixiOptions(),
                 }),
                 createAnthaFpsMod(),
                 updateEntitiesMod,

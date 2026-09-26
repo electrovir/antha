@@ -83,7 +83,7 @@ const DemoMultiplayerRoomSwitching = defineElement()({
                 ({detail}) => {
                     updateState({
                         currentCount: applyDemoCounterFrame({
-                            actions: detail,
+                            actions: detail.packets,
                             state: state.currentCount,
                         }),
                     });

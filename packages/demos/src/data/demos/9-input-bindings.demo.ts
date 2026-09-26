@@ -1,7 +1,6 @@
 import {AnthaEngine} from '@antha/engine';
 import {createAnthaFpsMod} from '@antha/fps';
 import {
-    type AnthaInputBindingsModState,
     AnyGamepad,
     createAnthaInputBindingsMod,
     createAnthaReadRawInputMod,
@@ -17,16 +16,14 @@ export const inputBindingsDemo: AnthaDemo = {
     demoPathId: 'input-bindings',
     demoSortDate: createUtcFullDate('2026-04-03T11:00:00'),
     engine() {
-        return new AnthaEngine<AnthaInputBindingsModState>({
-            initState: {
-                bindingAssignments: defaultBindings,
-            },
+        return new AnthaEngine({
             mods: [
                 createAnthaFpsMod({
                     hideFps: true,
                 }),
                 createAnthaReadRawInputMod(),
                 createAnthaInputBindingsMod({
+                    bindingAssignments: defaultBindings,
                     debugActiveBindings: true,
                     debugBindingAssignments: true,
                 }),

@@ -53,7 +53,6 @@ const bouncingBallsMod: AnthaMod<
         balls: Ball[];
         lastPhysicsTime: number;
         physicsStepMs: number;
-        tweenTeardown: (() => void) | undefined;
     }
 > = {
     modName: 'demo-bouncing-balls',
@@ -61,7 +60,7 @@ const bouncingBallsMod: AnthaMod<
         durationMs: physicsStepDurationMs,
         executeImmediately: true,
     },
-    execute({state, msSinceLastExecute}): typeof SkipExecution | void {
+    execute({state, msSinceLastExecute, lastExecution}): typeof SkipExecution | void {
         const pixiApp = state.pixi?.pixiApplication;
 
         if (!pixiApp) {
@@ -155,9 +154,6 @@ const bouncingBallsMod: AnthaMod<
             }
 
             pixiApp.ticker.add(tweenCallback);
-            state.tweenTeardown = () => {
-                pixiApp.ticker.remove(tweenCallback);
-            };
         }
 
         const width = pixiApp.screen.width;
@@ -168,7 +164,7 @@ const bouncingBallsMod: AnthaMod<
          * msSinceLastExecute is near-zero, so fall back to the expected step duration so the tween
          * interpolates smoothly from the start.
          */
-        state.physicsStepMs = state.physicsStepMs ? msSinceLastExecute : physicsStepDurationMs;
+        state.physicsStepMs = lastExecution ? msSinceLastExecute : physicsStepDurationMs;
         state.lastPhysicsTime = performance.now();
 
         for (const ball of state.balls) {

@@ -1,6 +1,7 @@
 import {type Asset, type AssetLoader, type AssetValue} from '@antha/asset';
 import {type ModExecuteParams} from '@antha/engine';
 import {type PixiApplication} from '@antha/graphics-2d';
+import {hashObject} from '@antha/util';
 import {assert, check} from '@augment-vir/assert';
 import {
     awaitedBlockingMap,
@@ -586,6 +587,15 @@ export class EntityStore2d<State extends AnyObject = any> {
                     serializedParams: entity.serialize(),
                 };
             });
+    }
+
+    /**
+     * Hashes {@link EntityStore2d.createSnapshot} with `hashObject` from `@antha/util`, so it covers
+     * exactly what {@link BaseEntity2d.serialize} covers. Compare this across lock-step peers to
+     * detect desyncs.
+     */
+    public hashEntities() {
+        return hashObject(this.createSnapshot());
     }
 
     /**

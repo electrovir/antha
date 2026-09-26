@@ -1,8 +1,4 @@
-import {
-    createAnthaAssetMod,
-    type AnthaAssetModState,
-    type AssetIncrementProgressCallback,
-} from '@antha/asset';
+import {createAnthaAssetMod, type AssetIncrementProgressCallback} from '@antha/asset';
 import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
 import {
     createAnthaEntity2dSuite,
@@ -299,9 +295,7 @@ const EntityAssetDemoControls = defineElement<{
     },
 });
 
-const entityAssetDemoMod = defineAnthaMod<
-    AnthaEntity2dModState<EntityAssetDemoGameState> & AnthaAssetModState
->({
+const entityAssetDemoMod = defineAnthaMod<AnthaEntity2dModState<EntityAssetDemoGameState>>({
     modName: 'entity-asset-demo',
     execute({state}) {
         const entityStore = state.entityStore;

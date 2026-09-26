@@ -1,16 +1,15 @@
-import {AnthaEngine, defineAnthaMod} from '@antha/engine';
+import {AnthaEngine, type AnthaMod} from '@antha/engine';
 import {createAnthaFpsMod} from '@antha/fps';
 import {randomInteger, wait} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, defineElement, html, listen} from 'element-vir';
+import {defineTypedEvent} from 'typed-event-target';
 import {type AnthaDemo} from '../demo.js';
 
-type TriggerStutterState = {
-    shouldStutter: boolean;
-};
+class TriggerStutterEvent extends defineTypedEvent('trigger-stutter') {}
 
 const AnthaTriggerStutter = defineElement<{
-    state: Partial<TriggerStutterState>;
+    engine: AnthaEngine;
 }>()({
     tagName: 'antha-trigger-stutter',
     styles: css`
@@ -25,7 +24,7 @@ const AnthaTriggerStutter = defineElement<{
         return html`
             <button
                 ${listen('click', () => {
-                    inputs.state.shouldStutter = true;
+                    inputs.engine.dispatch(new TriggerStutterEvent());
                 })}
             >
                 Trigger Stutter
@@ -34,11 +33,14 @@ const AnthaTriggerStutter = defineElement<{
     },
 });
 
-const randomStutterMod = defineAnthaMod<TriggerStutterState>({
+const randomStutterMod: AnthaMod = {
     modName: 'demo-random-stutter',
-    async execute({state}) {
-        if (state.shouldStutter) {
-            state.shouldStutter = false;
+    trigger: {
+        event: TriggerStutterEvent,
+        executeImmediately: true,
+    },
+    async execute({engine, executionTrigger}) {
+        if (executionTrigger.events?.length) {
             await wait({
                 milliseconds: randomInteger({
                     min: 100,
@@ -49,11 +51,11 @@ const randomStutterMod = defineAnthaMod<TriggerStutterState>({
 
         return html`
             <${AnthaTriggerStutter.assign({
-                state,
+                engine,
             })}></${AnthaTriggerStutter}>
         `;
     },
-});
+};
 
 export const stutterDetectionDemo: AnthaDemo = {
     demoName: 'Stutter Detection',

@@ -13,6 +13,7 @@ import {
     type PartialWithUndefined,
     type SelectFrom,
 } from '@augment-vir/common';
+import {type AnyDuration} from 'date-vir';
 import {
     MultiplayerControllerFrameEvent,
     type MultiplayerFramePacket,
@@ -74,6 +75,28 @@ export type AnthaMultiplayerP2pLockStepOptions<
     >
 > &
     PartialWithUndefined<{
+        /**
+         * Enables automatic desync checks. Every `interval`, each peer hashes its state with
+         * `createStateHash` right after applying the same frame, and the host sends its hash to
+         * clients with a later frame. A client whose hash doesn't match logs a warning and emits
+         * `MultiplayerControllerDesyncEvent` (which is forwarded to the engine). Handle that event
+         * to recover from the desync.
+         *
+         * @default no desync checks
+         */
+        desyncCheck: {
+            interval: AnyDuration;
+            /**
+             * Hashes the state that must match across peers, for example with `hashObject` from
+             * `@antha/util`. Return `undefined` to skip reporting for this check, such as before a
+             * joining peer has received its initial state.
+             */
+            createStateHash: (
+                params: Readonly<{
+                    state: Partial<State>;
+                }>,
+            ) => MaybePromise<number | undefined>;
+        };
         /** Applies an individual action from within a frame event. */
         handlePacket: (
             params: Readonly<{
@@ -119,10 +142,13 @@ export function createAnthaMultiplayerP2pLockStepMod<
             multiplayerLockstepTick: 0,
         } satisfies Partial<AnthaMultiplayerP2pLockStepState> as Partial<NoInfer<State>>,
         trigger:
-            options.handlePacket || options.runFrameUpdate || options.handleClientStatus
+            options.handlePacket ||
+            options.runFrameUpdate ||
+            options.desyncCheck ||
+            options.handleClientStatus
                 ? {
                       event: [
-                          ...(options.handlePacket || options.runFrameUpdate
+                          ...(options.handlePacket || options.runFrameUpdate || options.desyncCheck
                               ? [MultiplayerControllerFrameEvent]
                               : []),
                           ...(options.handleClientStatus
@@ -149,6 +175,7 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         gameId: options.gameId || 'antha',
                         acceptConnection: options.acceptConnection,
                         debugMultiplayer: state.debugMultiplayer,
+                        desyncCheckInterval: options.desyncCheck?.interval,
                         frameDuration: options.frameDuration,
                     }),
                     connectionState: emptyApiAndRoomConnectionState,
@@ -187,10 +214,12 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         return;
                     } else if (
                         event instanceof MultiplayerControllerFrameEvent &&
-                        (options.handlePacket || options.runFrameUpdate)
+                        (options.handlePacket || options.runFrameUpdate || options.desyncCheck)
                     ) {
+                        state.multiplayerP2pLockStep.multiplayerController.checkStateHash(event);
+
                         if (options.handlePacket) {
-                            for (const detail of event.detail) {
+                            for (const detail of event.detail.packets) {
                                 await options.handlePacket({
                                     packet: detail,
                                     multiplayerController:
@@ -222,6 +251,15 @@ export function createAnthaMultiplayerP2pLockStepMod<
                             multiplayerFrameEvent: event,
                             ticksSinceLastExecute: 1,
                         });
+
+                        if (event.detail.shouldReportNextFrameHash) {
+                            state.multiplayerP2pLockStep.multiplayerController.reportStateHash({
+                                frameEvent: event,
+                                stateHash: await options.desyncCheck?.createStateHash({
+                                    state,
+                                }),
+                            });
+                        }
                     }
                 });
             }

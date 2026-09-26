@@ -7,7 +7,7 @@ import {
 } from '@antha/engine';
 import {createMockPixi} from '@antha/graphics-2d';
 import {assert} from '@augment-vir/assert';
-import {applyBrand, DeferredPromise, makeWritable} from '@augment-vir/common';
+import {applyBrand, awaitedForEach, DeferredPromise, makeWritable} from '@augment-vir/common';
 import {describe, it, itCases} from '@augment-vir/test';
 import {Circle} from 'detect-collisions';
 import {Graphics, ParticleContainer} from 'pixi.js';
@@ -781,6 +781,107 @@ describe('EntityStore', () => {
                     },
                 },
             ],
+        );
+    });
+
+    it('hashes serialized entities by key, params, and order', async () => {
+        const suite = createTestSuite();
+
+        class HashedEntity extends suite.defineLogicEntity({
+            key: 'HashedEntity',
+            paramsShape: entityPositionParamsShape,
+        }) {
+            public override update(): void {}
+        }
+
+        class OnlyXSerializedEntity extends suite.defineLogicEntity({
+            key: 'OnlyXSerializedEntity',
+            paramsShape: entityPositionParamsShape,
+        }) {
+            public override update(): void {}
+
+            public override serialize() {
+                return JSON.stringify(this.params.x);
+            }
+        }
+
+        async function createHashedStore(
+            entities: ReadonlyArray<
+                Readonly<{
+                    entityClass: typeof HashedEntity | typeof OnlyXSerializedEntity;
+                    y: number;
+                }>
+            >,
+        ) {
+            const store = createTestStore(suite);
+
+            await awaitedForEach(entities, async (entity) => {
+                await store.addEntity(entity.entityClass, {
+                    x: 1,
+                    y: entity.y,
+                });
+            });
+
+            return store;
+        }
+
+        const hash = (
+            await createHashedStore([
+                {
+                    entityClass: HashedEntity,
+                    y: 2,
+                },
+                {
+                    entityClass: OnlyXSerializedEntity,
+                    y: 3,
+                },
+            ])
+        ).hashEntities();
+
+        assert.strictEquals(
+            (
+                await createHashedStore([
+                    {
+                        entityClass: HashedEntity,
+                        y: 2,
+                    },
+                    {
+                        entityClass: OnlyXSerializedEntity,
+                        y: 30,
+                    },
+                ])
+            ).hashEntities(),
+            hash,
+        );
+        assert.notStrictEquals(
+            (
+                await createHashedStore([
+                    {
+                        entityClass: HashedEntity,
+                        y: 20,
+                    },
+                    {
+                        entityClass: OnlyXSerializedEntity,
+                        y: 3,
+                    },
+                ])
+            ).hashEntities(),
+            hash,
+        );
+        assert.notStrictEquals(
+            (
+                await createHashedStore([
+                    {
+                        entityClass: OnlyXSerializedEntity,
+                        y: 3,
+                    },
+                    {
+                        entityClass: HashedEntity,
+                        y: 2,
+                    },
+                ])
+            ).hashEntities(),
+            hash,
         );
     });
 

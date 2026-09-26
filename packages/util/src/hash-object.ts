@@ -1,4 +1,3 @@
-// cspell:word desyncs
 import {assertWrap, check} from '@augment-vir/assert';
 
 enum HashTag {

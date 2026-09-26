@@ -96,7 +96,7 @@ const DemoSingleplayerToMultiplayer = defineElement()({
                 ({detail}) => {
                     updateState({
                         count: applyDemoCounterFrame({
-                            actions: detail,
+                            actions: detail.packets,
                             state: state.count,
                         }),
                     });
@@ -107,7 +107,7 @@ const DemoSingleplayerToMultiplayer = defineElement()({
                 ({detail}) => {
                     updateState({
                         joiningCount: applyDemoCounterFrame({
-                            actions: detail,
+                            actions: detail.packets,
                             state: state.joiningCount,
                         }),
                     });

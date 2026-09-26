@@ -169,14 +169,7 @@ class PlayerBulletEntity extends defineEntity({
         this.params.x += this.params.directionX * gameTickDelta;
         this.params.y += this.params.directionY * gameTickDelta;
 
-        const {width: screenWidth, height: screenHeight} = this.pixi.screen;
-
-        if (
-            this.params.x < -PlayerBulletEntity.bulletRadius ||
-            this.params.x > screenWidth + PlayerBulletEntity.bulletRadius ||
-            this.params.y < -PlayerBulletEntity.bulletRadius ||
-            this.params.y > screenHeight + PlayerBulletEntity.bulletRadius
-        ) {
+        if (!this.isInBounds()) {
             this.destroy();
         }
     }

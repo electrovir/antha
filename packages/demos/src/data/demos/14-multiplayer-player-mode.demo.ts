@@ -1,7 +1,5 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod, type AnthaMod} from '@antha/engine';
 import {
-    MultiplayerControllerClientStatusEvent,
-    MultiplayerControllerConnectionEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
     type ApiAndRoomConnectionState,
@@ -10,15 +8,12 @@ import {
     type RoomInput,
 } from '@antha/multiplayer-core';
 import {
-    MultiplayerControllerFrameEvent,
     createAnthaMultiplayerP2pLockStepMod,
     type AnthaMultiplayerP2pLockStepState,
     type MultiplayerFramePacket,
-    type P2pLockStepMultiplayerController,
 } from '@antha/multiplayer-p2p-lock-step';
 import {check} from '@augment-vir/assert';
 import {
-    awaitedBlockingMap,
     combineErrorMessages,
     getObjectTypedValues,
     log,
@@ -55,7 +50,6 @@ type MultiplayerAction =
 type SelectableRoomState = AnthaMultiplayerP2pLockStepState<MultiplayerAction> & {
     clickCount: number;
     roomMode: RoomMode | undefined;
-    multiplayerInit: WeakMap<P2pLockStepMultiplayerController, boolean>;
 };
 
 const DemoLockStepCounter = defineElement<{
@@ -103,6 +97,8 @@ const DemoLockStepCounter = defineElement<{
 const DemoModeRoomLobby = defineElement<{
     gameState: SetRequiredAndNotNull<Partial<SelectableRoomState>, 'multiplayerP2pLockStep'>;
     clickCount: number | undefined;
+    connectionState: Readonly<ApiAndRoomConnectionState> | undefined;
+    connectedClientCount: number;
 }>()({
     tagName: 'demo-mode-room-lobby',
     styles: css`
@@ -116,38 +112,13 @@ const DemoModeRoomLobby = defineElement<{
     state() {
         return {
             connectionError: '',
-            connectionState: undefined as ApiAndRoomConnectionState | undefined,
             joinedRoom: undefined as Readonly<RoomInput> | undefined,
             cleanup: undefined as (() => void) | undefined,
             availableRooms: {} as Readonly<MultiplayerClientRooms>,
-            connectedClientCount: 0,
         };
     },
     init({inputs, updateState, state}) {
-        function updateConnectedClientCount() {
-            updateState({
-                connectedClientCount:
-                    inputs.gameState.multiplayerP2pLockStep.multiplayerController.getAllClientIds()
-                        .length,
-            });
-        }
-
         const cleanupCallbacks = [
-            inputs.gameState.multiplayerP2pLockStep.multiplayerController.listen(
-                MultiplayerControllerClientStatusEvent,
-                () => {
-                    updateConnectedClientCount();
-                },
-            ),
-            inputs.gameState.multiplayerP2pLockStep.multiplayerController.listen(
-                MultiplayerControllerConnectionEvent,
-                (event) => {
-                    updateState({
-                        connectionState: event.detail,
-                    });
-                    updateConnectedClientCount();
-                },
-            ),
             () => {
                 inputs.gameState.multiplayerP2pLockStep.multiplayerController.stopRoomUpdates();
             },
@@ -182,9 +153,6 @@ const DemoModeRoomLobby = defineElement<{
                 );
                 updateState({
                     joinedRoom: room,
-                    connectedClientCount:
-                        inputs.gameState.multiplayerP2pLockStep.multiplayerController.getAllClientIds()
-                            .length,
                 });
             } catch (error) {
                 log.error(error);
@@ -196,21 +164,21 @@ const DemoModeRoomLobby = defineElement<{
 
         if (state.joinedRoom) {
             const apiLabel =
-                state.connectionState?.api instanceof Error
-                    ? `Error: ${state.connectionState.api.message}`
-                    : state.connectionState?.api;
+                inputs.connectionState?.api instanceof Error
+                    ? `Error: ${inputs.connectionState.api.message}`
+                    : inputs.connectionState?.api;
 
             const roomLabel =
-                state.connectionState?.room instanceof Error
-                    ? `Error: ${state.connectionState.room.message}`
-                    : state.connectionState?.room;
+                inputs.connectionState?.room instanceof Error
+                    ? `Error: ${inputs.connectionState.room.message}`
+                    : inputs.connectionState?.room;
 
             const statusLines = [
                 `Client ID: ${inputs.gameState.multiplayerP2pLockStep.multiplayerController.getClientId() || 'pending...'}`,
                 `Api: ${apiLabel}`,
                 `Room: ${roomLabel}`,
                 `Room Name: ${state.joinedRoom.roomName}`,
-                `Connected Clients: ${state.connectedClientCount}`,
+                `Connected Clients: ${inputs.connectedClientCount}`,
             ];
 
             return html`
@@ -219,7 +187,6 @@ const DemoModeRoomLobby = defineElement<{
                         inputs.gameState.multiplayerP2pLockStep.multiplayerController.leaveRoom();
                         updateState({
                             joinedRoom: undefined,
-                            connectedClientCount: 0,
                         });
                     })}
                 >
@@ -399,6 +366,8 @@ const DemoModeSelection = defineElement<{
 const DemoRoomDisplay = defineElement<{
     roomMode: RoomMode | undefined;
     clickCount: number | undefined;
+    connectionState: Readonly<ApiAndRoomConnectionState> | undefined;
+    connectedClientCount: number;
     gameState: Partial<SelectableRoomState>;
     /**
      * Split out of as an input separated from `gameState` so that this element re-renders if this
@@ -439,6 +408,8 @@ const DemoRoomDisplay = defineElement<{
                     <${DemoModeRoomLobby.assign({
                         gameState: inputs.gameState,
                         clickCount: inputs.clickCount,
+                        connectionState: inputs.connectionState,
+                        connectedClientCount: inputs.connectedClientCount,
                     })}></${DemoModeRoomLobby}>
                 `,
                 [RoomMode.Singleplayer]: html`
@@ -500,53 +471,18 @@ function createRoomModeSelectionMod(
         initState: {
             clickCount: 0,
             roomMode: undefined,
-            multiplayerInit: new WeakMap(),
         },
         execute({state}) {
-            if (!state.multiplayerInit) {
-                return;
-            }
-
-            if (
-                state.multiplayerP2pLockStep &&
-                !state.multiplayerInit.get(state.multiplayerP2pLockStep.multiplayerController)
-            ) {
-                state.multiplayerInit.set(state.multiplayerP2pLockStep.multiplayerController, true);
-
-                state.multiplayerP2pLockStep.multiplayerController.listen(
-                    MultiplayerControllerFrameEvent,
-                    async (event) => {
-                        await awaitedBlockingMap(event.detail, async (detail) => {
-                            await multiplayerActionReactions[detail.packet.type]({
-                                detail,
-                                state,
-                            });
-                        });
-                    },
-                );
-
-                state.multiplayerP2pLockStep.multiplayerController.listen(
-                    MultiplayerControllerClientStatusEvent,
-                    (event) => {
-                        if (
-                            state.multiplayerP2pLockStep?.multiplayerController.isHost() &&
-                            event.detail.newMember
-                        ) {
-                            state.multiplayerP2pLockStep.multiplayerController.act({
-                                type: MultiplayerActionType.StateSync,
-                                currentClickCount: state.clickCount || 0,
-                            });
-                        }
-                    },
-                );
-            }
-
             return html`
                 <${DemoRoomDisplay.assign({
                     roomMode: state.roomMode,
                     gameState: state,
                     multiplayerP2pLockStep: state.multiplayerP2pLockStep,
                     clickCount: state.clickCount,
+                    connectionState: state.multiplayerP2pLockStep?.connectionState,
+                    connectedClientCount:
+                        state.multiplayerP2pLockStep?.multiplayerController.getAllClientIds()
+                            .length ?? 0,
                 })}></${DemoRoomDisplay}>
 
                 <${DemoModeSelection.assign({
@@ -561,8 +497,25 @@ function createRoomModeSelectionMod(
 }
 
 function createRoomModeEngine(multiplayerApiClient: Readonly<MultiplayerApiClient>) {
-    const multiplayerP2pLockStepMod = createAnthaMultiplayerP2pLockStepMod<MultiplayerAction>({
+    const multiplayerP2pLockStepMod = createAnthaMultiplayerP2pLockStepMod<
+        MultiplayerAction,
+        SelectableRoomState
+    >({
         gameId: roomModeSelectionGameId,
+        async handlePacket({packet, state}) {
+            await multiplayerActionReactions[packet.packet.type]({
+                detail: packet,
+                state,
+            });
+        },
+        handleClientStatus({event, multiplayerController, state}) {
+            if (multiplayerController.isHost() && event.detail.newMember) {
+                multiplayerController.act({
+                    type: MultiplayerActionType.StateSync,
+                    currentClickCount: state.clickCount || 0,
+                });
+            }
+        },
     });
     const modeSelectionMod = createRoomModeSelectionMod(multiplayerApiClient);
 

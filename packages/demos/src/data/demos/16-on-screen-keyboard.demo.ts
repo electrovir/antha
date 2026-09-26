@@ -51,14 +51,15 @@ export const onScreenKeyboardDemo: AnthaDemo = {
     engine() {
         return new AnthaEngine<OnScreenKeyboardDemoModState>({
             initState: {
-                bindingAssignments: {
-                    1: defaultMenuNavBindings,
-                },
                 isInMenu: true,
             },
             mods: [
                 createAnthaReadRawInputMod(),
-                createAnthaInputBindingsMod<MenuNavBinding>(),
+                createAnthaInputBindingsMod<MenuNavBinding>({
+                    bindingAssignments: {
+                        1: defaultMenuNavBindings,
+                    },
+                }),
                 createAnthaMenuNavMod(),
                 onScreenKeyboardDemoMod,
             ],

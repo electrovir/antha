@@ -1,7 +1,5 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod, type AnthaMod} from '@antha/engine';
 import {
-    MultiplayerControllerClientStatusEvent,
-    MultiplayerControllerConnectionEvent,
     createMockRoomHandlerServerApiClient,
     createNewRoom,
     type ApiAndRoomConnectionState,
@@ -11,7 +9,6 @@ import {
     type RoomInput,
 } from '@antha/multiplayer-core';
 import {
-    MultiplayerControllerStateEvent,
     createAnthaMultiplayerP2pAuthoritativeHostMod,
     type AnthaMultiplayerP2pAuthoritativeHostState,
 } from '@antha/multiplayer-p2p-authoritative-host';
@@ -52,6 +49,8 @@ type AuthoritativeHostMultiplayerState = AnthaMultiplayerP2pAuthoritativeHostSta
 
 const DemoAuthoritativeCounter = defineElement<{
     authoritativeHostMultiplayer: AuthoritativeHostMultiplayerState;
+    /** Separate from `authoritativeHostMultiplayer` so that this element re-renders when it changes. */
+    currentState: Readonly<CounterState>;
 }>()({
     tagName: 'demo-authoritative-counter',
     styles: css`
@@ -89,35 +88,7 @@ const DemoAuthoritativeCounter = defineElement<{
             margin: 0;
         }
     `,
-    state({inputs}) {
-        return {
-            count: inputs.authoritativeHostMultiplayer.currentState.count,
-            lastClientId: inputs.authoritativeHostMultiplayer.currentState.lastClientId,
-            cleanup: undefined as (() => void) | undefined,
-        };
-    },
-    init({inputs, updateState}) {
-        const cleanup = inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-            MultiplayerControllerStateEvent<CounterState, CounterInput>,
-            ({detail}) => {
-                updateState({
-                    count: detail.state.count,
-                    lastClientId: detail.state.lastClientId,
-                });
-            },
-        );
-
-        updateState({
-            cleanup,
-        });
-    },
-    cleanup({state, updateState}) {
-        state.cleanup?.();
-        updateState({
-            cleanup: undefined,
-        });
-    },
-    render({inputs, state}) {
+    render({inputs}) {
         function incrementCounter() {
             inputs.authoritativeHostMultiplayer.multiplayerController.act({
                 increment: 1,
@@ -126,7 +97,7 @@ const DemoAuthoritativeCounter = defineElement<{
 
         const statusLines = [
             `Authority: ${inputs.authoritativeHostMultiplayer.multiplayerController.isHost() ? 'this client' : 'room host'}`,
-            `Last Input: ${state.lastClientId || 'none'}`,
+            `Last Input: ${inputs.currentState.lastClientId || 'none'}`,
         ];
 
         return html`
@@ -140,7 +111,7 @@ const DemoAuthoritativeCounter = defineElement<{
                     }
                 })}
             >
-                <span class="count">${state.count}</span>
+                <span class="count">${inputs.currentState.count}</span>
                 <button
                     ${listen('click', () => {
                         incrementCounter();
@@ -162,6 +133,9 @@ const DemoAuthoritativeCounter = defineElement<{
 
 const DemoAuthoritativeHostRoomLobby = defineElement<{
     authoritativeHostMultiplayer: AuthoritativeHostMultiplayerState;
+    connectionState: Readonly<ApiAndRoomConnectionState>;
+    currentState: Readonly<CounterState>;
+    connectedClientCount: number;
 }>()({
     tagName: 'demo-authoritative-host-room-lobby',
     styles: css`
@@ -174,38 +148,13 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
     state() {
         return {
             connectionError: '',
-            connectionState: undefined as ApiAndRoomConnectionState | undefined,
             joinedRoom: undefined as Readonly<RoomInput> | undefined,
             cleanup: undefined as (() => void) | undefined,
             availableRooms: {} as Readonly<MultiplayerClientRooms>,
-            connectedClientCount: 0,
         };
     },
     init({inputs, updateState, state}) {
-        function updateConnectedClientCount() {
-            updateState({
-                connectedClientCount:
-                    inputs.authoritativeHostMultiplayer.multiplayerController.getAllClientIds()
-                        .length,
-            });
-        }
-
         const cleanupCallbacks = [
-            inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-                MultiplayerControllerClientStatusEvent,
-                () => {
-                    updateConnectedClientCount();
-                },
-            ),
-            inputs.authoritativeHostMultiplayer.multiplayerController.listen(
-                MultiplayerControllerConnectionEvent,
-                (event) => {
-                    updateState({
-                        connectionState: event.detail,
-                    });
-                    updateConnectedClientCount();
-                },
-            ),
             () => {
                 inputs.authoritativeHostMultiplayer.multiplayerController.stopRoomUpdates();
             },
@@ -238,9 +187,6 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
                 );
                 updateState({
                     joinedRoom: room,
-                    connectedClientCount:
-                        inputs.authoritativeHostMultiplayer.multiplayerController.getAllClientIds()
-                            .length,
                 });
             } catch (error) {
                 log.error(error);
@@ -252,21 +198,21 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
 
         if (state.joinedRoom) {
             const apiLabel =
-                state.connectionState?.api instanceof Error
-                    ? `Error: ${state.connectionState.api.message}`
-                    : state.connectionState?.api;
+                inputs.connectionState.api instanceof Error
+                    ? `Error: ${inputs.connectionState.api.message}`
+                    : inputs.connectionState.api;
 
             const roomLabel =
-                state.connectionState?.room instanceof Error
-                    ? `Error: ${state.connectionState.room.message}`
-                    : state.connectionState?.room;
+                inputs.connectionState.room instanceof Error
+                    ? `Error: ${inputs.connectionState.room.message}`
+                    : inputs.connectionState.room;
 
             const statusLines = [
                 `Client ID: ${inputs.authoritativeHostMultiplayer.multiplayerController.getClientId() || 'pending...'}`,
                 `Api: ${apiLabel}`,
                 `Room: ${roomLabel}`,
                 `Room Name: ${state.joinedRoom.roomName}`,
-                `Connected Clients: ${state.connectedClientCount}`,
+                `Connected Clients: ${inputs.connectedClientCount}`,
             ];
 
             return html`
@@ -275,7 +221,6 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
                         inputs.authoritativeHostMultiplayer.multiplayerController.leaveRoom();
                         updateState({
                             joinedRoom: undefined,
-                            connectedClientCount: 0,
                         });
                     })}
                 >
@@ -293,6 +238,7 @@ const DemoAuthoritativeHostRoomLobby = defineElement<{
                 })}
                 <${DemoAuthoritativeCounter.assign({
                     authoritativeHostMultiplayer: inputs.authoritativeHostMultiplayer,
+                    currentState: inputs.currentState,
                 })}></${DemoAuthoritativeCounter}>
                 ${state.connectionError
                     ? html`
@@ -413,6 +359,10 @@ function createAuthoritativeHostModeSelectionMod(
                     ${backButton}
                     <${DemoAuthoritativeHostRoomLobby.assign({
                         authoritativeHostMultiplayer: authoritativeHost,
+                        connectionState: authoritativeHost.connectionState,
+                        currentState: authoritativeHost.currentState,
+                        connectedClientCount:
+                            authoritativeHost.multiplayerController.getAllClientIds().length,
                     })}></${DemoAuthoritativeHostRoomLobby}>
                 `;
             } else {
@@ -420,6 +370,7 @@ function createAuthoritativeHostModeSelectionMod(
                     ${backButton}
                     <${DemoAuthoritativeCounter.assign({
                         authoritativeHostMultiplayer: authoritativeHost,
+                        currentState: authoritativeHost.currentState,
                     })}></${DemoAuthoritativeCounter}>
                 `;
             }

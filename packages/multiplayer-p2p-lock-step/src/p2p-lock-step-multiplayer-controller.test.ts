@@ -12,10 +12,13 @@ import {
     multiplayerRoomsEndpoint,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap} from '@augment-vir/assert';
-import {type MaybePromise, wait} from '@augment-vir/common';
+import {type MaybePromise, type PartialWithUndefined, wait} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
+import {type AnyDuration} from 'date-vir';
 import {
+    MultiplayerControllerDesyncEvent,
     MultiplayerControllerFrameEvent,
+    type MultiplayerDesync,
     type MultiplayerFramePacket,
     type P2pLockStepMessage,
     P2pLockStepMessageType,
@@ -180,15 +183,18 @@ async function withMockPeerConnection(callback: () => MaybePromise<void>) {
 function createController({
     acceptConnection,
     debugMultiplayer = false,
+    desyncCheckInterval,
     gameId = 'lock-step-test',
 }: Readonly<{
     acceptConnection?: ((connectingClientId: ClientId) => MaybePromise<boolean>) | undefined;
     debugMultiplayer?: boolean | undefined;
+    desyncCheckInterval?: AnyDuration | undefined;
     gameId?: string | undefined;
 }> = {}) {
     return new MockP2pLockStepMultiplayerController({
         gameId,
         debugMultiplayer,
+        desyncCheckInterval,
         ...(acceptConnection && {
             acceptConnection,
         }),
@@ -297,10 +303,10 @@ describe(P2pLockStepMultiplayerController.name, () => {
         });
 
         controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
-            if (detail.length) {
+            if (detail.packets.length) {
                 state.frames = [
                     ...state.frames,
-                    detail,
+                    detail.packets,
                 ];
             }
         });
@@ -375,6 +381,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 roomConnectionState: MultiplayerConnectionState.Disconnected,
                 roomId: undefined,
                 staticEvents: [
+                    'MultiplayerControllerDesyncEvent',
                     'MultiplayerControllerFrameEvent',
                 ],
                 staticKnownErrors: controller.knownErrors,
@@ -414,10 +421,10 @@ describe(P2pLockStepMultiplayerController.name, () => {
             };
 
             controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
-                if (detail.length) {
+                if (detail.packets.length) {
                     state.frames = [
                         ...state.frames,
-                        detail,
+                        detail.packets,
                     ];
                 }
             });
@@ -525,7 +532,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
             state.frames = [
                 ...state.frames,
-                detail,
+                detail.packets,
             ];
         });
         controller.listen(MultiplayerControllerRoomListEvent, ({detail}) => {
@@ -685,7 +692,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
             state.frames = [
                 ...state.frames,
-                detail,
+                detail.packets,
             ];
         });
 
@@ -743,6 +750,165 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 ],
             },
         );
+    });
+
+    it('sends reported host state hashes with the next frame without holding frames', () => {
+        const controller = createController({
+            desyncCheckInterval: {
+                milliseconds: 2,
+            },
+        });
+        const memberClientId = createMultiplayerId.client();
+        const fakeConnection = createFakeConnection({
+            connectedClientIds: [
+                memberClientId,
+            ],
+        });
+        const frameEvents: MultiplayerControllerFrameEvent<string>[] = [];
+
+        controller.listen(MultiplayerControllerFrameEvent, (event) => {
+            frameEvents.push(event);
+        });
+        controller.setFrameMsForTest(0);
+        controller.setRoomConnectionForTest(fakeConnection);
+        controller.roomController.dispatch(
+            new MultiplayerControllerMessageEvent(
+                memberClientId,
+                createActionsMessage({
+                    actions: [],
+                    sourceClientId: memberClientId,
+                }),
+            ),
+        );
+        controller.runFrame();
+        controller.runFrame();
+        controller.reportStateHash({
+            frameEvent: assertWrap.isDefined(frameEvents[1]),
+            stateHash: 7,
+        });
+        controller.runFrame();
+        controller.runFrame();
+        controller.runFrame();
+        /** Stale: a newer check frame has already been sent. */
+        controller.reportStateHash({
+            frameEvent: assertWrap.isDefined(frameEvents[3]),
+            stateHash: 9,
+        });
+        controller.runFrame();
+
+        assert.deepEquals(fakeConnection.sentMessages, [
+            {
+                packets: [],
+                type: P2pLockStepMessageType.Frame,
+            },
+            {
+                packets: [],
+                shouldReportNextFrameHash: true,
+                type: P2pLockStepMessageType.Frame,
+            },
+            {
+                packets: [],
+                type: P2pLockStepMessageType.Frame,
+            },
+            {
+                packets: [],
+                shouldReportNextFrameHash: true,
+                stateHash: 7,
+                type: P2pLockStepMessageType.Frame,
+            },
+            {
+                packets: [],
+                type: P2pLockStepMessageType.Frame,
+            },
+            {
+                packets: [],
+                shouldReportNextFrameHash: true,
+                type: P2pLockStepMessageType.Frame,
+            },
+            {
+                packets: [],
+                type: P2pLockStepMessageType.Frame,
+            },
+        ]);
+        controller.destroy();
+    });
+
+    it('compares host state hashes against reported client hashes and emits desyncs', () => {
+        const controller = createController();
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        const frameEvents: MultiplayerControllerFrameEvent<string>[] = [];
+        const desyncs: MultiplayerDesync[] = [];
+
+        controller.listen(MultiplayerControllerFrameEvent, (event) => {
+            frameEvents.push(event);
+        });
+        controller.listen(MultiplayerControllerDesyncEvent, (event) => {
+            desyncs.push(event.detail);
+        });
+        controller.setRoomConnectionForTest(fakeConnection);
+
+        function receiveFrame(
+            frameMessage: PartialWithUndefined<{
+                shouldReportNextFrameHash: boolean;
+                stateHash: number;
+            }>,
+        ) {
+            controller.roomController.dispatch(
+                new MultiplayerControllerMessageEvent<P2pLockStepMessage<string>>(
+                    createMultiplayerId.client(),
+                    {
+                        ...frameMessage,
+                        packets: [],
+                        type: P2pLockStepMessageType.Frame,
+                    },
+                ),
+            );
+            return assertWrap.isDefined(frameEvents.at(-1));
+        }
+
+        const checkFrameEvent = receiveFrame({
+            shouldReportNextFrameHash: true,
+        });
+        controller.checkStateHash(checkFrameEvent);
+        controller.reportStateHash({
+            frameEvent: checkFrameEvent,
+            stateHash: 5,
+        });
+        controller.checkStateHash(
+            receiveFrame({
+                stateHash: 5,
+            }),
+        );
+        controller.checkStateHash(
+            receiveFrame({
+                stateHash: 6,
+            }),
+        );
+
+        assert.deepEquals(
+            {
+                desyncs,
+                shouldReportNextFrameHashFlags: frameEvents.map((event) => {
+                    return event.detail.shouldReportNextFrameHash;
+                }),
+            },
+            {
+                desyncs: [
+                    {
+                        hostStateHash: 6,
+                        localStateHash: 5,
+                    },
+                ],
+                shouldReportNextFrameHashFlags: [
+                    true,
+                    undefined,
+                    undefined,
+                ],
+            },
+        );
+        controller.destroy();
     });
 
     it('does not emit a frame event for synchronization frames', () => {
@@ -820,10 +986,10 @@ describe(P2pLockStepMultiplayerController.name, () => {
         };
 
         controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
-            if (detail.length) {
+            if (detail.packets.length) {
                 state.frames = [
                     ...state.frames,
-                    detail,
+                    detail.packets,
                 ];
             }
         });
@@ -930,13 +1096,13 @@ describe(P2pLockStepMultiplayerController.name, () => {
             host.listen(MultiplayerControllerFrameEvent, ({detail}) => {
                 state.hostFrames = [
                     ...state.hostFrames,
-                    detail,
+                    detail.packets,
                 ];
             });
             member.listen(MultiplayerControllerFrameEvent, ({detail}) => {
                 state.memberFrames = [
                     ...state.memberFrames,
-                    detail,
+                    detail.packets,
                 ];
             });
 

@@ -7,6 +7,9 @@ module.exports = {
     ],
     words: [
         ...baseConfig.words,
+        'desync',
+        'desynced',
+        'desyncs',
         'lerp',
     ],
 };

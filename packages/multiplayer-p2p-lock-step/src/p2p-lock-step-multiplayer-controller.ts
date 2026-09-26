@@ -42,7 +42,7 @@ export enum P2pLockStepMessageType {
 }
 
 /**
- * Data received from {@link MultiplayerControllerFrameEvent}.
+ * A single action within a {@link MultiplayerFrame}.
  *
  * @category Internal
  */
@@ -50,6 +50,26 @@ export type MultiplayerFramePacket<MultiplayerPacket extends JsonCompatibleValue
     packet: MultiplayerPacket;
     sourceClientId: ClientId;
 };
+
+/**
+ * Data received from {@link MultiplayerControllerFrameEvent}.
+ *
+ * @category Internal
+ */
+export type MultiplayerFrame<MultiplayerPacket extends JsonCompatibleValue> = {
+    packets: ReadonlyArray<MultiplayerFramePacket<MultiplayerPacket>>;
+} & PartialWithUndefined<{
+    /**
+     * On clients, the host's state hash from right after the most recent check frame. Pass this
+     * frame's event to {@link P2pLockStepMultiplayerController.checkStateHash} before applying it.
+     */
+    hostStateHash: number;
+    /**
+     * Whether to pass this frame's event and a state hash to
+     * {@link P2pLockStepMultiplayerController.reportStateHash} right after applying it.
+     */
+    shouldReportNextFrameHash: boolean;
+}>;
 
 /**
  * Message exchanged by p2p-lock-step clients.
@@ -71,7 +91,40 @@ export type P2pLockStepMessage<MultiplayerPacket extends JsonCompatibleValue> =
       } & PartialWithUndefined<{
           /** Whether this frame is meant for syncing a new client. */
           isSynchronizationFrame: boolean;
+          /**
+           * Whether every peer should hash its state right after applying this frame, for a later
+           * desync check.
+           */
+          shouldReportNextFrameHash: boolean;
+          /** The host's state hash from right after the most recent desync check frame. */
+          stateHash: number;
       }>);
+
+/**
+ * Each {@link P2pLockStepMessage} variant, keyed by its message type.
+ *
+ * @category Internal
+ */
+export type P2pLockStepMessageByType<MultiplayerPacket extends JsonCompatibleValue> = {
+    [Type in P2pLockStepMessageType]: Readonly<
+        Extract<
+            P2pLockStepMessage<MultiplayerPacket>,
+            {
+                type: Type;
+            }
+        >
+    >;
+};
+
+/**
+ * Data received from {@link MultiplayerControllerDesyncEvent}.
+ *
+ * @category Internal
+ */
+export type MultiplayerDesync = {
+    hostStateHash: number;
+    localStateHash: number;
+};
 
 /**
  * Constructor parameters for {@link P2pLockStepMultiplayerController}.
@@ -103,6 +156,20 @@ export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatible
     debugMultiplayer?: boolean | undefined;
 
     /**
+     * The duration between desync check frames, rounded to a whole number of frames. Ignored when
+     * `frameDuration` is zero, because then frames only run manually. Every peer's frame event for
+     * a check frame has `shouldReportNextFrameHash` set: pass the state hash from right after
+     * applying that frame to {@link P2pLockStepMultiplayerController.reportStateHash}. The host
+     * sends its hash with the next frame it produces, and clients compare it against their own hash
+     * with {@link P2pLockStepMultiplayerController.checkStateHash} before applying that frame.
+     * Frames are never held for a hash: if the host doesn't report one before its next check frame,
+     * that check is skipped.
+     *
+     * @default no desync checks
+     */
+    desyncCheckInterval?: AnyDuration | undefined;
+
+    /**
      * The duration between each frame. This should probably always be smaller than your supported
      * render frame duration.
      *
@@ -119,16 +186,25 @@ export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatible
 export class MultiplayerControllerFrameEvent<
     MultiplayerPacket extends JsonCompatibleValue,
 > extends defineTypedCustomEvent<any>()('multiplayer-controller-frame') {
-    public declare detail: ReadonlyArray<MultiplayerFramePacket<MultiplayerPacket>>;
+    public declare detail: Readonly<MultiplayerFrame<MultiplayerPacket>>;
 
     constructor(
-        eventInitDict: TypedCustomEventInit<
-            ReadonlyArray<MultiplayerFramePacket<MultiplayerPacket>>
-        >,
+        eventInitDict: TypedCustomEventInit<Readonly<MultiplayerFrame<MultiplayerPacket>>>,
     ) {
         super(eventInitDict);
     }
 }
+
+/**
+ * This is fired on a client when its state hash from a check frame does not match the host's. The
+ * host's state is no more correct than the client's, so this only says that the two disagree.
+ * Nothing else is done about the desync: handle it however your game needs to.
+ *
+ * @category Events
+ */
+export class MultiplayerControllerDesyncEvent extends defineTypedCustomEvent<
+    Readonly<MultiplayerDesync>
+>()('multiplayer-controller-desync') {}
 /**
  * All events emitted by this controller.
  *
@@ -138,6 +214,7 @@ export type AllP2pLockStepMultiplayerControllerEvents<
     MultiplayerPacket extends JsonCompatibleValue,
 > =
     | MultiplayerControllerFrameEvent<MultiplayerPacket>
+    | MultiplayerControllerDesyncEvent
     | MultiplayerControllerRoomListEvent
     | MultiplayerControllerClientStatusEvent
     | MultiplayerControllerConnectionEvent;
@@ -167,6 +244,7 @@ export class P2pLockStepMultiplayerController<
     public readonly currentFps: number = 0;
     /** All events emitted by this controller. */
     public static readonly events = {
+        MultiplayerControllerDesyncEvent,
         MultiplayerControllerFrameEvent,
     };
     /** All events emitted by this controller. */
@@ -190,6 +268,16 @@ export class P2pLockStepMultiplayerController<
     protected timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
     protected frameTickReady = true;
     public frameMs: number;
+    /** On the host, the number of frames produced. */
+    protected producedFrameCount = 0;
+    /** Number of frames between desync checks, or `undefined` when checks are disabled. */
+    protected readonly desyncCheckFrameInterval: number | undefined;
+    /** On the host, the most recent check frame event, the only one whose report is still sent. */
+    protected latestCheckFrameEvent: MultiplayerControllerFrameEvent<MultiplayerPacket> | undefined;
+    /** On the host, the state hash to send with the next frame. */
+    protected nextFrameStateHash: number | undefined;
+    /** On clients, this client's state hash from the most recent check frame. */
+    protected localStateHash: number | undefined;
     protected joiningRoom = false;
     protected lastFpsCalculation = {
         timestamp: 0,
@@ -206,6 +294,17 @@ export class P2pLockStepMultiplayerController<
         this.frameMs = convertDuration(frameDuration, {
             milliseconds: true,
         }).milliseconds;
+        this.desyncCheckFrameInterval =
+            params.desyncCheckInterval && this.frameMs
+                ? Math.max(
+                      1,
+                      Math.round(
+                          convertDuration(params.desyncCheckInterval, {
+                              milliseconds: true,
+                          }).milliseconds / this.frameMs,
+                      ),
+                  )
+                : undefined;
         this.roomController = new MultiplayerRoomController<P2pLockStepMessage<MultiplayerPacket>>({
             gameId: params.gameId,
             clientId: this.localClientId,
@@ -383,6 +482,58 @@ export class P2pLockStepMultiplayerController<
         ];
     }
 
+    /**
+     * Call on every peer right after applying a frame event whose `shouldReportNextFrameHash` is
+     * set. The host sends the hash with its next frame, unless a newer check frame has already been
+     * sent. Clients keep the hash for {@link P2pLockStepMultiplayerController.checkStateHash}. Pass
+     * `undefined` when there's no state to hash yet, which skips this check.
+     */
+    public reportStateHash({
+        frameEvent,
+        stateHash,
+    }: Readonly<{
+        frameEvent: Readonly<MultiplayerControllerFrameEvent<MultiplayerPacket>>;
+        stateHash: number | undefined;
+    }>) {
+        if (!this.isHost()) {
+            this.localStateHash = stateHash;
+        } else if (frameEvent === this.latestCheckFrameEvent) {
+            this.latestCheckFrameEvent = undefined;
+            this.nextFrameStateHash = stateHash;
+        }
+    }
+
+    /**
+     * Call on clients right before applying a frame event. When the event carries the host's state
+     * hash, this compares it against this client's latest reported hash, then logs a warning and
+     * emits {@link MultiplayerControllerDesyncEvent} if they differ.
+     */
+    public checkStateHash(
+        frameEvent: Readonly<MultiplayerControllerFrameEvent<MultiplayerPacket>>,
+    ) {
+        if (
+            frameEvent.detail.hostStateHash == undefined ||
+            this.localStateHash == undefined ||
+            frameEvent.detail.hostStateHash === this.localStateHash
+        ) {
+            return;
+        }
+
+        const desync: MultiplayerDesync = {
+            hostStateHash: frameEvent.detail.hostStateHash,
+            localStateHash: this.localStateHash,
+        };
+
+        log.warning(
+            `[multiplayer] Desync detected: local state hash ${desync.localStateHash} does not match host state hash ${desync.hostStateHash}.`,
+        );
+        this.dispatch(
+            new MultiplayerControllerDesyncEvent({
+                detail: desync,
+            }),
+        );
+    }
+
     /** Detects if this controller is the room host or not. */
     public isHost(): boolean {
         return this.singleplayer || this.roomConnection?.isHost() || false;
@@ -417,6 +568,7 @@ export class P2pLockStepMultiplayerController<
                 room,
             });
 
+            this.resetDesyncCheck();
             if (previousRoomConnection) {
                 globalThis.clearTimeout(this.timeoutId);
                 this.clientsResponded = {};
@@ -543,6 +695,7 @@ export class P2pLockStepMultiplayerController<
 
         globalThis.clearTimeout(this.timeoutId);
         this.clientsResponded = {};
+        this.resetDesyncCheck();
         this.frameTickReady = true;
         this.finishFrame();
     }
@@ -559,10 +712,83 @@ export class P2pLockStepMultiplayerController<
         }
     }
 
-    /** Apply received member actions on the host or received frames on member clients. */
-    protected handleReceivedMessage(
+    /**
+     * Per message type, whether only the host or only member clients handle it and how. Messages
+     * received by the wrong side are ignored.
+     */
+    protected readonly messageHandlers: {
+        [Type in P2pLockStepMessageType]: {
+            /** Whether only the host should handle this message. */
+            isForHost: boolean;
+            /** Handles the message. */
+            handle: (
+                params: Readonly<{
+                    message: P2pLockStepMessageByType<MultiplayerPacket>[Type];
+                    sourceClientId: ClientId;
+                }>,
+            ) => void;
+        };
+    } = {
+        [P2pLockStepMessageType.Actions]: {
+            isForHost: true,
+            handle: ({message, sourceClientId}) => {
+                this.debugLog(
+                    `host received ${message.actions.length} actions from ${sourceClientId}`,
+                );
+                this.clientsResponded = {
+                    ...this.clientsResponded,
+                    [sourceClientId]: true,
+                };
+                this.frameActions = [
+                    ...this.frameActions,
+                    ...message.actions.map((packet): MultiplayerFramePacket<MultiplayerPacket> => {
+                        return {
+                            sourceClientId,
+                            packet,
+                        };
+                    }),
+                ];
+                this.maybeFinishFrame();
+            },
+        },
+        [P2pLockStepMessageType.Frame]: {
+            isForHost: false,
+            handle: ({message}) => {
+                this.debugLog(
+                    `member received frame with ${message.packets.length} actions; sending ${this.frameActions.length} local actions back to host`,
+                );
+                const currentFrameActions = this.frameActions;
+                this.frameActions = [];
+                this.roomConnection?.sendMessage({
+                    actions: currentFrameActions.map(({packet}) => {
+                        return packet;
+                    }),
+                    sourceClientId: this.clientId,
+                    type: P2pLockStepMessageType.Actions,
+                });
+                if (!message.isSynchronizationFrame) {
+                    this.calculateFps();
+                    this.dispatch(
+                        new MultiplayerControllerFrameEvent({
+                            detail: {
+                                packets: message.packets,
+                                hostStateHash: message.stateHash,
+                                shouldReportNextFrameHash: message.shouldReportNextFrameHash,
+                            },
+                        }),
+                    );
+                }
+            },
+        },
+    };
+
+    /**
+     * Route a received message to its handler in
+     * {@link P2pLockStepMultiplayerController.messageHandlers}.
+     */
+    protected handleReceivedMessage<Type extends P2pLockStepMessageType>(
         sourceClientId: ClientId,
-        message: Readonly<P2pLockStepMessage<MultiplayerPacket>>,
+        message: P2pLockStepMessageByType<MultiplayerPacket>[Type],
     ) {
         this.debugLog(
             `received lock-step message from ${sourceClientId}: type=${message.type} host=${this.isHost()}`,
@@ -572,44 +798,22 @@ export class P2pLockStepMultiplayerController<
             return;
         }
 
-        if (this.isHost() && message.type === P2pLockStepMessageType.Actions) {
-            this.debugLog(`host received ${message.actions.length} actions from ${sourceClientId}`);
-            this.clientsResponded = {
-                ...this.clientsResponded,
-                [sourceClientId]: true,
-            };
-            this.frameActions = [
-                ...this.frameActions,
-                ...message.actions.map((packet): MultiplayerFramePacket<MultiplayerPacket> => {
-                    return {
-                        sourceClientId,
-                        packet,
-                    };
-                }),
-            ];
-            this.maybeFinishFrame();
-        } else if (!this.isHost() && message.type === P2pLockStepMessageType.Frame) {
-            this.debugLog(
-                `member received frame with ${message.packets.length} actions; sending ${this.frameActions.length} local actions back to host`,
-            );
-            const currentFrameActions = this.frameActions;
-            this.frameActions = [];
-            this.roomConnection.sendMessage({
-                actions: currentFrameActions.map(({packet}) => {
-                    return packet;
-                }),
-                sourceClientId: this.clientId,
-                type: P2pLockStepMessageType.Actions,
+        /** Indexing by `message.type` directly loses the link between the handler and `message`. */
+        const type: Type = message.type;
+
+        if (this.messageHandlers[type].isForHost === this.isHost()) {
+            this.messageHandlers[type].handle({
+                message,
+                sourceClientId,
             });
-            if (!message.isSynchronizationFrame) {
-                this.calculateFps();
-                this.dispatch(
-                    new MultiplayerControllerFrameEvent({
-                        detail: message.packets,
-                    }),
-                );
-            }
         }
+    }
+
+    /** Forget pending state hashes, such as when frames restart under a new host or room. */
+    protected resetDesyncCheck() {
+        this.latestCheckFrameEvent = undefined;
+        this.nextFrameStateHash = undefined;
+        this.localStateHash = undefined;
     }
 
     /** Recalculate the current data-flow FPS from completed frames. */
@@ -633,16 +837,34 @@ export class P2pLockStepMultiplayerController<
     /** Complete the current frame and schedule the next automatic frame when configured. */
     protected finishFrame() {
         const currentFrameActions = this.frameActions;
+        const stateHash = this.nextFrameStateHash;
         this.frameActions = [];
+        this.nextFrameStateHash = undefined;
+        this.producedFrameCount++;
+        const shouldReportNextFrameHash =
+            !!this.desyncCheckFrameInterval &&
+            !(this.producedFrameCount % this.desyncCheckFrameInterval) &&
+            this.getAllClientIds().length > 1;
         this.roomConnection?.sendMessage({
             type: P2pLockStepMessageType.Frame,
             packets: currentFrameActions,
-        });
-        this.dispatch(
-            new MultiplayerControllerFrameEvent({
-                detail: currentFrameActions,
+            ...(shouldReportNextFrameHash && {
+                shouldReportNextFrameHash,
             }),
-        );
+            ...(stateHash != undefined && {
+                stateHash,
+            }),
+        });
+        const frameEvent = new MultiplayerControllerFrameEvent<MultiplayerPacket>({
+            detail: {
+                packets: currentFrameActions,
+                shouldReportNextFrameHash,
+            },
+        });
+        if (shouldReportNextFrameHash) {
+            this.latestCheckFrameEvent = frameEvent;
+        }
+        this.dispatch(frameEvent);
 
         this.frameTickReady = false;
         this.calculateFps();
