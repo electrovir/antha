@@ -1,5 +1,9 @@
 import {check} from '@augment-vir/assert';
 import {findDevServerPort, RestVirClient, type FindPortOptions} from '@rest-vir/api';
+import {
+    createTimeoutSignal,
+    type MultiplayerConnectionTimeoutOptions,
+} from './connection-timeout.js';
 import {defaultMultiplayerApiOrigin, multiplayerApi} from './multiplayer-api.js';
 
 /**
@@ -18,6 +22,7 @@ export type MultiplayerApiClient = Awaited<ReturnType<typeof createMultiplayerAp
 export async function createMultiplayerApiClient({
     backendOrigin,
     portScanOptions,
+    timeout,
 }: {
     backendOrigin?: string | undefined;
     /**
@@ -25,13 +30,26 @@ export async function createMultiplayerApiClient({
      * scanning. Set to an options object to configure port scanning.
      */
     portScanOptions: undefined | Omit<FindPortOptions, 'startOrigin'> | boolean;
-}) {
+} & MultiplayerConnectionTimeoutOptions) {
     const initialOrigin = backendOrigin || defaultMultiplayerApiOrigin;
+    const customPortScanOptions = check.isBoolean(portScanOptions) ? undefined : portScanOptions;
+    const abortSignal = createTimeoutSignal(timeout);
 
     const foundPort = portScanOptions
         ? await findDevServerPort(multiplayerApi, {
               startOrigin: initialOrigin,
-              ...(!check.isBoolean(portScanOptions) && portScanOptions),
+              timeout,
+              ...customPortScanOptions,
+              fetchOverride(url, requestInit, endpoint) {
+                  const requestInitWithSignal: RequestInit = {
+                      ...requestInit,
+                      signal: abortSignal ?? null,
+                  };
+
+                  return customPortScanOptions?.fetchOverride
+                      ? customPortScanOptions.fetchOverride(url, requestInitWithSignal, endpoint)
+                      : globalThis.fetch(url, requestInitWithSignal);
+              },
           })
         : undefined;
 

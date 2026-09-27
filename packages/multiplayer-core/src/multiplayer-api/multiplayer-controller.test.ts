@@ -898,10 +898,16 @@ describe(MultiplayerRoomController.name, () => {
         const defaultClient = await createMultiplayerApiClient({
             portScanOptions: false,
         });
+        const scanSignals: unknown[] = [];
         const scannedClient = await createMultiplayerApiClient({
             backendOrigin: 'http://localhost:1234',
+            timeout: {
+                seconds: 5,
+            },
             portScanOptions: {
-                fetchOverride() {
+                fetchOverride(url, requestInit) {
+                    scanSignals.push(requestInit.signal);
+
                     return Promise.resolve(
                         new Response(undefined, {
                             headers: {
@@ -923,11 +929,17 @@ describe(MultiplayerRoomController.name, () => {
                 defaultBaseUrl: defaultClient.baseUrl,
                 noPortScannedBaseUrl: noPortScannedClient.baseUrl,
                 scannedBaseUrl: scannedClient.baseUrl,
+                scanSignalsAreAbortSignals: scanSignals.map(
+                    (signal) => signal instanceof AbortSignal,
+                ),
             },
             {
                 defaultBaseUrl: 'http://localhost:9348',
                 noPortScannedBaseUrl: 'http://localhost',
                 scannedBaseUrl: 'http://localhost:1234',
+                scanSignalsAreAbortSignals: [
+                    true,
+                ],
             },
         );
     });

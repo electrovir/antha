@@ -21,6 +21,11 @@ import {
     WebrtcMultiplayerController,
     WebrtcMultiplayerMessageEvent,
 } from '../webrtc/webrtc-multiplayer-controller.js';
+import {
+    createTimeoutSignal,
+    type MultiplayerConnectionTimeoutOptions,
+    rejectOnAbort,
+} from './connection-timeout.js';
 import {RoomRejectionError} from './errors.js';
 import {
     type MultiplayerClientRooms,
@@ -165,7 +170,8 @@ export type MultiplayerInitParams = {
     stunServerUrls: ReadonlyArray<string>;
     /** If set, this will override the internal multiplayer API. */
     multiplayerApiClient: Readonly<MultiplayerApiClient>;
-}>;
+}> &
+    MultiplayerConnectionTimeoutOptions;
 
 /**
  * This is fired when a room message is received.
@@ -340,6 +346,7 @@ export class MultiplayerRoomController<
         this.updateConnectionState({
             api: MultiplayerConnectionState.Connecting,
         });
+        const abortSignal = createTimeoutSignal(params.timeout);
 
         try {
             const api =
@@ -347,9 +354,14 @@ export class MultiplayerRoomController<
                 (await createMultiplayerApiClient({
                     portScanOptions: params.portScanOptions,
                     backendOrigin: params.backendOrigin,
+                    timeout: params.timeout,
                 }));
 
-            const output = await api.fetch(multiplayerHealthEndpoint).GET();
+            const output = await api.fetch(multiplayerHealthEndpoint).GET({
+                options: {
+                    signal: abortSignal ?? null,
+                },
+            });
             if (!output.Ok) {
                 throw new Error(`Failed to find multiplayer API at ${api.baseUrl}.`);
             }
@@ -430,7 +442,10 @@ export class MultiplayerRoomController<
     }
 
     /** Join or create a room. */
-    public async joinOrCreateRoom(room: Readonly<RoomInput>) {
+    public async joinOrCreateRoom(
+        room: Readonly<RoomInput>,
+        {timeout}: Readonly<MultiplayerConnectionTimeoutOptions> = {},
+    ) {
         if (!this.multiplayerApiClient || !this.multiplayerParams) {
             throw new Error(
                 'Cannot join room. Please start this controller in multiplayer mode to join rooms.',
@@ -441,6 +456,7 @@ export class MultiplayerRoomController<
 
         const previousConnection = this.currentConnection;
         const previousRoomId = this.roomId;
+        const abortSignal = createTimeoutSignal(timeout);
 
         this.updateConnectionState({
             room: MultiplayerConnectionState.Connecting,
@@ -473,21 +489,29 @@ export class MultiplayerRoomController<
         });
 
         try {
-            await currentConnection.initConnection();
-            const connectionResult = await waitUntil.isDefined(() => {
-                const connected = currentConnection.isConnected();
-                const destroyed = currentConnection.isDestroyed;
-
-                return !connected && !destroyed
-                    ? undefined
-                    : {
-                          connected,
-                          destroyed,
-                      };
+            await currentConnection.initConnection({
+                abortSignal,
             });
+            const connectionResult = await rejectOnAbort(
+                waitUntil.isDefined(() => {
+                    const connected = currentConnection.isConnected();
+                    const destroyed = currentConnection.isDestroyed;
+
+                    return !connected && !destroyed
+                        ? undefined
+                        : {
+                              connected,
+                              destroyed,
+                          };
+                }),
+                abortSignal,
+            );
 
             if (connectionResult.connected) {
-                await this.params.prepareConnection?.(currentConnection);
+                await rejectOnAbort(
+                    Promise.resolve(this.params.prepareConnection?.(currentConnection)),
+                    abortSignal,
+                );
                 this.currentConnection = currentConnection;
                 previousConnection?.destroy();
                 makeWritable(this).roomId = room.roomId;

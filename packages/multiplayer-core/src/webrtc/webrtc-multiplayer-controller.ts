@@ -19,6 +19,7 @@ import {
 } from '@augment-vir/common';
 import {type ClientWebSocket} from '@rest-vir/api';
 import {ListenTarget, defineTypedCustomEvent} from 'typed-event-target';
+import {rejectOnAbort} from '../multiplayer-api/connection-timeout.js';
 import {
     type MultiplayerConnectClientMessage,
     multiplayerConnectWebSocket,
@@ -281,12 +282,19 @@ export class WebrtcMultiplayerController<
     }
 
     /**
-     * Call this to connect to the multiplayer server.
+     * Call this to connect to the multiplayer server. Aborting `abortSignal` rejects the attempt
+     * and cleans up its WebRTC connection and WebSocket.
      *
      * @returns Whether or not the connection was initialized (it won't be initialized, for example,
      *   if the WebRTC connections already exist).
      */
-    public async initConnection(): Promise<boolean> {
+    public async initConnection({
+        abortSignal,
+    }: Readonly<
+        PartialWithUndefined<{
+            abortSignal: AbortSignal;
+        }>
+    > = {}): Promise<boolean> {
         if (Object.values(this.connections).length) {
             // connections already exist
             return false;
@@ -294,22 +302,28 @@ export class WebrtcMultiplayerController<
 
         try {
             const newConnection = this.createNewConnection(this.clientId);
-            const newOffer = await newConnection.createOffer(this.stunServerUrls);
+            const newOffer = await rejectOnAbort(
+                newConnection.createOffer(this.stunServerUrls),
+                abortSignal,
+            );
 
-            const webSocket = await this.setupWebSocket();
-            const reply = await webSocket.sendAndWaitForReply({
-                message: {
-                    messageId: createMultiplayerId.socketMessage(),
-                    type: MultiplayerWebSocketMessageType.Offer,
-                    clientId: this.clientId,
-                    clientSecret: this.clientSecret,
-                    data: newOffer,
-                    ...this.multiplayerRoom,
-                },
-                replyCheck(message) {
-                    return message.type === MultiplayerWebSocketMessageType.OfferResult;
-                },
-            });
+            const webSocket = await this.setupWebSocket(abortSignal);
+            const reply = await rejectOnAbort(
+                webSocket.sendAndWaitForReply({
+                    message: {
+                        messageId: createMultiplayerId.socketMessage(),
+                        type: MultiplayerWebSocketMessageType.Offer,
+                        clientId: this.clientId,
+                        clientSecret: this.clientSecret,
+                        data: newOffer,
+                        ...this.multiplayerRoom,
+                    },
+                    replyCheck(message) {
+                        return message.type === MultiplayerWebSocketMessageType.OfferResult;
+                    },
+                }),
+                abortSignal,
+            );
 
             assert.strictEquals(reply.type, MultiplayerWebSocketMessageType.OfferResult);
 
@@ -318,7 +332,10 @@ export class WebrtcMultiplayerController<
              * until it does, because we need to know who the host is before calling
              * `sendHostPing`.
              */
-            await waitUntil.isDefined(() => this.hostClientId);
+            await rejectOnAbort(
+                waitUntil.isDefined(() => this.hostClientId),
+                abortSignal,
+            );
 
             this.sendHostPing();
 
@@ -383,7 +400,7 @@ export class WebrtcMultiplayerController<
     protected connectionQueue = new PromiseQueue();
 
     /** Create or reuse the WebSocket used for multiplayer room signaling. */
-    protected async setupWebSocket() {
+    protected async setupWebSocket(abortSignal?: AbortSignal | undefined) {
         if (
             this.webSocket &&
             (this.webSocket.readyState === WebSocket.OPEN ||
@@ -391,7 +408,7 @@ export class WebrtcMultiplayerController<
         ) {
             return this.webSocket;
         }
-        const webSocket = await this.multiplayerApiClient.connectWebSocket(
+        const webSocketPromise = this.multiplayerApiClient.connectWebSocket(
             multiplayerConnectWebSocket,
             {
                 searchParams: {
@@ -529,8 +546,18 @@ export class WebrtcMultiplayerController<
             },
         );
 
-        this.webSocket = webSocket;
-        return webSocket;
+        try {
+            const webSocket = await rejectOnAbort(webSocketPromise, abortSignal);
+            this.webSocket = webSocket;
+            return webSocket;
+        } catch (error) {
+            /** `connectWebSocket` can't be cancelled, so close its socket once it finally opens. */
+            void webSocketPromise.then(
+                (lateWebSocket) => lateWebSocket.close(),
+                () => {},
+            );
+            throw error;
+        }
     }
 
     /** Create and track a WebRTC connection for the given client. */

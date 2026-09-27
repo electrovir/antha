@@ -2,6 +2,7 @@ import {
     type ClientId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
+    type MultiplayerConnectionTimeoutOptions,
     type MultiplayerConnectionUpdate,
     MultiplayerControllerConnectionEvent,
     type MultiplayerRoomConnection,
@@ -534,7 +535,10 @@ export class P2pLockStepMultiplayerController<
     }
 
     /** Join or create a room. */
-    public async joinOrCreateRoom(room: Readonly<RoomInput>) {
+    public async joinOrCreateRoom(
+        room: Readonly<RoomInput>,
+        timeoutOptions: Readonly<MultiplayerConnectionTimeoutOptions> = {},
+    ) {
         const previousRoomConnection = this.roomConnection;
         const wasSingleplayer = this.singleplayer;
 
@@ -545,6 +549,7 @@ export class P2pLockStepMultiplayerController<
             const roomConnection = await this.joinRoom({
                 previousRoomConnection,
                 room,
+                timeoutOptions,
             });
 
             this.resetDesyncCheck();
@@ -574,14 +579,16 @@ export class P2pLockStepMultiplayerController<
     protected async joinRoom({
         previousRoomConnection,
         room,
+        timeoutOptions,
     }: Readonly<{
         previousRoomConnection:
             | MultiplayerRoomConnection<P2pLockStepMessage<MultiplayerPacket>>
             | undefined;
         room: Readonly<RoomInput>;
+        timeoutOptions: Readonly<MultiplayerConnectionTimeoutOptions>;
     }>) {
         try {
-            await this.roomController.joinOrCreateRoom(room);
+            await this.roomController.joinOrCreateRoom(room, timeoutOptions);
             this.debugLog(
                 `room controller joined room '${room.roomName}' (${room.roomId}); client=${this.roomController.getClientId() || 'unknown'} host=${this.roomController.isHost()}`,
             );

@@ -1,5 +1,11 @@
-import {assert} from '@augment-vir/assert';
-import {makeWritable, type JsonCompatibleValue, type MaybePromise} from '@augment-vir/common';
+import {assert, assertWrap} from '@augment-vir/assert';
+import {
+    DeferredPromise,
+    makeWritable,
+    wait,
+    type JsonCompatibleValue,
+    type MaybePromise,
+} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {type MultiplayerApiClient} from '../multiplayer-api/multiplayer-client.js';
 import {createMultiplayerId, type ClientId} from '../multiplayer-id.js';
@@ -811,6 +817,73 @@ describe(WebrtcMultiplayerController.name, () => {
                     isCleaningUpConnection: false,
                     isDestroyed: false,
                     webSocket: undefined,
+                    webSocketCloseCallCount: 1,
+                },
+            );
+        });
+    });
+
+    it('closes a late WebSocket when initialization is aborted', async () => {
+        await withMockPeerConnection(async () => {
+            const localClientId = createMultiplayerId.client();
+            const webSocket = new FakeClientWebSocket(localClientId);
+            const lateWebSockets = [
+                new DeferredPromise<FakeClientWebSocket>(),
+                new DeferredPromise<FakeClientWebSocket>(),
+            ];
+            const abortControllers = [
+                new AbortController(),
+                new AbortController(),
+            ];
+            const controller = new WebrtcMultiplayerController<TestMessage>(
+                'mock',
+                {
+                    baseUrl: 'http://mock.example',
+                    connectWebSocket() {
+                        assertWrap
+                            .isDefined(abortControllers.shift())
+                            .abort(new Error('connection timed out'));
+
+                        return assertWrap.isDefined(lateWebSockets.shift()).promise;
+                    },
+                } satisfies Record<string, unknown> as unknown as MultiplayerApiClient,
+                [],
+                createNewRoom(),
+                localClientId,
+            );
+
+            async function abortInitConnection() {
+                await assert.throws(
+                    () => {
+                        return controller.initConnection({
+                            abortSignal: assertWrap.isDefined(abortControllers[0]).signal,
+                        });
+                    },
+                    {
+                        matchMessage: 'connection timed out',
+                    },
+                );
+            }
+
+            const resolvedWebSocket = assertWrap.isDefined(lateWebSockets[0]);
+            await abortInitConnection();
+            resolvedWebSocket.resolve(webSocket);
+
+            const rejectedWebSocket = assertWrap.isDefined(lateWebSockets[0]);
+            await abortInitConnection();
+            rejectedWebSocket.reject(new Error('late failure'));
+
+            await wait({
+                milliseconds: 1,
+            });
+
+            assert.deepEquals(
+                {
+                    isDestroyed: controller.isDestroyed,
+                    webSocketCloseCallCount: webSocket.closeCallCount,
+                },
+                {
+                    isDestroyed: false,
                     webSocketCloseCallCount: 1,
                 },
             );

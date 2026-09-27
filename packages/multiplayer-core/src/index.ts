@@ -1,3 +1,4 @@
+export * from './multiplayer-api/connection-timeout.js';
 export * from './multiplayer-api/errors.js';
 export * from './multiplayer-api/multiplayer-api.js';
 export * from './multiplayer-api/multiplayer-client.js';

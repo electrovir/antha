@@ -3,6 +3,7 @@ import {
     createMultiplayerId,
     emptyApiAndRoomConnectionState,
     MultiplayerConnectionState,
+    type MultiplayerConnectionTimeoutOptions,
     MultiplayerControllerConnectionEvent,
     type MultiplayerRoomConnection,
     P2pMultiplayerController,
@@ -249,14 +250,20 @@ export class P2pAuthoritativeHostMultiplayerController<
     }
 
     /** Join or create a room. */
-    public async joinOrCreateRoom(room: Readonly<RoomInput>) {
-        const roomConnection = await this.joinRoom(room);
+    public async joinOrCreateRoom(
+        room: Readonly<RoomInput>,
+        timeoutOptions: Readonly<MultiplayerConnectionTimeoutOptions> = {},
+    ) {
+        const roomConnection = await this.joinRoom(room, timeoutOptions);
         this.attachMultiplayerRoomConnection(roomConnection);
     }
 
     /** Join through the core room controller after its candidate connection is state-synchronized. */
-    protected async joinRoom(room: Readonly<RoomInput>) {
-        await this.roomController.joinOrCreateRoom(room);
+    protected async joinRoom(
+        room: Readonly<RoomInput>,
+        timeoutOptions: Readonly<MultiplayerConnectionTimeoutOptions>,
+    ) {
+        await this.roomController.joinOrCreateRoom(room, timeoutOptions);
         if (!this.roomController.currentConnection) {
             throw new Error(
                 'Cannot start p2p-authoritative-host multiplayer: room connection is missing.',
