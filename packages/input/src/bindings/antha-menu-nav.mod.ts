@@ -78,11 +78,6 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: 'keyboard',
             direction: InputDirection.Positive,
-            inputName: 'button-KeyJ',
-        },
-        {
-            deviceKey: 'keyboard',
-            direction: InputDirection.Positive,
             inputName: 'button-ArrowLeft',
         },
     ],
@@ -96,11 +91,6 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
             deviceKey: 'keyboard',
             direction: InputDirection.Positive,
             inputName: 'button-KeyD',
-        },
-        {
-            deviceKey: 'keyboard',
-            direction: InputDirection.Positive,
-            inputName: 'button-KeyL',
         },
         {
             deviceKey: 'keyboard',
@@ -122,11 +112,6 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
         {
             deviceKey: 'keyboard',
             direction: InputDirection.Positive,
-            inputName: 'button-KeyI',
-        },
-        {
-            deviceKey: 'keyboard',
-            direction: InputDirection.Positive,
             inputName: 'button-ArrowUp',
         },
     ],
@@ -140,11 +125,6 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
             deviceKey: 'keyboard',
             direction: InputDirection.Positive,
             inputName: 'button-KeyS',
-        },
-        {
-            deviceKey: 'keyboard',
-            direction: InputDirection.Positive,
-            inputName: 'button-KeyK',
         },
         {
             deviceKey: 'keyboard',
