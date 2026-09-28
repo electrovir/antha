@@ -5,7 +5,7 @@ import {getObjectTypedEntries, getObjectTypedValues} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {GamepadInputDeviceKey} from 'input-device-handler';
 import {InputDirection} from '../raw-inputs/raw-input.js';
-import {MenuNavBinding} from './antha-menu-nav.mod.js';
+import {MenuNavBinding} from './antha-menu.mod.js';
 import {createDefaultLocalPlayerBindings} from './local-player-bindings.js';
 
 enum PlayerAction {

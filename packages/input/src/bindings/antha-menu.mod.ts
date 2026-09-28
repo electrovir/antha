@@ -2,10 +2,12 @@ import {defineAnthaMod} from '@antha/engine';
 import {KnownInput} from '@antha/gamepad-type';
 import {type LocalPlayerPosition} from '@antha/util';
 import {check} from '@augment-vir/assert';
-import {getObjectTypedEntries} from '@augment-vir/common';
+import {getObjectTypedEntries, type PartialWithUndefined} from '@augment-vir/common';
 import {type AnyDuration, convertDuration} from 'date-vir';
 import {NavController, type NavControllerOptions, NavDirection, NavValue} from 'device-navigation';
+import {type AnthaReadRawInputModState} from '../raw-inputs/antha-read-raw-input.mod.js';
 import {InputDirection} from '../raw-inputs/raw-input.js';
+import {type AnthaMenuState, getAnthaMenuStateForNavigation} from './antha-menu-state.js';
 import {
     AnyGamepad,
     type BindingAssignments,
@@ -59,7 +61,7 @@ const directionalMenuNavBindings: ReadonlyArray<MenuNavBinding> = [
 ];
 
 /**
- * Default menu nav bindings for {@link AnthaMenuNavMod}.
+ * Default menu nav bindings for {@link AnthaMenuMod}.
  *
  * @category Internal
  */
@@ -215,7 +217,7 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
 };
 
 /**
- * Options for {@link AnthaMenuNavMod}.
+ * Options for {@link AnthaMenuMod}.
  *
  * @category Menu
  */
@@ -257,13 +259,44 @@ export type MenuNavOptions = Readonly<
 >;
 
 /**
- * State for {@link createAnthaMenuNavMod}.
+ * Options for the pause and back handling in {@link createAnthaMenuMod}.
+ *
+ * @category Menu
+ */
+export type AnthaMenuStateOptions<
+    MenuKey extends string = string,
+    InputConsumer extends string = string,
+> = {
+    /**
+     * The raw input consumer set while any menu is open, so menu inputs don't also reach the game.
+     * The consumer that was active when the menu opened is restored once every menu closes.
+     */
+    menuInputConsumerName: InputConsumer;
+    /** The menu that the pause binding opens when no menu is open. */
+    pauseMenuKey: MenuKey;
+};
+
+/**
+ * State for {@link createAnthaMenuMod}.
  *
  * @category Internal
  */
-export type MenuNavModState = {
-    /** Set to true to enable menu navigation. */
+export type AnthaMenuModState<MenuKey extends string = string> = Pick<
+    AnthaReadRawInputModState,
+    'rawInputConsumer'
+> & {
+    /**
+     * Set to true to enable menu navigation. When the mod is given `menuState` options, this is
+     * derived from `menuState` instead.
+     */
     isInMenu: boolean;
+    /**
+     * The open menus. Only managed when the mod is given `menuState` options: pause and back
+     * presses then open, pop, and clear it.
+     */
+    menuState: AnthaMenuState<MenuKey> | undefined;
+    /** The raw input consumer to restore once every menu closes. */
+    rawInputConsumerBeforeMenu: string | undefined;
     /**
      * When defined, only players explicitly set to true may use menu navigation. Omit this or set
      * to `undefined` to allow every player to run menu navigation.
@@ -291,15 +324,26 @@ export const defaultMenuNavOptions: Required<MenuNavOptions> = {
 
 /**
  * A pre-built mod that enables menu navigation. Set `isInMenu` on your game state to true to
- * activate it.
+ * activate it, or pass `menuState` options to have pause and back presses manage `menuState`,
+ * `isInMenu`, and `rawInputConsumer` instead.
  *
  * @category Pre-Built Mods
  */
-export function createAnthaMenuNavMod(
-    options: Readonly<MenuNavOptions & NavControllerOptions> = {},
-) {
-    return defineAnthaMod<MenuNavModState>({
-        modName: 'menu-nav',
+export function createAnthaMenuMod<
+    MenuKey extends string = string,
+    InputConsumer extends string = string,
+>({
+    menuState: menuStateOptions,
+    ...options
+}: Readonly<
+    MenuNavOptions &
+        NavControllerOptions &
+        PartialWithUndefined<{
+            menuState: Readonly<AnthaMenuStateOptions<NoInfer<MenuKey>, NoInfer<InputConsumer>>>;
+        }>
+> = {}) {
+    return defineAnthaMod<AnthaMenuModState<NoInfer<MenuKey>>>({
+        modName: 'antha-menu',
         initState: {
             menuNavOptions: {
                 ...defaultMenuNavOptions,
@@ -312,6 +356,12 @@ export function createAnthaMenuNavMod(
                     alwaysRequireFocused: true,
                     activateOnMouseUp: false,
                     ...options,
+                });
+            }
+            if (menuStateOptions) {
+                updateMenuState({
+                    menuStateOptions,
+                    state,
                 });
             }
             if (!state.menuNavOptions || !state.activeBindings) {
@@ -450,12 +500,87 @@ export function createAnthaMenuNavMod(
     });
 }
 
+/**
+ * Applies pause and back presses to `menuState`, then keeps `isInMenu` and `rawInputConsumer` in
+ * line with it. Runs before navigation so navigation sees the updated `isInMenu` in the same
+ * execution.
+ */
+function updateMenuState<MenuKey extends string>({
+    menuStateOptions,
+    state,
+}: Readonly<{
+    menuStateOptions: Readonly<AnthaMenuStateOptions<MenuKey>>;
+    state: Partial<AnthaMenuModState<MenuKey>>;
+}>) {
+    const menuTransition = state.activeBindings
+        ? getObjectTypedEntries(state.activeBindings)
+              .map(
+                  ([
+                      playerPosition,
+                      playerActiveBindings,
+                  ]) => {
+                      if (
+                          !isPlayerMenuNavigationAllowed({
+                              allowedPlayerMenuNavigation: state.allowedPlayerMenuNavigation,
+                              playerPosition,
+                          })
+                      ) {
+                          return undefined;
+                      }
+
+                      const openPauseMenuBinding =
+                          playerActiveBindings[MenuNavBinding.OpenPauseMenu];
+                      const menuExitBinding = playerActiveBindings[MenuNavBinding.MenuExit];
+                      const playerMenuTransition = getAnthaMenuStateForNavigation({
+                          menuExitWasTriggered: !!menuExitBinding && !menuExitBinding.actCount,
+                          menuState: state.menuState,
+                          openPauseMenuTrigger:
+                              openPauseMenuBinding && !openPauseMenuBinding.actCount
+                                  ? {
+                                        activeBinding: openPauseMenuBinding,
+                                        playerPosition,
+                                    }
+                                  : undefined,
+                          pauseMenu: menuStateOptions.pauseMenuKey,
+                      });
+
+                      if (!playerMenuTransition) {
+                          return undefined;
+                      }
+
+                      [
+                          openPauseMenuBinding,
+                          menuExitBinding,
+                      ].forEach(markBindingActed);
+
+                      return playerMenuTransition;
+                  },
+              )
+              .find(check.isDefined)
+        : undefined;
+
+    if (menuTransition) {
+        state.menuState = menuTransition.nextMenuState;
+    }
+
+    const isInMenu = !!state.menuState;
+
+    if (isInMenu && !state.isInMenu) {
+        state.rawInputConsumerBeforeMenu = state.rawInputConsumer;
+        state.rawInputConsumer = menuStateOptions.menuInputConsumerName;
+    } else if (!isInMenu && state.isInMenu) {
+        state.rawInputConsumer = state.rawInputConsumerBeforeMenu;
+    }
+
+    state.isInMenu = isInMenu;
+}
+
 function consumeInactiveMenuActivationBindings({
     activeBindings,
     allowedPlayerMenuNavigation,
 }: Readonly<{
     activeBindings: PlayersActiveBindings;
-    allowedPlayerMenuNavigation: MenuNavModState['allowedPlayerMenuNavigation'];
+    allowedPlayerMenuNavigation: AnthaMenuModState['allowedPlayerMenuNavigation'];
 }>) {
     getObjectTypedEntries(activeBindings).forEach(
         ([
@@ -490,7 +615,7 @@ export function isPlayerMenuNavigationAllowed({
     allowedPlayerMenuNavigation,
     playerPosition,
 }: Readonly<{
-    allowedPlayerMenuNavigation: MenuNavModState['allowedPlayerMenuNavigation'];
+    allowedPlayerMenuNavigation: AnthaMenuModState['allowedPlayerMenuNavigation'];
     playerPosition: LocalPlayerPosition;
 }>) {
     return (
@@ -499,8 +624,8 @@ export function isPlayerMenuNavigationAllowed({
 }
 
 /**
- * The mod created by {@link createAnthaMenuNavMod}.
+ * The mod created by {@link createAnthaMenuMod}.
  *
  * @category Internal
  */
-export type AnthaMenuNavMod = ReturnType<typeof createAnthaMenuNavMod>;
+export type AnthaMenuMod = ReturnType<typeof createAnthaMenuMod>;

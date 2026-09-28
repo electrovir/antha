@@ -3,7 +3,7 @@ import {LocalPlayerPosition} from '@antha/util';
 import {arrayToObject, getObjectTypedEntries, mapObjectValues} from '@augment-vir/common';
 import {type GamepadInputDeviceKey} from 'input-device-handler';
 import {InputDirection} from '../raw-inputs/raw-input.js';
-import {defaultMenuNavBindings, type MenuNavBinding} from './antha-menu-nav.mod.js';
+import {defaultMenuNavBindings, type MenuNavBinding} from './antha-menu.mod.js';
 import {type DirectionalBindingNames} from './directional-input.js';
 import {
     AnyGamepad,

@@ -11,7 +11,8 @@ import {
     type CurrentNavEntry,
     type NavigationInputs,
 } from 'device-navigation';
-import {createAnthaMenuNavMod, MenuNavBinding, type MenuNavModState} from './antha-menu-nav.mod.js';
+import {pushAnthaMenuState} from './antha-menu-state.js';
+import {createAnthaMenuMod, MenuNavBinding, type AnthaMenuModState} from './antha-menu.mod.js';
 import {type ActiveBinding, type PlayersActiveBindings} from './player-bindings.js';
 
 type RecordingNavController = NavController & {
@@ -124,12 +125,12 @@ async function runMenuNav({
     isInMenu = true,
 }: Readonly<{
     activeBindings?: PlayersActiveBindings | undefined;
-    allowedPlayerMenuNavigation?: MenuNavModState['allowedPlayerMenuNavigation'];
+    allowedPlayerMenuNavigation?: AnthaMenuModState['allowedPlayerMenuNavigation'];
     blockPerpendicularNavigation?: boolean | undefined;
     navController?: RecordingNavController | undefined;
     isInMenu?: boolean | undefined;
 }>) {
-    const engine = new AnthaEngine<MenuNavModState>({
+    const engine = new AnthaEngine<AnthaMenuModState>({
         initState: {
             isInMenu,
             navController,
@@ -150,7 +151,7 @@ async function runMenuNav({
             },
         },
         mods: [
-            createAnthaMenuNavMod({
+            createAnthaMenuMod({
                 repeatThreshold: {
                     milliseconds: 50,
                 },
@@ -172,7 +173,7 @@ async function runMenuNav({
     };
 }
 
-describe(createAnthaMenuNavMod.name, () => {
+describe(createAnthaMenuMod.name, () => {
     it('allows menu navigation only for explicitly allowed players', async () => {
         const navController = createRecordingNavController();
         const allowedBinding = createActiveBinding();
@@ -281,13 +282,13 @@ describe(createAnthaMenuNavMod.name, () => {
     });
 
     it('fires a new active binding regardless of sampled hold duration', async () => {
-        const mod = createAnthaMenuNavMod({
+        const mod = createAnthaMenuMod({
             repeatThreshold: {
                 milliseconds: 500,
             },
         });
 
-        const engine = new AnthaEngine<MenuNavModState>({
+        const engine = new AnthaEngine<AnthaMenuModState>({
             mods: [
                 mod,
             ],
@@ -357,7 +358,7 @@ describe(createAnthaMenuNavMod.name, () => {
 
         navController.currentNavEntry = currentNavEntry;
 
-        const engine = new AnthaEngine<MenuNavModState>({
+        const engine = new AnthaEngine<AnthaMenuModState>({
             hostElement,
             initState: {
                 isInMenu: true,
@@ -379,7 +380,7 @@ describe(createAnthaMenuNavMod.name, () => {
                 },
             },
             mods: [
-                createAnthaMenuNavMod(),
+                createAnthaMenuMod(),
             ],
         });
 
@@ -477,7 +478,7 @@ describe(createAnthaMenuNavMod.name, () => {
 
     it('requires the default minimum directional input value before navigating', async () => {
         const navController = createRecordingNavController();
-        const engine = new AnthaEngine<MenuNavModState>({
+        const engine = new AnthaEngine<AnthaMenuModState>({
             initState: {
                 activeBindings: {
                     [LocalPlayerPosition.One]: {
@@ -490,7 +491,7 @@ describe(createAnthaMenuNavMod.name, () => {
                 navController,
             },
             mods: [
-                createAnthaMenuNavMod(),
+                createAnthaMenuMod(),
             ],
         });
 
@@ -501,7 +502,7 @@ describe(createAnthaMenuNavMod.name, () => {
 
     it('waits longer before repeating directional navigation by default', async () => {
         const navController = createRecordingNavController();
-        const engine = new AnthaEngine<MenuNavModState>({
+        const engine = new AnthaEngine<AnthaMenuModState>({
             initState: {
                 activeBindings: {
                     [LocalPlayerPosition.One]: {
@@ -515,7 +516,7 @@ describe(createAnthaMenuNavMod.name, () => {
                 navController,
             },
             mods: [
-                createAnthaMenuNavMod(),
+                createAnthaMenuMod(),
             ],
         });
 
@@ -834,5 +835,287 @@ describe(createAnthaMenuNavMod.name, () => {
                 opposed: [],
             },
         );
+    });
+});
+
+enum TestMenuKey {
+    Options = 'options',
+    Pause = 'pause',
+}
+
+describe(`${createAnthaMenuMod.name} menu state`, () => {
+    it('consumes pause/back inputs and switches menu state and input consumers', async () => {
+        const engine = new AnthaEngine<AnthaMenuModState<TestMenuKey>>({
+            initState: {
+                navController: createRecordingNavController(),
+                activeBindings: {
+                    [LocalPlayerPosition.One]: {
+                        [MenuNavBinding.OpenPauseMenu]: createActiveBinding({
+                            holdDurationMs: 40,
+                        }),
+                    },
+                },
+                allowedPlayerMenuNavigation: undefined,
+                isInMenu: false,
+                menuState: undefined,
+                rawInputConsumer: 'game',
+            },
+            mods: [
+                createAnthaMenuMod<TestMenuKey>({
+                    menuState: {
+                        pauseMenuKey: TestMenuKey.Pause,
+                        menuInputConsumerName: 'menu',
+                    },
+                }),
+            ],
+        });
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(
+            {
+                activeMenu: engine.state.menuState?.menuHistory.at(-1),
+                isInMenu: engine.state.isInMenu,
+                lastActDuration:
+                    engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
+                        MenuNavBinding.OpenPauseMenu
+                    ]?.lastActDuration,
+                openedBy: engine.state.menuState?.openedBy,
+                openPauseMenuActCount:
+                    engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
+                        MenuNavBinding.OpenPauseMenu
+                    ]?.actCount,
+                rawInputConsumer: engine.state.rawInputConsumer,
+            },
+            {
+                activeMenu: TestMenuKey.Pause,
+                isInMenu: true,
+                lastActDuration: {
+                    milliseconds: 40,
+                },
+                openedBy: {
+                    activeBinding: {
+                        ...createActiveBinding({
+                            holdDurationMs: 40,
+                        }),
+                        actCount: 1,
+                        lastActDuration: {
+                            milliseconds: 40,
+                        },
+                    },
+                    playerPosition: LocalPlayerPosition.One,
+                },
+                openPauseMenuActCount: 1,
+                rawInputConsumer: 'menu',
+            },
+        );
+
+        engine.state.menuState = {
+            menuHistory: [
+                TestMenuKey.Pause,
+                TestMenuKey.Options,
+            ],
+            openedBy: undefined,
+        };
+        engine.state.activeBindings = {
+            [LocalPlayerPosition.One]: {
+                [MenuNavBinding.MenuExit]: createActiveBinding({
+                    holdDurationMs: 40,
+                }),
+            },
+        };
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(
+            {
+                isInMenu: engine.state.isInMenu,
+                menuExitActCount:
+                    engine.state.activeBindings[LocalPlayerPosition.One]?.[MenuNavBinding.MenuExit]
+                        ?.actCount,
+                menuState: engine.state.menuState,
+                rawInputConsumer: engine.state.rawInputConsumer,
+            },
+            {
+                isInMenu: true,
+                menuExitActCount: 1,
+                menuState: {
+                    menuHistory: [
+                        TestMenuKey.Pause,
+                    ],
+                    openedBy: undefined,
+                },
+                rawInputConsumer: 'menu',
+            },
+        );
+
+        engine.state.menuState = {
+            menuHistory: [
+                TestMenuKey.Pause,
+            ],
+            openedBy: undefined,
+        };
+        engine.state.activeBindings = {
+            [LocalPlayerPosition.One]: {
+                [MenuNavBinding.MenuExit]: createActiveBinding({
+                    holdDurationMs: 40,
+                }),
+            },
+        };
+
+        await engine.runSingleTick();
+
+        /** The earlier assignment narrows `menuState`, so its `undefined` result is checked apart. */
+        assert.isUndefined(engine.state.menuState);
+        assert.deepEquals(
+            {
+                isInMenu: engine.state.isInMenu,
+                rawInputConsumer: engine.state.rawInputConsumer,
+            },
+            {
+                isInMenu: false,
+                rawInputConsumer: 'game',
+            },
+        );
+
+        await engine.reset();
+    });
+
+    it('does not transition with missing or idle player bindings', async () => {
+        const engine = new AnthaEngine<AnthaMenuModState<TestMenuKey>>({
+            initState: {
+                navController: createRecordingNavController(),
+                allowedPlayerMenuNavigation: undefined,
+                isInMenu: false,
+                menuState: undefined,
+                rawInputConsumer: 'game',
+            },
+            mods: [
+                createAnthaMenuMod<TestMenuKey>({
+                    menuState: {
+                        pauseMenuKey: TestMenuKey.Pause,
+                        menuInputConsumerName: 'menu',
+                    },
+                }),
+            ],
+        });
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(
+            {
+                activeMenu: engine.state.menuState?.menuHistory.at(-1),
+                isInMenu: engine.state.isInMenu,
+                rawInputConsumer: engine.state.rawInputConsumer,
+            },
+            {
+                activeMenu: undefined,
+                isInMenu: false,
+                rawInputConsumer: 'game',
+            },
+        );
+
+        engine.state.activeBindings = {
+            [LocalPlayerPosition.One]: {},
+        };
+        await engine.runSingleTick();
+
+        assert.deepEquals(
+            {
+                activeMenu: engine.state.menuState?.menuHistory.at(-1),
+                isInMenu: engine.state.isInMenu,
+                rawInputConsumer: engine.state.rawInputConsumer,
+            },
+            {
+                activeMenu: undefined,
+                isInMenu: false,
+                rawInputConsumer: 'game',
+            },
+        );
+
+        await engine.reset();
+    });
+
+    it('ignores navigation for players excluded from menu controls', async () => {
+        const engine = new AnthaEngine<AnthaMenuModState<TestMenuKey>>({
+            initState: {
+                navController: createRecordingNavController(),
+                activeBindings: {
+                    [LocalPlayerPosition.One]: {
+                        [MenuNavBinding.OpenPauseMenu]: createActiveBinding({
+                            holdDurationMs: 40,
+                        }),
+                    },
+                },
+                allowedPlayerMenuNavigation: {
+                    [LocalPlayerPosition.One]: false,
+                },
+                isInMenu: false,
+                menuState: undefined,
+                rawInputConsumer: 'game',
+            },
+            mods: [
+                createAnthaMenuMod<TestMenuKey>({
+                    menuState: {
+                        pauseMenuKey: TestMenuKey.Pause,
+                        menuInputConsumerName: 'menu',
+                    },
+                }),
+            ],
+        });
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(
+            {
+                activeMenu: engine.state.menuState?.menuHistory.at(-1),
+                openPauseMenuActCount:
+                    engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
+                        MenuNavBinding.OpenPauseMenu
+                    ]?.actCount,
+                rawInputConsumer: engine.state.rawInputConsumer,
+            },
+            {
+                activeMenu: undefined,
+                openPauseMenuActCount: 0,
+                rawInputConsumer: 'game',
+            },
+        );
+
+        await engine.reset();
+    });
+
+    it('restores an unset consumer when menus opened by code close', async () => {
+        const engine = new AnthaEngine<AnthaMenuModState<TestMenuKey>>({
+            initState: {
+                navController: createRecordingNavController(),
+                allowedPlayerMenuNavigation: undefined,
+                isInMenu: false,
+                menuState: undefined,
+                rawInputConsumer: undefined,
+            },
+            mods: [
+                createAnthaMenuMod<TestMenuKey>({
+                    menuState: {
+                        pauseMenuKey: TestMenuKey.Pause,
+                        menuInputConsumerName: 'menu',
+                    },
+                }),
+            ],
+        });
+
+        engine.state.menuState = pushAnthaMenuState<TestMenuKey>(undefined, TestMenuKey.Options);
+        await engine.runSingleTick();
+
+        assert.strictEquals(engine.state.rawInputConsumer, 'menu');
+
+        engine.state.menuState = undefined;
+        await engine.runSingleTick();
+
+        /** The earlier assertion narrows `rawInputConsumer`, so its reset is checked apart. */
+        assert.isUndefined(engine.state.rawInputConsumer);
+        assert.isFalse(engine.state.isInMenu);
+
+        await engine.reset();
     });
 });

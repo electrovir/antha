@@ -2,19 +2,19 @@ import {AnthaEngine, defineAnthaMod, SkipExecution} from '@antha/engine';
 import {
     AnthaKeyboard,
     createAnthaInputBindingsMod,
-    createAnthaMenuNavMod,
+    createAnthaMenuMod,
     createAnthaReadRawInputMod,
     defaultMenuNavBindings,
     type AnthaInputBindingsModState,
+    type AnthaMenuModState,
     type MenuNavBinding,
-    type MenuNavModState,
     type NavController,
 } from '@antha/input';
 import {createUtcFullDate} from 'date-vir';
 import {defineElement, html} from 'element-vir';
 import {type AnthaDemo} from '../demo.js';
 
-type OnScreenKeyboardDemoModState = AnthaInputBindingsModState<MenuNavBinding> & MenuNavModState;
+type OnScreenKeyboardDemoModState = AnthaInputBindingsModState<MenuNavBinding> & AnthaMenuModState;
 
 const Demo16OnScreenKeyboard = defineElement<{
     navController: NavController;
@@ -60,7 +60,7 @@ export const onScreenKeyboardDemo: AnthaDemo = {
                         1: defaultMenuNavBindings,
                     },
                 }),
-                createAnthaMenuNavMod(),
+                createAnthaMenuMod(),
                 onScreenKeyboardDemoMod,
             ],
         });

@@ -106,7 +106,7 @@ function pressKeyboardKey({
 }
 
 /**
- * An on-screen keyboard that works with `AnthaMenuNavMod` to allow navigation by controller.
+ * An on-screen keyboard that works with `AnthaMenuMod` to allow navigation by controller.
  *
  * @category Pre-Build Mods
  */

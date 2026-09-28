@@ -315,7 +315,7 @@ describe(readRawInputs.name, () => {
         );
     });
 
-    it('does not claim an input after it has already started', () => {
+    it('treats inputs started without a consumer as their own consumer', () => {
         const mockDevices = createMockKeyboardDevices();
         const initialResult = readRawInputs(
             {
@@ -346,7 +346,7 @@ describe(readRawInputs.name, () => {
             ),
             {
                 consumedBy: undefined,
-                isIgnoredByConsumer: false,
+                isIgnoredByConsumer: true,
             },
         );
     });

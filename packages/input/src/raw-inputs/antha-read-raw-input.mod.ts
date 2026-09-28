@@ -237,10 +237,7 @@ export function readRawInputs(
                 duration,
                 inputName: currentInput.inputName,
                 inputValue: currentInput.inputValue,
-                isIgnoredByConsumer:
-                    !!state.rawInputConsumer &&
-                    !!consumedBy &&
-                    consumedBy !== state.rawInputConsumer,
+                isIgnoredByConsumer: consumedBy !== state.rawInputConsumer,
             };
 
             if (mappedInputName) {
