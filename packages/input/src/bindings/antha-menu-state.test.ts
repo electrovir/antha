@@ -87,6 +87,7 @@ describe(getAnthaMenuStateForNavigation.name, () => {
         {
             it: 'opens the pause menu when no menu is active',
             input: {
+                closeAllMenusWasTriggered: false,
                 menuExitWasTriggered: false,
                 menuState: undefined,
                 openPauseMenuTrigger: testOpener,
@@ -99,6 +100,7 @@ describe(getAnthaMenuStateForNavigation.name, () => {
         {
             it: 'returns to the parent menu on back',
             input: {
+                closeAllMenusWasTriggered: false,
                 menuExitWasTriggered: true,
                 menuState: optionsMenuState,
                 openPauseMenuTrigger: undefined,
@@ -109,11 +111,23 @@ describe(getAnthaMenuStateForNavigation.name, () => {
             },
         },
         {
-            it: 'closes the root menu on pause',
+            it: 'ignores pause while a menu is open',
             input: {
+                closeAllMenusWasTriggered: false,
                 menuExitWasTriggered: false,
-                menuState: pauseMenuState,
+                menuState: optionsMenuState,
                 openPauseMenuTrigger: testOpener,
+                pauseMenu: TestMenuKey.Pause,
+            },
+            expect: undefined,
+        },
+        {
+            it: 'closes every menu on close-all, even alongside back',
+            input: {
+                closeAllMenusWasTriggered: true,
+                menuExitWasTriggered: true,
+                menuState: optionsMenuState,
+                openPauseMenuTrigger: undefined,
                 pauseMenu: TestMenuKey.Pause,
             },
             expect: {
@@ -121,8 +135,20 @@ describe(getAnthaMenuStateForNavigation.name, () => {
             },
         },
         {
+            it: 'ignores close-all when no menu is open',
+            input: {
+                closeAllMenusWasTriggered: true,
+                menuExitWasTriggered: false,
+                menuState: undefined,
+                openPauseMenuTrigger: undefined,
+                pauseMenu: TestMenuKey.Pause,
+            },
+            expect: undefined,
+        },
+        {
             it: 'closes the root menu on back',
             input: {
+                closeAllMenusWasTriggered: false,
                 menuExitWasTriggered: true,
                 menuState: pauseMenuState,
                 openPauseMenuTrigger: undefined,
@@ -135,6 +161,7 @@ describe(getAnthaMenuStateForNavigation.name, () => {
         {
             it: 'ignores back when no menu is open',
             input: {
+                closeAllMenusWasTriggered: false,
                 menuExitWasTriggered: true,
                 menuState: undefined,
                 openPauseMenuTrigger: undefined,
@@ -145,6 +172,7 @@ describe(getAnthaMenuStateForNavigation.name, () => {
         {
             it: 'ignores inactive navigation inputs in a submenu',
             input: {
+                closeAllMenusWasTriggered: false,
                 menuExitWasTriggered: false,
                 menuState: optionsMenuState,
                 openPauseMenuTrigger: undefined,

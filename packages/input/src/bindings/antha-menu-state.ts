@@ -67,17 +67,21 @@ export function pushAnthaMenuState<MenuKey extends string>(
 }
 
 /**
- * Resolves pause and back inputs into a menu-state transition. Returns `undefined` when nothing
- * triggered a transition. A transition that closes every menu has an `undefined` `nextMenuState`.
+ * Resolves pause, back, and close-all inputs into a menu-state transition. Pause only opens a menu
+ * when none is open. Close-all wins over back when both are triggered. Returns `undefined` when
+ * nothing triggered a transition. A transition that closes every menu has an `undefined`
+ * `nextMenuState`.
  *
  * @category Util
  */
 export function getAnthaMenuStateForNavigation<MenuKey extends string>({
+    closeAllMenusWasTriggered,
     menuExitWasTriggered,
     menuState,
     openPauseMenuTrigger,
     pauseMenu,
 }: Readonly<{
+    closeAllMenusWasTriggered: boolean;
     menuExitWasTriggered: boolean;
     menuState: Readonly<AnthaMenuState<MenuKey>> | undefined;
     /** Set when a player freshly pressed the pause binding. */
@@ -101,9 +105,13 @@ export function getAnthaMenuStateForNavigation<MenuKey extends string>({
             : undefined;
     }
 
-    return openPauseMenuTrigger || menuExitWasTriggered
+    return closeAllMenusWasTriggered
         ? {
-              nextMenuState: popAnthaMenuState(menuState),
+              nextMenuState: undefined,
           }
-        : undefined;
+        : menuExitWasTriggered
+          ? {
+                nextMenuState: popAnthaMenuState(menuState),
+            }
+          : undefined;
 }

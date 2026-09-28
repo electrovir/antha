@@ -1,6 +1,7 @@
 import {AnthaEngine} from '@antha/engine';
 import {LocalPlayerPosition} from '@antha/util';
 import {assert, assertWrap} from '@augment-vir/assert';
+import {awaitedBlockingMap, typedObjectFromEntries} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {
     NavAction,
@@ -1083,6 +1084,174 @@ describe(`${createAnthaMenuMod.name} menu state`, () => {
         );
 
         await engine.reset();
+    });
+
+    it('exits a nested nav group before closing the menu', async () => {
+        const navController = createRecordingNavController();
+        navController.exitOutOf = () => {
+            navController.calls.push('exit');
+
+            return {
+                success: true,
+                defaulted: false,
+                wrapped: false,
+                newElement: document.createElement('div'),
+                direction: undefined,
+                navAction: NavAction.Exit,
+                coords: {
+                    x: 0,
+                    y: 0,
+                },
+            };
+        };
+        const engine = new AnthaEngine<AnthaMenuModState<TestMenuKey>>({
+            initState: {
+                navController,
+                activeBindings: {
+                    [LocalPlayerPosition.One]: {
+                        [MenuNavBinding.MenuExit]: createActiveBinding(),
+                    },
+                },
+                allowedPlayerMenuNavigation: undefined,
+                isInMenu: true,
+                menuState: {
+                    menuHistory: [
+                        TestMenuKey.Pause,
+                    ],
+                    openedBy: undefined,
+                },
+                rawInputConsumer: 'menu',
+            },
+            mods: [
+                createAnthaMenuMod<TestMenuKey>({
+                    menuState: {
+                        pauseMenuKey: TestMenuKey.Pause,
+                        menuInputConsumerName: 'menu',
+                    },
+                }),
+            ],
+        });
+
+        await engine.runSingleTick();
+
+        assert.deepEquals(
+            {
+                calls: navController.calls,
+                menuExitActCount:
+                    engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
+                        MenuNavBinding.MenuExit
+                    ]?.actCount,
+                menuState: engine.state.menuState,
+            },
+            {
+                calls: [
+                    'exit',
+                ],
+                menuExitActCount: 1,
+                menuState: {
+                    menuHistory: [
+                        TestMenuKey.Pause,
+                    ],
+                    openedBy: undefined,
+                },
+            },
+        );
+
+        await engine.reset();
+    });
+
+    async function runHeldMenuPress({
+        heldBindings,
+        menuHistory,
+    }: Readonly<{
+        heldBindings: ReadonlyArray<MenuNavBinding>;
+        menuHistory: ReadonlyArray<TestMenuKey>;
+    }>) {
+        const engine = new AnthaEngine<AnthaMenuModState<TestMenuKey>>({
+            initState: {
+                navController: createRecordingNavController(),
+                activeBindings: {
+                    [LocalPlayerPosition.One]: typedObjectFromEntries(
+                        heldBindings.map((binding) => {
+                            return [
+                                binding,
+                                createActiveBinding(),
+                            ];
+                        }),
+                    ),
+                },
+                allowedPlayerMenuNavigation: undefined,
+                isInMenu: true,
+                menuState: {
+                    menuHistory: [
+                        ...menuHistory,
+                    ],
+                    openedBy: undefined,
+                },
+                rawInputConsumer: 'menu',
+            },
+            mods: [
+                createAnthaMenuMod<TestMenuKey>({
+                    menuState: {
+                        pauseMenuKey: TestMenuKey.Pause,
+                        menuInputConsumerName: 'menu',
+                    },
+                }),
+            ],
+        });
+
+        const menuStates = await awaitedBlockingMap(
+            [
+                0,
+                1,
+            ],
+            async () => {
+                await engine.runSingleTick();
+                return engine.state.menuState;
+            },
+        );
+
+        await engine.reset();
+
+        return menuStates;
+    }
+
+    it('backs out of the last menu without reopening pause while the key is held', async () => {
+        assert.deepEquals(
+            await runHeldMenuPress({
+                heldBindings: [
+                    MenuNavBinding.OpenPauseMenu,
+                    MenuNavBinding.MenuExit,
+                ],
+                menuHistory: [
+                    TestMenuKey.Pause,
+                ],
+            }),
+            [
+                undefined,
+                undefined,
+            ],
+        );
+    });
+
+    it('closes every menu without reopening pause while the key is held', async () => {
+        assert.deepEquals(
+            await runHeldMenuPress({
+                heldBindings: [
+                    MenuNavBinding.OpenPauseMenu,
+                    MenuNavBinding.CloseAllMenus,
+                    MenuNavBinding.MenuExit,
+                ],
+                menuHistory: [
+                    TestMenuKey.Pause,
+                    TestMenuKey.Options,
+                ],
+            }),
+            [
+                undefined,
+                undefined,
+            ],
+        );
     });
 
     it('restores an unset consumer when menus opened by code close', async () => {

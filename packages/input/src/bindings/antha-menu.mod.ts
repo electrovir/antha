@@ -38,7 +38,8 @@ export enum MenuNavBinding {
      */
     MenuEnter = 'menu-enter',
     /**
-     * Exit out of a sub-menu.
+     * Exit out of a sub-menu. With `menuState` options, this steps out of the focused nav group
+     * first and pops one menu when there is no group left to exit.
      *
      * For example, this is usually the Escape key, "B" on Xbox or Nintendo controllers, or "△" on
      * Playstation controllers.
@@ -50,7 +51,16 @@ export enum MenuNavBinding {
     /** Navigate to the previous section in a menu. */
     MenuSectionPrevious = 'menu-section-previous',
 
+    /**
+     * Opens the pause menu. Does nothing while any menu is already open, or when
+     * `createAnthaMenuMod` is not given `menuState` options.
+     */
     OpenPauseMenu = 'open-pause-menu',
+    /**
+     * Closes every open menu at once. Does nothing when `createAnthaMenuMod` is not given
+     * `menuState` options.
+     */
+    CloseAllMenus = 'close-all-menus',
 }
 
 const directionalMenuNavBindings: ReadonlyArray<MenuNavBinding> = [
@@ -214,6 +224,13 @@ export const defaultMenuNavBindings: Readonly<BindingAssignments<MenuNavBinding>
             inputName: KnownInput.Start,
         },
     ],
+    [MenuNavBinding.CloseAllMenus]: [
+        {
+            deviceKey: AnyGamepad,
+            direction: InputDirection.Positive,
+            inputName: KnownInput.Start,
+        },
+    ],
 };
 
 /**
@@ -259,7 +276,7 @@ export type MenuNavOptions = Readonly<
 >;
 
 /**
- * Options for the pause and back handling in {@link createAnthaMenuMod}.
+ * Options for the pause, back, and close-all handling in {@link createAnthaMenuMod}.
  *
  * @category Menu
  */
@@ -291,8 +308,9 @@ export type AnthaMenuModState<MenuKey extends string = string> = Pick<
      */
     isInMenu: boolean;
     /**
-     * The open menus. Only managed when the mod is given `menuState` options: pause and back
-     * presses then open, pop, and clear it.
+     * The open menus. Only managed when the mod is given `menuState` options: pause, back, and
+     * close-all presses then open, pop, and clear it. A back press first exits the focused nav
+     * group and only pops a menu when there is no group left to exit.
      */
     menuState: AnthaMenuState<MenuKey> | undefined;
     /** The raw input consumer to restore once every menu closes. */
@@ -324,8 +342,8 @@ export const defaultMenuNavOptions: Required<MenuNavOptions> = {
 
 /**
  * A pre-built mod that enables menu navigation. Set `isInMenu` on your game state to true to
- * activate it, or pass `menuState` options to have pause and back presses manage `menuState`,
- * `isInMenu`, and `rawInputConsumer` instead.
+ * activate it, or pass `menuState` options to have pause, back, and close-all presses manage
+ * `menuState`, `isInMenu`, and `rawInputConsumer` instead.
  *
  * @category Pre-Built Mods
  */
@@ -501,9 +519,9 @@ export function createAnthaMenuMod<
 }
 
 /**
- * Applies pause and back presses to `menuState`, then keeps `isInMenu` and `rawInputConsumer` in
- * line with it. Runs before navigation so navigation sees the updated `isInMenu` in the same
- * execution.
+ * Applies pause, back, and close-all presses to `menuState`, then keeps `isInMenu` and
+ * `rawInputConsumer` in line with it. Runs before navigation so navigation sees the updated
+ * `isInMenu` in the same execution.
  */
 function updateMenuState<MenuKey extends string>({
     menuStateOptions,
@@ -531,11 +549,42 @@ function updateMenuState<MenuKey extends string>({
                       const openPauseMenuBinding =
                           playerActiveBindings[MenuNavBinding.OpenPauseMenu];
                       const menuExitBinding = playerActiveBindings[MenuNavBinding.MenuExit];
-                      const playerMenuTransition = getAnthaMenuStateForNavigation({
-                          menuExitWasTriggered: !!menuExitBinding && !menuExitBinding.actCount,
+                      const closeAllMenusBinding =
+                          playerActiveBindings[MenuNavBinding.CloseAllMenus];
+                      const openPauseMenuWasTriggered =
+                          !!openPauseMenuBinding && !openPauseMenuBinding.actCount;
+                      const menuExitWasTriggered = !!menuExitBinding && !menuExitBinding.actCount;
+                      const closeAllMenusWasTriggered =
+                          !!closeAllMenusBinding && !closeAllMenusBinding.actCount;
+
+                      /**
+                       * One key is often bound to several of these (Escape opens pause and backs
+                       * out), so every fresh press is consumed together. Otherwise a pause press
+                       * ignored while a menu was open would reopen the pause menu as soon as that
+                       * key's back press closed it.
+                       */
+                      [
+                          openPauseMenuBinding,
+                          menuExitBinding,
+                          closeAllMenusBinding,
+                      ].forEach(markBindingActed);
+
+                      if (
+                          menuExitWasTriggered &&
+                          !closeAllMenusWasTriggered &&
+                          state.menuState &&
+                          state.menuNavOptions &&
+                          state.navController?.exitOutOf().success
+                      ) {
+                          return undefined;
+                      }
+
+                      return getAnthaMenuStateForNavigation({
+                          closeAllMenusWasTriggered,
+                          menuExitWasTriggered,
                           menuState: state.menuState,
                           openPauseMenuTrigger:
-                              openPauseMenuBinding && !openPauseMenuBinding.actCount
+                              openPauseMenuBinding && openPauseMenuWasTriggered
                                   ? {
                                         activeBinding: openPauseMenuBinding,
                                         playerPosition,
@@ -543,17 +592,6 @@ function updateMenuState<MenuKey extends string>({
                                   : undefined,
                           pauseMenu: menuStateOptions.pauseMenuKey,
                       });
-
-                      if (!playerMenuTransition) {
-                          return undefined;
-                      }
-
-                      [
-                          openPauseMenuBinding,
-                          menuExitBinding,
-                      ].forEach(markBindingActed);
-
-                      return playerMenuTransition;
                   },
               )
               .find(check.isDefined)
