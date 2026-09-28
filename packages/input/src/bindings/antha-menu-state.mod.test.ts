@@ -4,7 +4,6 @@ import {assert} from '@augment-vir/assert';
 import {describe, it, itCases} from '@augment-vir/test';
 import {MenuNavBinding} from './antha-menu-nav.mod.js';
 import {
-    closeAnthaMenus,
     createAnthaMenuStateMod,
     getAnthaMenuStateForNavigation,
     popAnthaMenuState,
@@ -33,122 +32,110 @@ function createActiveBinding() {
     };
 }
 
+const testOpener = {
+    activeBinding: createActiveBinding(),
+    playerPosition: LocalPlayerPosition.Two,
+};
+
 describe(popAnthaMenuState.name, () => {
-    it('returns an empty path when the current state is missing', () => {
-        assert.deepEquals(popAnthaMenuState<TestMenuKey>(undefined), {
-            activeMenu: undefined,
-            returnTo: [],
-        });
+    it('clears the menu state when the current state is missing', () => {
+        assert.isUndefined(popAnthaMenuState<TestMenuKey>(undefined));
     });
 });
 
 describe(pushAnthaMenuState.name, () => {
-    it('appends the current menu to the return path', () => {
-        const submenuState = pushAnthaMenuState(
-            {
-                activeMenu: TestMenuKey.Options,
-                returnTo: [
-                    TestMenuKey.Pause,
-                ],
-            },
-            TestMenuKey.Pause,
-        );
+    it('opens a submenu that backs out to the current menu', () => {
+        const pauseMenuState = {
+            menuHistory: [
+                TestMenuKey.Pause,
+            ],
+            openedBy: testOpener,
+        };
+        const submenuState = pushAnthaMenuState(pauseMenuState, TestMenuKey.Options);
 
         assert.deepEquals(submenuState, {
-            activeMenu: TestMenuKey.Pause,
-            returnTo: [
+            menuHistory: [
                 TestMenuKey.Pause,
                 TestMenuKey.Options,
             ],
+            openedBy: testOpener,
         });
-        assert.deepEquals(popAnthaMenuState(submenuState), {
-            activeMenu: TestMenuKey.Options,
-            returnTo: [
-                TestMenuKey.Pause,
-            ],
-        });
+        assert.deepEquals(popAnthaMenuState(submenuState), pauseMenuState);
+        assert.isUndefined(popAnthaMenuState(pauseMenuState));
     });
 
-    it('opens with an empty return path when no menu is open', () => {
+    it('opens with no opener when no menu is open', () => {
         assert.deepEquals(pushAnthaMenuState<TestMenuKey>(undefined, TestMenuKey.Options), {
-            activeMenu: TestMenuKey.Options,
-            returnTo: [],
-        });
-    });
-});
-
-describe(closeAnthaMenus.name, () => {
-    it('has no open menu or return path', () => {
-        assert.deepEquals(closeAnthaMenus(), {
-            activeMenu: undefined,
-            returnTo: [],
+            menuHistory: [
+                TestMenuKey.Options,
+            ],
+            openedBy: undefined,
         });
     });
 });
 
 describe(getAnthaMenuStateForNavigation.name, () => {
+    const pauseMenuState = {
+        menuHistory: [
+            TestMenuKey.Pause,
+        ],
+        openedBy: testOpener,
+    };
+    const optionsMenuState = {
+        menuHistory: [
+            TestMenuKey.Pause,
+            TestMenuKey.Options,
+        ],
+        openedBy: testOpener,
+    };
+
     itCases(getAnthaMenuStateForNavigation<TestMenuKey>, [
         {
             it: 'opens the pause menu when no menu is active',
             input: {
                 menuExitWasTriggered: false,
                 menuState: undefined,
-                openPauseMenuWasTriggered: true,
+                openPauseMenuTrigger: testOpener,
                 pauseMenu: TestMenuKey.Pause,
             },
             expect: {
-                activeMenu: TestMenuKey.Pause,
-                returnTo: [],
+                nextMenuState: pauseMenuState,
             },
         },
         {
             it: 'returns to the parent menu on back',
             input: {
                 menuExitWasTriggered: true,
-                menuState: {
-                    activeMenu: TestMenuKey.Options,
-                    returnTo: [
-                        TestMenuKey.Pause,
-                    ],
-                },
-                openPauseMenuWasTriggered: false,
+                menuState: optionsMenuState,
+                openPauseMenuTrigger: undefined,
                 pauseMenu: TestMenuKey.Pause,
             },
             expect: {
-                activeMenu: TestMenuKey.Pause,
-                returnTo: [],
+                nextMenuState: pauseMenuState,
             },
         },
         {
             it: 'closes the root menu on pause',
             input: {
                 menuExitWasTriggered: false,
-                menuState: {
-                    activeMenu: TestMenuKey.Pause,
-                    returnTo: [],
-                },
-                openPauseMenuWasTriggered: true,
+                menuState: pauseMenuState,
+                openPauseMenuTrigger: testOpener,
                 pauseMenu: TestMenuKey.Pause,
             },
             expect: {
-                activeMenu: undefined,
-                returnTo: [],
+                nextMenuState: undefined,
             },
         },
         {
             it: 'closes the root menu on back',
             input: {
                 menuExitWasTriggered: true,
-                menuState: {
-                    activeMenu: TestMenuKey.Pause,
-                    returnTo: [],
-                },
-                openPauseMenuWasTriggered: false,
+                menuState: pauseMenuState,
+                openPauseMenuTrigger: undefined,
                 pauseMenu: TestMenuKey.Pause,
             },
             expect: {
-                activeMenu: undefined,
-                returnTo: [],
+                nextMenuState: undefined,
             },
         },
         {
@@ -156,20 +143,7 @@ describe(getAnthaMenuStateForNavigation.name, () => {
             input: {
                 menuExitWasTriggered: true,
                 menuState: undefined,
-                openPauseMenuWasTriggered: false,
-                pauseMenu: TestMenuKey.Pause,
-            },
-            expect: undefined,
-        },
-        {
-            it: 'ignores inactive navigation inputs with no menu open',
-            input: {
-                menuExitWasTriggered: false,
-                menuState: {
-                    activeMenu: undefined,
-                    returnTo: [],
-                },
-                openPauseMenuWasTriggered: false,
+                openPauseMenuTrigger: undefined,
                 pauseMenu: TestMenuKey.Pause,
             },
             expect: undefined,
@@ -178,13 +152,8 @@ describe(getAnthaMenuStateForNavigation.name, () => {
             it: 'ignores inactive navigation inputs in a submenu',
             input: {
                 menuExitWasTriggered: false,
-                menuState: {
-                    activeMenu: TestMenuKey.Options,
-                    returnTo: [
-                        TestMenuKey.Pause,
-                    ],
-                },
-                openPauseMenuWasTriggered: false,
+                menuState: optionsMenuState,
+                openPauseMenuTrigger: undefined,
                 pauseMenu: TestMenuKey.Pause,
             },
             expect: undefined,
@@ -219,12 +188,13 @@ describe(createAnthaMenuStateMod.name, () => {
 
         assert.deepEquals(
             {
-                activeMenu: engine.state.menuState?.activeMenu,
+                activeMenu: engine.state.menuState?.menuHistory.at(-1),
                 isInMenu: engine.state.isInMenu,
                 lastActDuration:
                     engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
                         MenuNavBinding.OpenPauseMenu
                     ]?.lastActDuration,
+                openedBy: engine.state.menuState?.openedBy,
                 openPauseMenuActCount:
                     engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
                         MenuNavBinding.OpenPauseMenu
@@ -237,14 +207,27 @@ describe(createAnthaMenuStateMod.name, () => {
                 lastActDuration: {
                     milliseconds: 40,
                 },
+                openedBy: {
+                    activeBinding: {
+                        ...createActiveBinding(),
+                        actCount: 1,
+                        lastActDuration: {
+                            milliseconds: 40,
+                        },
+                    },
+                    playerPosition: LocalPlayerPosition.One,
+                },
                 openPauseMenuActCount: 1,
                 rawInputConsumer: 'menu',
             },
         );
 
         engine.state.menuState = {
-            activeMenu: TestMenuKey.Options,
-            returnTo: [TestMenuKey.Pause],
+            menuHistory: [
+                TestMenuKey.Pause,
+                TestMenuKey.Options,
+            ],
+            openedBy: undefined,
         };
         engine.state.activeBindings = {
             [LocalPlayerPosition.One]: {
@@ -256,24 +239,31 @@ describe(createAnthaMenuStateMod.name, () => {
 
         assert.deepEquals(
             {
-                activeMenu: engine.state.menuState.activeMenu,
                 isInMenu: engine.state.isInMenu,
                 menuExitActCount:
                     engine.state.activeBindings[LocalPlayerPosition.One]?.[MenuNavBinding.MenuExit]
                         ?.actCount,
+                menuState: engine.state.menuState,
                 rawInputConsumer: engine.state.rawInputConsumer,
             },
             {
-                activeMenu: TestMenuKey.Pause,
                 isInMenu: true,
                 menuExitActCount: 1,
+                menuState: {
+                    menuHistory: [
+                        TestMenuKey.Pause,
+                    ],
+                    openedBy: undefined,
+                },
                 rawInputConsumer: 'menu',
             },
         );
 
         engine.state.menuState = {
-            activeMenu: TestMenuKey.Pause,
-            returnTo: [],
+            menuHistory: [
+                TestMenuKey.Pause,
+            ],
+            openedBy: undefined,
         };
         engine.state.activeBindings = {
             [LocalPlayerPosition.One]: {
@@ -283,14 +273,14 @@ describe(createAnthaMenuStateMod.name, () => {
 
         await engine.runSingleTick();
 
+        /** The earlier assignment narrows `menuState`, so its `undefined` result is checked apart. */
+        assert.isUndefined(engine.state.menuState);
         assert.deepEquals(
             {
-                activeMenu: engine.state.menuState.activeMenu,
                 isInMenu: engine.state.isInMenu,
                 rawInputConsumer: engine.state.rawInputConsumer,
             },
             {
-                activeMenu: undefined,
                 isInMenu: false,
                 rawInputConsumer: 'game',
             },
@@ -320,7 +310,7 @@ describe(createAnthaMenuStateMod.name, () => {
 
         assert.deepEquals(
             {
-                activeMenu: engine.state.menuState?.activeMenu,
+                activeMenu: engine.state.menuState?.menuHistory.at(-1),
                 isInMenu: engine.state.isInMenu,
                 rawInputConsumer: engine.state.rawInputConsumer,
             },
@@ -338,7 +328,7 @@ describe(createAnthaMenuStateMod.name, () => {
 
         assert.deepEquals(
             {
-                activeMenu: engine.state.menuState?.activeMenu,
+                activeMenu: engine.state.menuState?.menuHistory.at(-1),
                 isInMenu: engine.state.isInMenu,
                 rawInputConsumer: engine.state.rawInputConsumer,
             },
@@ -380,7 +370,7 @@ describe(createAnthaMenuStateMod.name, () => {
 
         assert.deepEquals(
             {
-                activeMenu: engine.state.menuState?.activeMenu,
+                activeMenu: engine.state.menuState?.menuHistory.at(-1),
                 openPauseMenuActCount:
                     engine.state.activeBindings?.[LocalPlayerPosition.One]?.[
                         MenuNavBinding.OpenPauseMenu

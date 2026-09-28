@@ -1,6 +1,6 @@
 {
     "name": "@antha/multiplayer-core",
-    "version": "0.24.0",
+    "version": "0.25.0",
     "description": "Core functionalities for Antha multiplayer mods.",
     "keywords": [
         "vir",
@@ -46,7 +46,7 @@
         "url-vir": "^2.2.2"
     },
     "devDependencies": {
-        "@antha/util": "^0.24.0",
+        "@antha/util": "^0.25.0",
         "@augment-vir/test": "^32.3.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
@@ -56,7 +56,7 @@
         "typedoc": "^0.28.20"
     },
     "peerDependencies": {
-        "@antha/util": "^0.24.0"
+        "@antha/util": "^0.25.0"
     },
     "engines": {
         "node": ">=22"
