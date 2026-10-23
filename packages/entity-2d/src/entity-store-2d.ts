@@ -170,7 +170,7 @@ export class EntityStore2d<State extends AnyObject = any> {
             /** Check if the entity was destroyed outside of an update cycle. */
             if (entity.isDestroyed) {
                 entity.immediatelyDestroy();
-                return;
+                continue;
             }
             await entity.update(updateParams);
             /** Check if the entity was destroyed while updating. */
@@ -241,7 +241,7 @@ export class EntityStore2d<State extends AnyObject = any> {
 
         for (const entity of this.currentEntityInstances) {
             if (entity.isDestroyed) {
-                return;
+                continue;
             }
 
             await entity.render(renderParams);

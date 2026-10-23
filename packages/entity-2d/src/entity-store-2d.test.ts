@@ -90,7 +90,7 @@ describe(EntityStore2d.name, () => {
         );
     });
 
-    it('stops rendering after reaching a destroyed entity', async () => {
+    it('skips destroyed entities while rendering the rest', async () => {
         const suite = createTestSuite();
         const store = createTestStore(suite);
         let renderCount = 0;
@@ -112,7 +112,7 @@ describe(EntityStore2d.name, () => {
 
         await store.renderAllEntities(emptyEntityUpdateParams);
 
-        assert.strictEquals(renderCount, 0);
+        assert.strictEquals(renderCount, 1);
     });
 
     it('renders logic entities without a render override', async () => {
@@ -149,6 +149,38 @@ describe(EntityStore2d.name, () => {
 
         await store.updateAllEntities(emptyEntityUpdateParams);
         assert.strictEquals(store.currentEntityInstances.size, 0);
+    });
+
+    it('keeps updating the rest after cleaning up an entity destroyed outside update cycle', async () => {
+        const suite = createTestSuite();
+        const store = createTestStore(suite);
+        let updateCount = 0;
+
+        class CountingEntity extends suite.defineLogicEntity({
+            key: 'CountingEntity',
+            paramsShape: undefined,
+        }) {
+            public override update(): void {
+                updateCount += 1;
+            }
+        }
+
+        const firstEntity = await store.addEntity(CountingEntity);
+        await store.addEntity(CountingEntity);
+        makeWritable(firstEntity).isDestroyed = true;
+
+        await store.updateAllEntities(emptyEntityUpdateParams);
+
+        assert.deepEquals(
+            {
+                entityCount: store.currentEntityInstances.size,
+                updateCount,
+            },
+            {
+                entityCount: 1,
+                updateCount: 1,
+            },
+        );
     });
 
     it('cleans up entities that destroy themselves during update', async () => {
