@@ -73,7 +73,7 @@ describe('stable math', () => {
         );
     });
 
-    it('wraps inverse and root math functions', () => {
+    it('wraps inverse, exponential, and root math functions', () => {
         assert.deepEquals(
             {
                 acos: StableMath.acos(0, {
@@ -85,6 +85,9 @@ describe('stable math', () => {
                 atan: StableMath.atan(1, {
                     digits: 4,
                 }),
+                exp: StableMath.exp(1, {
+                    digits: 4,
+                }),
                 infinity: StableMath.round(Infinity),
                 sqrt: StableMath.sqrt(2, {
                     digits: 4,
@@ -94,6 +97,7 @@ describe('stable math', () => {
                 acos: 1.5708,
                 asin: 1.5708,
                 atan: 0.7854,
+                exp: 2.7183,
                 infinity: Infinity,
                 sqrt: 1.4142,
             },

@@ -82,6 +82,14 @@ export const StableMath = {
         return StableMath.round((Math.PI * degrees) / 180, options);
     },
     /**
+     * Stable wrapper for `Math.exp`.
+     *
+     * @category Math
+     */
+    exp(value: number, options?: Readonly<StableMathOptions> | undefined) {
+        return StableMath.round(Math.exp(value), options);
+    },
+    /**
      * Stable wrapper for `Math.hypot`.
      *
      * @category Math
