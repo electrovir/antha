@@ -35,6 +35,19 @@ import {
 import {createMultiplayerApiClient, type MultiplayerApiClient} from './multiplayer-client.js';
 
 /**
+ * STUN servers used when `MultiplayerInitParams.stunServerUrls` is omitted. This is Cloudflare's
+ * public STUN server, a third-party service: by default, every client sends a request to it,
+ * exposing that client's public IP address to Cloudflare, so peers can discover how to reach each
+ * other across NATs. To use different STUN servers, set `stunServerUrls` to your own list. To use
+ * no STUN server at all, set `stunServerUrls` to `[]`.
+ *
+ * @category Internal
+ */
+export const defaultStunServerUrls: ReadonlyArray<string> = [
+    'stun.cloudflare.com:3478',
+];
+
+/**
  * Connection state for {@link MultiplayerRoomController}.
  *
  * @category Internal
@@ -164,8 +177,13 @@ export type MultiplayerInitParams = {
      */
     roomUpdateInterval: AnyDuration;
     /**
-     * Optional stun server URLs to help with routing WebRTC connections. This is entirely optional,
-     * but might help with clients attempting to establish connections to each other.
+     * STUN server URLs used to help clients establish WebRTC connections to each other.
+     *
+     * When omitted, this defaults to {@link defaultStunServerUrls}, which uses Cloudflare's public
+     * STUN server (a third-party service). Set this to your own list to use different servers, or
+     * to `[]` to use no STUN server at all.
+     *
+     * @default defaultStunServerUrls
      */
     stunServerUrls: ReadonlyArray<string>;
     /** If set, this will override the internal multiplayer API. */
@@ -465,7 +483,7 @@ export class MultiplayerRoomController<
         const currentConnection = new WebrtcMultiplayerController<Message>(
             this.params.gameId,
             this.multiplayerApiClient,
-            this.multiplayerParams.stunServerUrls || [],
+            this.multiplayerParams.stunServerUrls ?? defaultStunServerUrls,
             room,
             this.params.clientId,
             this.params.acceptConnection

@@ -8,6 +8,17 @@ This package provides the room, signaling, WebRTC, and identifier utilities behi
 npm i @antha/multiplayer-core
 ```
 
+## Default STUN server
+
+By default, multiplayer connections use Cloudflare's public STUN server (`stun.cloudflare.com:3478`), a third-party service. Every client sends a request to it, which exposes that client's public IP address to Cloudflare. This helps peers on different networks find a route to each other.
+
+To change this, set `stunServerUrls` when calling `initMultiplayer`:
+
+-   Use your own STUN servers: `stunServerUrls: ['stun.example.com:3478']`
+-   Use no STUN server at all: `stunServerUrls: []`
+
+Omitting `stunServerUrls` (or setting it to `undefined`) uses the Cloudflare default, exported as `defaultStunServerUrls`.
+
 ## Usage
 
 <!-- example-link: src/readme-examples/creating-multiplayer-client.example.ts -->
