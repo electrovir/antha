@@ -20,7 +20,14 @@ Object.defineProperty(globalThis.navigator, 'clipboard', {
 async function renderKeyboard(inputs: Readonly<Partial<typeof AnthaKeyboard.InputsType>> = {}) {
     const fixture = await testWeb.renderElement(AnthaKeyboard, {
         navController: new NavController(document.body),
+        value: '',
         ...inputs,
+    });
+
+    fixture.addEventListener(AnthaKeyboard.events.valueChange.type, (event) => {
+        fixture.assignInputs({
+            value: assertWrap.instanceOf(event, AnthaKeyboard.events.valueChange).detail,
+        });
     });
 
     await fixture.updateComplete;
@@ -33,7 +40,10 @@ function getKeyboardButtons(fixture: InstanceType<typeof AnthaKeyboard>): HTMLBu
 }
 
 function getKeyboardState(fixture: Readonly<InstanceType<typeof AnthaKeyboard>>) {
-    return fixture._lastRenderedProps.state;
+    return {
+        ...fixture._lastRenderedProps.state,
+        value: fixture.instanceInputs.value,
+    };
 }
 
 async function activateButton(button: Readonly<HTMLButtonElement>) {
@@ -72,6 +82,27 @@ describe(AnthaKeyboard.tagName, () => {
         try {
             assert.isUndefined(fixture.shadowRoot.querySelector('.entered-text') || undefined);
             assert.isLengthExactly(getKeyboardButtons(fixture), 59);
+        } finally {
+            testWeb.cleanupRender();
+        }
+    });
+
+    it('starts with the cursor after the given value', async () => {
+        const fixture = await renderKeyboard({
+            value: 'Pilot',
+        });
+
+        try {
+            assert.deepEquals(
+                {
+                    cursorPosition: getKeyboardState(fixture).cursorPosition,
+                    value: getKeyboardState(fixture).value,
+                },
+                {
+                    cursorPosition: 5,
+                    value: 'Pilot',
+                },
+            );
         } finally {
             testWeb.cleanupRender();
         }

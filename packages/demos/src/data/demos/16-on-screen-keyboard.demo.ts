@@ -11,7 +11,7 @@ import {
     type NavController,
 } from '@antha/input';
 import {createUtcFullDate} from 'date-vir';
-import {defineElement, html} from 'element-vir';
+import {defineElement, html, listen} from 'element-vir';
 import {type AnthaDemo} from '../demo.js';
 
 type OnScreenKeyboardDemoModState = AnthaInputBindingsModState<MenuNavBinding> & AnthaMenuModState;
@@ -20,11 +20,23 @@ const Demo16OnScreenKeyboard = defineElement<{
     navController: NavController;
 }>()({
     tagName: 'demo-16-on-screen-keyboard',
-    render({inputs}) {
+    state() {
+        return {
+            value: '',
+        };
+    },
+    render({inputs, state, updateState}) {
         return html`
             <${AnthaKeyboard.assign({
                 navController: inputs.navController,
-            })}></${AnthaKeyboard}>
+                value: state.value,
+            })}
+                ${listen(AnthaKeyboard.events.valueChange, (event) => {
+                    updateState({
+                        value: event.detail,
+                    });
+                })}
+            ></${AnthaKeyboard}>
         `;
     },
 });

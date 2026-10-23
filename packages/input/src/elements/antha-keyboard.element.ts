@@ -113,6 +113,8 @@ function pressKeyboardKey({
 export const AnthaKeyboard = defineElement<
     {
         navController: NavController;
+        /** The current text. Write back the `valueChange` event's detail to update it. */
+        value: string;
     } & PartialWithUndefined<{
         /**
          * If set to `true`, a "Hide" (keyboard hide) button is shown.
@@ -301,11 +303,10 @@ export const AnthaKeyboard = defineElement<
             }
         }
     `,
-    state() {
+    state({inputs}) {
         return {
-            value: '',
             toggled: {} as KeyboardToggleState,
-            cursorPosition: 0,
+            cursorPosition: inputs.value.length,
             beamElement: undefined as undefined | HTMLElement,
             arrowRepeatDelay: undefined as undefined | ReturnType<typeof globalThis.setTimeout>,
             arrowRepeatInterval: undefined as undefined | ReturnType<typeof globalThis.setInterval>,
@@ -328,35 +329,25 @@ export const AnthaKeyboard = defineElement<
                 });
             }
 
-            const oldValue = state.value;
+            const oldValue = inputs.value;
+            const oldCursorPosition = Math.min(state.cursorPosition, oldValue.length);
             const newValue = await handleKeyPress({
                 keyPress: result.keyPress,
                 currentValue: oldValue,
-                cursorPosition: state.cursorPosition,
+                cursorPosition: oldCursorPosition,
                 maxLength: Math.round(Math.abs(inputs.maxLength || 0)) || 128,
             });
 
             updateState({
-                value: newValue,
+                cursorPosition:
+                    result.keyPress.special === AnthaKeyboardSpecialKey.NavLeft
+                        ? Math.max(oldCursorPosition - 1, 0)
+                        : result.keyPress.special === AnthaKeyboardSpecialKey.NavRight
+                          ? Math.min(oldCursorPosition + 1, newValue.length)
+                          : oldCursorPosition + newValue.length - oldValue.length,
             });
 
-            if (result.keyPress.special === AnthaKeyboardSpecialKey.NavLeft) {
-                updateState({
-                    cursorPosition: Math.max(state.cursorPosition - 1, 0),
-                });
-            } else if (result.keyPress.special === AnthaKeyboardSpecialKey.NavRight) {
-                updateState({
-                    cursorPosition: Math.min(state.cursorPosition + 1, state.value.length),
-                });
-            }
-
             if (oldValue !== newValue) {
-                const lengthDiff = newValue.length - oldValue.length;
-
-                updateState({
-                    cursorPosition: state.cursorPosition + lengthDiff,
-                });
-
                 dispatch(
                     new events.valueChange({
                         detail: newValue,
@@ -489,13 +480,16 @@ export const AnthaKeyboard = defineElement<
             `;
         });
 
+        /** The parent may shorten `value` without the keyboard knowing, so keep the cursor in range. */
+        const cursorPosition = Math.min(state.cursorPosition, inputs.value.length);
+
         // prettier-ignore
-        const textContent = html`${state.value.slice(0, state.cursorPosition)}<span class="beam" 
+        const textContent = html`${inputs.value.slice(0, cursorPosition)}<span class="beam" 
             ${onDomCreated((element) => {
                 updateState({
                     beamElement: assertWrap.instanceOf( element, HTMLElement),
                 });
-            })}></span>${state.value.slice(state.cursorPosition)}`
+            })}></span>${inputs.value.slice(cursorPosition)}`
 
         const textElement = inputs.hideText
             ? nothing
@@ -506,16 +500,23 @@ export const AnthaKeyboard = defineElement<
                       ${listen('click', (event) => {
                           event.stopImmediatePropagation();
 
-                          const newValue = prompt('', state.value);
+                          const newValue = prompt('', inputs.value);
                           
                           if (newValue == null) {
                               return;
                           }
                           
                           updateState({
-                              value: newValue,
                               cursorPosition: newValue.length,
                           });
+
+                          if (newValue !== inputs.value) {
+                              dispatch(
+                                  new events.valueChange({
+                                      detail: newValue,
+                                  }),
+                              );
+                          }
 
                           if (state.beamElement) {
                               scrollBeamIntoView(state.beamElement);
