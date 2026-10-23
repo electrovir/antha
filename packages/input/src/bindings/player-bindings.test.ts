@@ -6,9 +6,11 @@ import {InputDeviceKey} from 'input-device-handler';
 import {checkValidShape} from 'object-shape-tester';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
+    actOnBinding,
     filterToAllowedActions,
     markBindingActed,
     playersBindingAssignmentsShape,
+    type ActiveBinding,
 } from './player-bindings.js';
 
 const testBindingAssignment = {
@@ -136,6 +138,97 @@ describe(markBindingActed.name, () => {
                     milliseconds: 300,
                 },
             },
+        );
+    });
+});
+
+describe(actOnBinding.name, () => {
+    const repeat = {
+        interval: {
+            milliseconds: 50,
+        },
+        threshold: {
+            milliseconds: 200,
+        },
+    };
+
+    /** Acts on a binding at each hold duration and returns which ones acted. */
+    function holdBinding({
+        holdMs,
+        repeat,
+    }: Readonly<{
+        holdMs: ReadonlyArray<number>;
+        repeat?: Parameters<typeof actOnBinding>[0]['repeat'];
+    }>) {
+        const activeBinding: ActiveBinding = {
+            actCount: 0,
+            holdDuration: {
+                milliseconds: 0,
+            },
+            lastActDuration: {
+                milliseconds: 0,
+            },
+            rawInputs: [],
+            value: 1,
+        };
+
+        return holdMs.filter((milliseconds) => {
+            activeBinding.holdDuration = {
+                milliseconds,
+            };
+
+            return actOnBinding({
+                activeBinding,
+                repeat,
+            });
+        });
+    }
+
+    it('acts only once per press without repeat', () => {
+        assert.deepEquals(
+            holdBinding({
+                holdMs: [
+                    0,
+                    100,
+                    300,
+                    1000,
+                ],
+            }),
+            [
+                0,
+            ],
+        );
+    });
+
+    it('repeats after the threshold at each interval', () => {
+        assert.deepEquals(
+            holdBinding({
+                holdMs: [
+                    0,
+                    150,
+                    210,
+                    240,
+                    270,
+                    300,
+                    330,
+                ],
+                repeat,
+            }),
+            [
+                0,
+                210,
+                270,
+                330,
+            ],
+        );
+    });
+
+    it('does nothing without a binding', () => {
+        assert.isFalse(
+            actOnBinding({
+                activeBinding: undefined,
+                repeat,
+            }),
         );
     });
 });

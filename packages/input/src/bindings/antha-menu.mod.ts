@@ -3,12 +3,13 @@ import {KnownInput} from '@antha/gamepad-type';
 import {type LocalPlayerPosition} from '@antha/util';
 import {check} from '@augment-vir/assert';
 import {getObjectTypedEntries, type PartialWithUndefined} from '@augment-vir/common';
-import {type AnyDuration, convertDuration} from 'date-vir';
+import {type AnyDuration} from 'date-vir';
 import {NavController, type NavControllerOptions, NavDirection, NavValue} from 'device-navigation';
 import {type AnthaReadRawInputModState} from '../raw-inputs/antha-read-raw-input.mod.js';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {type AnthaMenuState, getAnthaMenuStateForNavigation} from './antha-menu-state.js';
 import {
+    actOnBinding,
     AnyGamepad,
     type BindingAssignments,
     markBindingActed,
@@ -393,12 +394,10 @@ export function createAnthaMenuMod<
                 return;
             }
 
-            const repeatThreshold = convertDuration(state.menuNavOptions.repeatThreshold, {
-                milliseconds: true,
-            }).milliseconds;
-            const repeatInterval = convertDuration(state.menuNavOptions.repeatInterval, {
-                milliseconds: true,
-            }).milliseconds;
+            const repeat = {
+                interval: state.menuNavOptions.repeatInterval,
+                threshold: state.menuNavOptions.repeatThreshold,
+            };
             const minimumDirectionalInputValue = state.menuNavOptions.minimumDirectionalInputValue;
 
             const bindingsToAct: Partial<Record<MenuNavBinding, boolean>> = {};
@@ -429,20 +428,18 @@ export function createAnthaMenuMod<
 
                             activeMenuBindings[bindingName] = true;
 
-                            if (
-                                (!directionalMenuNavBindings.includes(bindingName) ||
-                                    activeBinding.value >= minimumDirectionalInputValue) &&
-                                (!activeBinding.actCount ||
-                                    (directionalMenuNavBindings.includes(bindingName) &&
-                                        activeBinding.holdDuration.milliseconds >=
-                                            repeatThreshold &&
-                                        activeBinding.holdDuration.milliseconds -
-                                            activeBinding.lastActDuration.milliseconds >
-                                            repeatInterval))
-                            ) {
+                            const shouldAct = directionalMenuNavBindings.includes(bindingName)
+                                ? activeBinding.value >= minimumDirectionalInputValue &&
+                                  actOnBinding({
+                                      activeBinding,
+                                      repeat,
+                                  })
+                                : actOnBinding({
+                                      activeBinding,
+                                  });
+
+                            if (shouldAct) {
                                 bindingsToAct[bindingName] = true;
-                                activeBinding.actCount++;
-                                activeBinding.lastActDuration = activeBinding.holdDuration;
                             }
                         },
                     );

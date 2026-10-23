@@ -1,5 +1,6 @@
 import {LocalPlayerPosition} from '@antha/util';
 import {getObjectTypedEntries, pickObjectKeys} from '@augment-vir/common';
+import {type AnyDuration, convertDuration} from 'date-vir';
 import {GamepadInputDeviceKey, InputDeviceKey} from 'input-device-handler';
 import {
     defineShape,
@@ -202,6 +203,52 @@ export function markBindingActed(activeBinding: ActiveBinding | undefined) {
 
     activeBinding.actCount = 1;
     activeBinding.lastActDuration = activeBinding.holdDuration;
+}
+
+/**
+ * Same as {@link markBindingActed} but returns `true` whenever the caller should act on
+ * `activeBinding`. Without `repeat`, that's only once per press. With `repeat`, it also repeats
+ * while held, like a keyboard's key repeat.
+ *
+ * @category Util
+ */
+export function actOnBinding({
+    activeBinding,
+    repeat,
+}: Readonly<{
+    activeBinding: ActiveBinding | undefined;
+    repeat?:
+        | Readonly<{
+              /** How long the binding must be held before it starts repeating. */
+              threshold: Readonly<AnyDuration>;
+              /** The minimum time between each repeat. */
+              interval: Readonly<AnyDuration>;
+          }>
+        | undefined;
+}>) {
+    if (!activeBinding) {
+        return false;
+    }
+
+    const holdMs = activeBinding.holdDuration.milliseconds;
+    const shouldAct =
+        !activeBinding.actCount ||
+        (!!repeat &&
+            holdMs >=
+                convertDuration(repeat.threshold, {
+                    milliseconds: true,
+                }).milliseconds &&
+            holdMs - activeBinding.lastActDuration.milliseconds >
+                convertDuration(repeat.interval, {
+                    milliseconds: true,
+                }).milliseconds);
+
+    if (shouldAct) {
+        activeBinding.actCount++;
+        activeBinding.lastActDuration = activeBinding.holdDuration;
+    }
+
+    return shouldAct;
 }
 
 /**
