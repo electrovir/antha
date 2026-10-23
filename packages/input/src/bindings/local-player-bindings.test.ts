@@ -9,6 +9,7 @@ import {MenuNavBinding} from './antha-menu.mod.js';
 import {createDefaultLocalPlayerBindings} from './local-player-bindings.js';
 
 enum PlayerAction {
+    Jump = 'jump',
     Down = 'move-down',
     Left = 'move-left',
     Right = 'move-right',
@@ -76,6 +77,63 @@ describe(createDefaultLocalPlayerBindings.name, () => {
             ),
         );
         assert.isFalse(playerTwoMenuEnterBindings.some(({deviceKey}) => deviceKey === 'keyboard'));
+    });
+
+    it('assigns button bindings to each gamepad and only the keyboard slot', () => {
+        const bindingAssignments = createDefaultLocalPlayerBindings({
+            buttonBindings: {
+                [PlayerAction.Jump]: {
+                    gamepadInputNames: [
+                        KnownInput.FaceAccept,
+                    ],
+                    keyboardInputNames: [
+                        'button-Space',
+                    ],
+                },
+            },
+            directionalBindingNames,
+            playerGamepads,
+        });
+
+        assert.deepEquals(
+            {
+                playerOne: bindingAssignments[LocalPlayerPosition.One]?.[PlayerAction.Jump],
+                playerTwo: bindingAssignments[LocalPlayerPosition.Two]?.[PlayerAction.Jump],
+            },
+            {
+                playerOne: [
+                    {
+                        deviceKey: GamepadInputDeviceKey.Gamepad1,
+                        direction: InputDirection.Positive,
+                        inputName: KnownInput.FaceAccept,
+                    },
+                    {
+                        deviceKey: 'keyboard',
+                        direction: InputDirection.Positive,
+                        inputName: 'button-Space',
+                    },
+                ],
+                playerTwo: [
+                    {
+                        deviceKey: GamepadInputDeviceKey.Gamepad2,
+                        direction: InputDirection.Positive,
+                        inputName: KnownInput.FaceAccept,
+                    },
+                ],
+            },
+        );
+    });
+
+    it('assigns no inputs to an undefined button binding', () => {
+        const bindingAssignments = createDefaultLocalPlayerBindings({
+            buttonBindings: {
+                [PlayerAction.Jump]: undefined,
+            },
+            directionalBindingNames,
+            playerGamepads,
+        });
+
+        assert.deepEquals(bindingAssignments[LocalPlayerPosition.One]?.[PlayerAction.Jump], []);
     });
 
     it('can disable keyboard assignments', () => {

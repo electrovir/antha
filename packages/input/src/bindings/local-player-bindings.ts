@@ -168,6 +168,51 @@ function createDirectionalBindings<BindingName extends string>({
     );
 }
 
+/**
+ * Inputs for one button binding in {@link createDefaultLocalPlayerBindings}. Gamepad inputs are
+ * assigned to each player's own gamepad.
+ *
+ * @category Internal
+ */
+export type DefaultButtonBindingInputs = {
+    gamepadInputNames: ReadonlyArray<KnownInput>;
+    /** Keyboard input names, like `'button-Space'`. */
+    keyboardInputNames: ReadonlyArray<string>;
+};
+
+function createButtonBindings({
+    buttonBindings,
+    gamepadDeviceKey,
+    includeKeyboard,
+}: Readonly<{
+    buttonBindings:
+        | Readonly<Record<string, Readonly<DefaultButtonBindingInputs> | undefined>>
+        | undefined;
+    gamepadDeviceKey: GamepadInputDeviceKey;
+    includeKeyboard: boolean;
+}>) {
+    return mapObjectValues(buttonBindings || {}, (_bindingName, buttonBindingInputs) => {
+        return [
+            ...(buttonBindingInputs?.gamepadInputNames || []).map((inputName) => {
+                return {
+                    deviceKey: gamepadDeviceKey,
+                    direction: InputDirection.Positive,
+                    inputName,
+                };
+            }),
+            ...(includeKeyboard ? buttonBindingInputs?.keyboardInputNames || [] : []).map(
+                (inputName) => {
+                    return {
+                        deviceKey: 'keyboard',
+                        direction: InputDirection.Positive,
+                        inputName,
+                    } satisfies BindingAssignment;
+                },
+            ),
+        ];
+    }) satisfies BindingAssignments;
+}
+
 function createMenuNavBindings({
     gamepadDeviceKey,
     includeKeyboard,
@@ -192,13 +237,14 @@ function createMenuNavBindings({
 }
 
 /**
- * Builds per-slot gamepad movement and menu bindings. `playerGamepads` defaults to
+ * Builds per-slot gamepad movement, button, and menu bindings. `playerGamepads` defaults to
  * {@link defaultPlayerGamepads} for all four players. Keyboard controls default to
  * `LocalPlayerPosition.One`; set `keyboardPlayerPosition` to `undefined` to disable them.
  *
  * @category Util
  */
 export function createDefaultLocalPlayerBindings<BindingName extends string>({
+    buttonBindings,
     directionalBindingNames,
     playerGamepads = getObjectTypedEntries(defaultPlayerGamepads).map(
         ([
@@ -213,6 +259,10 @@ export function createDefaultLocalPlayerBindings<BindingName extends string>({
     ),
     ...keyboardOptions
 }: Readonly<{
+    /** Extra button bindings, each assigned to every player's gamepad and the keyboard player. */
+    buttonBindings?:
+        | Readonly<Partial<Record<BindingName, Readonly<DefaultButtonBindingInputs> | undefined>>>
+        | undefined;
     directionalBindingNames: Readonly<DirectionalBindingNames<BindingName>>;
     keyboardPlayerPosition?: LocalPlayerPosition | undefined;
     playerGamepads?:
@@ -238,6 +288,11 @@ export function createDefaultLocalPlayerBindings<BindingName extends string>({
                 [playerPosition]: {
                     ...createDirectionalBindings({
                         directionalBindingNames,
+                        gamepadDeviceKey,
+                        includeKeyboard,
+                    }),
+                    ...createButtonBindings({
+                        buttonBindings,
                         gamepadDeviceKey,
                         includeKeyboard,
                     }),
