@@ -37,11 +37,11 @@ function readCodecs() {
     const userAgent = globalThis.navigator.userAgent;
     const operaAgent = userAgent.match(/OPR\/(\d+)/g);
     const operaVersion = operaAgent?.[0].split('/')[1];
-    const isOldOpera: boolean = operaAgent && operaVersion ? parseInt(operaVersion) < 33 : false;
+    const isOldOpera: boolean = !!operaAgent && !!operaVersion && parseInt(operaVersion) < 33;
 
     const checkSafari = userAgent.includes('Safari') && !userAgent.includes('Chrome');
     const safariVersion = userAgent.match(/Version\/(.*?) /)?.[1];
-    const isOldSafari = checkSafari && safariVersion ? parseInt(safariVersion, 10) < 15 : false;
+    const isOldSafari = checkSafari && !!safariVersion && parseInt(safariVersion, 10) < 15;
 
     return {
         mp3: !!(!isOldOpera && (mpegTest || audioTest.canPlayType('audio/mp3;'))),

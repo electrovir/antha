@@ -22,7 +22,7 @@ describe(createMultiplayerPlayerId.name, () => {
             it: 'rejects unknown player slots',
             input: {
                 clientId: applyBrand<ClientId>('c_test'),
-                playerPosition: '5' satisfies string as LocalPlayerPosition,
+                playerPosition: '5' satisfies string as unknown as LocalPlayerPosition,
             },
             throws: {
                 matchConstructor: Error,

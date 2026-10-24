@@ -7,17 +7,17 @@ import {
     type GamepadInputValue,
     type InputDeviceHandler,
 } from 'input-device-handler';
-import {ViraInput, noNativeFormStyles} from 'vira';
+import {ViraInput, ViraModal, noNativeFormStyles} from 'vira';
 import {
     type GamepadLayout,
     type GamepadModelMap,
     findMatchingGamepadLayout,
     findMatchingGamepadModel,
 } from '../../../index.js';
+import {ModalClose} from '../../events/modal-close.event.js';
 import {SelectedGamepadIndexChange} from '../../events/selected-gamepad-index-change.event.js';
 import {kebabCaseToNameCase} from '../../util/casing.js';
 import {VirGamepadInput} from '../gamepad/vir-gamepad-input.element.js';
-import {VirModal} from './vir-modal.element.js';
 
 export const VirEditMappingsModal = defineElement<{
     gamepadDevices: ReadonlyArray<Readonly<GamepadDevice>>;
@@ -219,9 +219,14 @@ export const VirEditMappingsModal = defineElement<{
             : '';
 
         return html`
-            <${VirModal.assign({
+            <${ViraModal.assign({
                 modalTitle: 'Edit Mappings',
-            })}>
+                open: true,
+            })}
+                ${listen(ViraModal.events.modalClose, () => {
+                    dispatch(new ModalClose());
+                })}
+            >
                 <div class="wrapper">
                     <div class="selected-gamepad">
                         <span>Selected Gamepad:</span>
@@ -230,7 +235,7 @@ export const VirEditMappingsModal = defineElement<{
                     <div class="current-input">${currentInputTemplate}</div>
                     <div class="current-mapping">${currentNameMapTemplate}</div>
                 </div>
-            </${VirModal}>
+            </${ViraModal}>
         `;
     },
 });

@@ -93,13 +93,10 @@ export function createAnthaInputBindingsMod<const BindingNames extends string = 
             }
 
             if (
-                state.inputDisableEndsAt != undefined ||
-                !state.bindingAssignments ||
-                !state.rawInputs
+                state.inputDisableEndsAt == undefined &&
+                state.bindingAssignments &&
+                state.rawInputs
             ) {
-                /** Nothing to do if there are no bindings or inputs. */
-                state.activeBindings = {};
-            } else {
                 const newPlayersActiveBindingsMap = mapObjectValuesSync(
                     state.bindingAssignments,
                     (playerPosition, bindingsMap) => {
@@ -114,6 +111,9 @@ export function createAnthaInputBindingsMod<const BindingNames extends string = 
                 );
 
                 state.activeBindings = newPlayersActiveBindingsMap;
+            } else {
+                /** Nothing to do if there are no bindings or inputs. */
+                state.activeBindings = {};
             }
 
             const assignmentDebugElement = state.debugBindingAssignments
@@ -160,7 +160,7 @@ function filterRawInput(
     return (
         entry?.direction === binding.direction &&
         !entry.isIgnoredByConsumer &&
-        (binding.gamepadBrand ? binding.gamepadBrand === entry.mapped.gamepadBrand : true)
+        (!binding.gamepadBrand || binding.gamepadBrand === entry.mapped.gamepadBrand)
     );
 }
 

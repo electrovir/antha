@@ -3,7 +3,7 @@
 import {assertWrap} from '@augment-vir/assert';
 import {readPackageJson} from '@augment-vir/node';
 import {parseArgs} from 'cli-vir';
-import {resolve} from 'node:path';
+import {join, resolve} from 'node:path';
 import {runMultiplayerServerCli} from './cli.js';
 
 export const packageDirPath = resolve(import.meta.dirname, '..', '..');
@@ -30,6 +30,7 @@ const args = parseArgs(
     {
         binName,
         importMeta: import.meta,
+        packageJsonPath: join(packageDirPath, 'package.json'),
     },
 );
 

@@ -217,17 +217,17 @@ export function createSaveGameSuite<RuntimeSaveState, StoredSaveStateShape exten
 
             const startEngineTime = engine.engineTime;
 
-            const shouldAutosave: boolean = state.lastAutosaveSuccess
-                ? convertDuration(
-                      state.autosaveInterval || {
-                          seconds: 5,
-                      },
-                      {
-                          milliseconds: true,
-                      },
-                  ).milliseconds <=
-                  startEngineTime - state.lastAutosaveSuccess.at
-                : true;
+            const shouldAutosave: boolean =
+                !state.lastAutosaveSuccess ||
+                convertDuration(
+                    state.autosaveInterval || {
+                        seconds: 5,
+                    },
+                    {
+                        milliseconds: true,
+                    },
+                ).milliseconds <=
+                    startEngineTime - state.lastAutosaveSuccess.at;
 
             if (!shouldAutosave) {
                 return;

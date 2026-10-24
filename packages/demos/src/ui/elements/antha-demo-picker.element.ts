@@ -1,6 +1,6 @@
 import {toSimpleDatePartString, toTimestamp} from 'date-vir';
 import {css, defineElement, html} from 'element-vir';
-import {ExternalLink24Icon, noNativeSpacing, ViraIcon, ViraLink} from 'vira';
+import {LucideExternalLinkIcon, noNativeSpacing, ViraIcon, ViraLink} from 'vira';
 import {allDemos} from '../../data/all-demos.js';
 import {demoPathTree, type DemoRouter} from '../../data/demo-router.js';
 
@@ -80,7 +80,7 @@ export const AnthaDemoPicker = defineElement<{
                 <span>
                     <span>GitHub</span>
                     <${ViraIcon.assign({
-                        icon: ExternalLink24Icon,
+                        icon: LucideExternalLinkIcon,
                         fitContainer: true,
                     })}></${ViraIcon}>
                 </span>

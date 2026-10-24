@@ -515,12 +515,12 @@ export class MultiplayerRoomController<
                     const connected = currentConnection.isConnected();
                     const destroyed = currentConnection.isDestroyed;
 
-                    return !connected && !destroyed
-                        ? undefined
-                        : {
+                    return connected || destroyed
+                        ? {
                               connected,
                               destroyed,
-                          };
+                          }
+                        : undefined;
                 }),
                 abortSignal,
             );

@@ -409,23 +409,21 @@ export const VirDemo = defineElement()({
                                 });
 
                                 const systemVersions = getSystemVersions();
-                                const areSystemsEqual = matchingLayout
-                                    ? includesSystemVersion(
-                                          matchingLayout.systemVersions,
-                                          systemVersions,
-                                      )
-                                    : true;
+                                const areSystemsEqual =
+                                    !matchingLayout ||
+                                    includesSystemVersion(
+                                        matchingLayout.systemVersions,
+                                        systemVersions,
+                                    );
 
                                 const emptyLayout = createEmptyGamepadLayout(selectedGamepad);
 
                                 const layoutToEdit: GamepadLayout = areSystemsEqual
                                     ? (matchingLayout ?? emptyLayout)
-                                    : matchingLayout
-                                      ? {
-                                            ...copyThroughJson(matchingLayout),
-                                            systemVersions: emptyLayout.systemVersions,
-                                        }
-                                      : emptyLayout;
+                                    : {
+                                          ...copyThroughJson(matchingLayout),
+                                          systemVersions: emptyLayout.systemVersions,
+                                      };
 
                                 layoutToEdit.inputMappings[event.detail.inputName] =
                                     event.detail.mappedName;

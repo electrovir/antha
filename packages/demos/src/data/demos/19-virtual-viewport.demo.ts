@@ -13,7 +13,7 @@ import {
 import {check} from '@augment-vir/assert';
 import {createUtcFullDate} from 'date-vir';
 import {css, html, listen} from 'element-vir';
-import {ViraSelect, type ViraSelectOption} from 'vira';
+import {ViraDropdown, type ViraDropdownOption} from 'vira';
 import {type AnthaDemo} from '../demo.js';
 
 enum VirtualViewportConstraint {
@@ -39,7 +39,7 @@ const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<VirtualViewpo
     {},
 );
 
-const virtualViewportConstraintOptions: ReadonlyArray<Readonly<ViraSelectOption>> = [
+const virtualViewportConstraintOptions: ReadonlyArray<Readonly<ViraDropdownOption>> = [
     {
         label: 'Both dimensions',
         value: VirtualViewportConstraint.Both,
@@ -175,22 +175,26 @@ const virtualViewportDemoControlsMod = defineAnthaMod<VirtualViewportDemoState>(
                     z-index: 1;
                 `}
             >
-                <${ViraSelect.assign({
+                <${ViraDropdown.assign({
                     label: 'Constrain viewport by',
                     options: virtualViewportConstraintOptions,
-                    value: state.viewportConstraint || VirtualViewportConstraint.Both,
+                    selected: [
+                        state.viewportConstraint || VirtualViewportConstraint.Both,
+                    ],
                 })}
-                    ${listen(ViraSelect.events.valueChange, ({detail}) => {
+                    ${listen(ViraDropdown.events.selectedValuesChange, ({detail}) => {
+                        const [selectedValue] = detail;
+
                         if (
-                            !check.isEnumValue(detail, VirtualViewportConstraint) ||
-                            detail === state.viewportConstraint
+                            !check.isEnumValue(selectedValue, VirtualViewportConstraint) ||
+                            selectedValue === state.viewportConstraint
                         ) {
                             return;
                         }
 
-                        state.viewportConstraint = detail;
+                        state.viewportConstraint = selectedValue;
                     })}
-                ></${ViraSelect}>
+                ></${ViraDropdown}>
                 ${sampleFontSizes.map((fontSize) => {
                     return html`
                         <p

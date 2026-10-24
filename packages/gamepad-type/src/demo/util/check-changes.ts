@@ -20,11 +20,9 @@ export function extractNewChanges(
         const matchesDefault = defaultGamepadLayouts.some((defaultLayout) => {
             return check.jsonEquals(defaultLayout, layout);
         });
-        const matchesSubmitted: boolean = lastSubmitted
-            ? lastSubmitted.layouts.some((submittedLayout) => {
-                  return check.jsonEquals(submittedLayout, layout);
-              })
-            : false;
+        const matchesSubmitted: boolean = !!lastSubmitted?.layouts.some((submittedLayout) => {
+            return check.jsonEquals(submittedLayout, layout);
+        });
         return !matchesDefault && !matchesSubmitted;
     });
 
@@ -32,9 +30,10 @@ export function extractNewChanges(
         const newFromDefault =
             !(deviceName in defaultGamepadModelMap) ||
             defaultGamepadModelMap[deviceName] !== newModel;
-        const newFromSubmitted = lastSubmitted
-            ? !(deviceName in lastSubmitted.models) || lastSubmitted.models[deviceName] !== newModel
-            : true;
+        const newFromSubmitted =
+            !lastSubmitted ||
+            !(deviceName in lastSubmitted.models) ||
+            lastSubmitted.models[deviceName] !== newModel;
 
         return newFromSubmitted && newFromDefault;
     }) as GamepadModelMap;

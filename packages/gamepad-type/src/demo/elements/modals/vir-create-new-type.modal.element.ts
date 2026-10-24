@@ -2,12 +2,11 @@ import {assert} from '@augment-vir/assert';
 import {waitForAnimationFrame} from '@augment-vir/web';
 import {css, defineElement, defineElementEvent, html, listen} from 'element-vir';
 import {type GamepadDevice} from 'input-device-handler';
-import {ViraButton, ViraInput, noNativeFormStyles} from 'vira';
+import {ViraButton, ViraInput, ViraModal, noNativeFormStyles} from 'vira';
 import {findMatchingGamepadModel} from '../../../index.js';
 import {ModalClose} from '../../events/modal-close.event.js';
 import {SelectedGamepadIndexChange} from '../../events/selected-gamepad-index-change.event.js';
 import {kebabCaseToNameCase} from '../../util/casing.js';
-import {VirModal} from './vir-modal.element.js';
 
 export const VirCreateNewTypeModal = defineElement<{
     gamepadDevices: ReadonlyArray<Readonly<GamepadDevice>>;
@@ -137,9 +136,14 @@ export const VirCreateNewTypeModal = defineElement<{
         `;
 
         return html`
-            <${VirModal.assign({
+            <${ViraModal.assign({
                 modalTitle: 'Enter New Model',
-            })}>
+                open: true,
+            })}
+                ${listen(ViraModal.events.modalClose, () => {
+                    dispatch(new ModalClose());
+                })}
+            >
                 <div class="wrapper">
                     <div class="selected-gamepad">
                         <span>Selected Gamepad by Name:</span>
@@ -148,7 +152,7 @@ export const VirCreateNewTypeModal = defineElement<{
                     <div class="current-model">${currentModelTemplate}</div>
                     <div class="new-model-name">${currentNameMapTemplate}</div>
                 </div>
-            </${VirModal}>
+            </${ViraModal}>
         `;
     },
 });

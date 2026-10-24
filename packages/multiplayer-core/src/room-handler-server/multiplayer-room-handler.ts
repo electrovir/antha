@@ -26,7 +26,7 @@ export type MultiplayerTransportClient = {
     /** Send a signaling message to the connected transport client. */
     send: (message: MultiplayerConnectHostMessage) => void;
     /** Current WebSocket-compatible connection state. */
-    readyState: CommonWebSocketState;
+    readyState: number;
 };
 
 /**
