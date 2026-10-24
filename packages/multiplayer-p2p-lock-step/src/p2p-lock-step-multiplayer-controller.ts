@@ -142,11 +142,12 @@ export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatible
     P2pMultiplayerControllerParams<P2pLockStepMultiplayerController<Action>> &
         PartialWithUndefined<{
             /**
-             * Sends the host's state to each client that joins. When a client joins, the host's
-             * next frame event has `shouldSendStateSync` set, and the host produces no more frames
-             * until that state is passed to {@link P2pLockStepMultiplayerController.sendStateSync}.
-             * The joining client emits {@link MultiplayerControllerStateSyncEvent} with that state,
-             * and ignores every frame before it (see
+             * Sends the host's state to every client whenever a client joins. When a client joins,
+             * the host's next frame event has `shouldSendStateSync` set, and the host produces no
+             * more frames until that state is passed to
+             * {@link P2pLockStepMultiplayerController.sendStateSync}. Every client emits
+             * {@link MultiplayerControllerStateSyncEvent} with that state. The joining client
+             * ignores every frame before it (see
              * {@link P2pLockStepMultiplayerController.awaitingStateSync}).
              *
              * @default joining clients receive no state
@@ -214,9 +215,9 @@ export class MultiplayerControllerDesyncEvent extends defineTypedCustomEvent<
 >()('multiplayer-controller-desync') {}
 
 /**
- * This is fired on a client when it receives the host's state, when it joins or after it calls
- * {@link P2pLockStepMultiplayerController.requestStateSync}. Load the state, then call
- * {@link P2pLockStepMultiplayerController.finishStateSync} before applying any later frame.
+ * This is fired on every client when the host sends its state, which happens whenever any client
+ * joins or calls {@link P2pLockStepMultiplayerController.requestStateSync}. Load the state, then
+ * call {@link P2pLockStepMultiplayerController.finishStateSync} before applying any later frame.
  *
  * @category Events
  */
@@ -505,25 +506,17 @@ export class P2pLockStepMultiplayerController<
 
     /**
      * Call on the host right after applying a frame event whose `shouldSendStateSync` is set. Sends
-     * the state to every client waiting for it, then resumes frame production.
+     * the state to every client, then resumes frame production.
      */
     public sendStateSync(stateSync: JsonCompatibleValue) {
-        const connectedClientIds = this.getConnectedClientIds();
-
-        this.stateSyncFrameClientIds
-            .filter((clientId) => {
-                return connectedClientIds.includes(clientId);
-            })
-            .forEach((clientId) => {
-                this.debugLog(`sending state sync to ${clientId}`);
-                this.roomConnection?.sendToOnlyOneClient(clientId, {
-                    type: P2pLockStepMessageType.Frame,
-                    packets: [],
-                    isSynchronizationFrame: true,
-                    stateSync,
-                    frameCount: this.frameCount,
-                });
-            });
+        this.debugLog('sending state sync to every client');
+        this.roomConnection?.sendMessage({
+            type: P2pLockStepMessageType.Frame,
+            packets: [],
+            isSynchronizationFrame: true,
+            stateSync,
+            frameCount: this.frameCount,
+        });
         this.stateSyncFrameClientIds = [];
         this.maybeFinishFrame();
     }

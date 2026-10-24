@@ -7,6 +7,7 @@ import {
 } from '@antha/multiplayer-core';
 import {
     awaitedBlockingMap,
+    copyThroughJson,
     type JsonCompatibleValue,
     log,
     type MaybePromise,
@@ -96,9 +97,12 @@ export type AnthaMultiplayerP2pLockStepOptions<
             ) => MaybePromise<number | undefined>;
         };
         /**
-         * Sends the host's state to each peer that joins, so games don't need their own sync
-         * packets. A joining peer skips every frame until its state is loaded, and desync checks
-         * skip it until then too. The host pauses frames while `createStateSync` runs.
+         * Sends the host's state whenever a peer joins or resyncs, so games don't need their own
+         * sync packets. Every peer, the host included, loads that state on the same frame. That
+         * way, state the sync doesn't carry, like the order of hitboxes in a collision tree, gets
+         * rebuilt the same way on every peer. A joining peer skips every frame until its state is
+         * loaded, and desync checks skip it until then too. The host pauses frames while the state
+         * is created and loaded.
          *
          * @default joining peers receive no state
          */
@@ -109,7 +113,10 @@ export type AnthaMultiplayerP2pLockStepOptions<
                     state: Partial<State>;
                 }>,
             ) => MaybePromise<StateSync>;
-            /** Called on a joining (or resyncing) peer to replace its state with the host's. */
+            /**
+             * Called on every peer, the host included, to replace its state with the host's. The
+             * host loads a JSON copy, so it gets the same value that the other peers receive.
+             */
             loadStateSync: (
                 params: Readonly<{
                     stateSync: StateSync;
@@ -320,10 +327,20 @@ export function createAnthaMultiplayerP2pLockStepMod<
                         }
 
                         if (event.detail.shouldSendStateSync && options.stateSync) {
+                            const stateSync = await options.stateSync.createStateSync({
+                                state,
+                            });
+
+                            await options.stateSync.loadStateSync({
+                                stateSync: copyThroughJson<unknown>(
+                                    stateSync,
+                                ) satisfies JsonCompatibleValue as StateSync,
+                                multiplayerController:
+                                    state.multiplayerP2pLockStep.multiplayerController,
+                                state,
+                            });
                             state.multiplayerP2pLockStep.multiplayerController.sendStateSync(
-                                await options.stateSync.createStateSync({
-                                    state,
-                                }),
+                                stateSync,
                             );
                         }
                     }

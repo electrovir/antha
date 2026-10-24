@@ -629,6 +629,82 @@ describe(createAnthaMultiplayerP2pLockStepMod.name, () => {
         multiplayerController.destroy();
     });
 
+    it('loads a JSON copy of its own state sync on the host before sending it', async () => {
+        const calls: string[] = [];
+        const createdStateSync = {
+            amounts: [
+                3,
+            ],
+            removed: undefined,
+        };
+        const loadedStateSyncs: JsonCompatibleValue[] = [];
+
+        class StateSyncRecordingController extends P2pLockStepMultiplayerController<TestPacket> {
+            public override sendStateSync() {
+                calls.push('send');
+            }
+        }
+
+        const mod = createAnthaMultiplayerP2pLockStepMod<TestPacket, FrameTestState>({
+            stateSync: {
+                createStateSync() {
+                    return createdStateSync;
+                },
+                loadStateSync({stateSync}) {
+                    calls.push('load');
+                    loadedStateSyncs.push(stateSync);
+                },
+            },
+        });
+        const multiplayerController = new StateSyncRecordingController({
+            gameId: 'host-state-sync-mod-test',
+        });
+
+        await mod.execute({
+            ...executeParams,
+            executionTrigger: {
+                events: [
+                    new MultiplayerControllerFrameEvent<TestPacket>({
+                        detail: {
+                            packets: [],
+                            shouldSendStateSync: true,
+                        },
+                    }),
+                ],
+                type: ModExecutionTriggerType.Event,
+            },
+            state: {
+                multiplayerP2pLockStep: {
+                    connectionState: emptyApiAndRoomConnectionState,
+                    multiplayerController,
+                },
+            },
+        });
+
+        assert.deepEquals(
+            {
+                calls,
+                isSameObject: loadedStateSyncs[0] === createdStateSync,
+                loadedStateSyncs,
+            },
+            {
+                calls: [
+                    'load',
+                    'send',
+                ],
+                isSameObject: false,
+                loadedStateSyncs: [
+                    {
+                        amounts: [
+                            3,
+                        ],
+                    },
+                ],
+            },
+        );
+        multiplayerController.destroy();
+    });
+
     it('runs frame updates without a connected room', async () => {
         let frameUpdateCount = 0;
         const mod = createAnthaMultiplayerP2pLockStepMod<TestPacket, FrameTestState>({

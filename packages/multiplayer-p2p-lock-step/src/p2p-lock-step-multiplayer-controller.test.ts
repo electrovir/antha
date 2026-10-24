@@ -927,7 +927,7 @@ describe(P2pLockStepMultiplayerController.name, () => {
         controller.destroy();
     });
 
-    it('pauses host frames until the state sync for a new member is sent', () => {
+    it('pauses host frames until the state sync for a new member is sent to every client', () => {
         const controller = createController({
             enableStateSync: true,
         });
@@ -972,27 +972,28 @@ describe(P2pLockStepMultiplayerController.name, () => {
 
         assert.deepEquals(
             {
+                messagesAfterPause: fakeConnection.sentMessages.slice(sentFramesWhilePaused),
                 onlyOneClientMessages: fakeConnection.onlyOneClientMessages,
-                sentFramesAfterSync: fakeConnection.sentMessages.length,
                 sentFramesWhilePaused,
                 shouldSendStateSyncFlags,
             },
             {
-                onlyOneClientMessages: [
+                messagesAfterPause: [
                     {
-                        clientId: memberClientId,
-                        message: {
-                            frameCount: 2,
-                            isSynchronizationFrame: true,
-                            packets: [],
-                            stateSync: {
-                                count: 3,
-                            },
-                            type: P2pLockStepMessageType.Frame,
+                        frameCount: 2,
+                        isSynchronizationFrame: true,
+                        packets: [],
+                        stateSync: {
+                            count: 3,
                         },
+                        type: P2pLockStepMessageType.Frame,
+                    },
+                    {
+                        packets: [],
+                        type: P2pLockStepMessageType.Frame,
                     },
                 ],
-                sentFramesAfterSync: 3,
+                onlyOneClientMessages: [],
                 sentFramesWhilePaused: 2,
                 shouldSendStateSyncFlags: [
                     undefined,
