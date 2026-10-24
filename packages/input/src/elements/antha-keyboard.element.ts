@@ -216,6 +216,7 @@ export const AnthaKeyboard = defineElement<
                 border-radius: 4px;
                 background-color: ${viraTheme.colors['vira-grey-behind-fg-highest-contrast']
                     .background.value};
+                color: ${viraTheme.colors['vira-grey-behind-fg-highest-contrast'].foreground.value};
                 font: inherit;
                 cursor: pointer;
                 ${noUserSelect}
