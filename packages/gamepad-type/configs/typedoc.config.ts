@@ -18,6 +18,7 @@ export const typeDocConfig: Partial<TypeDocOptions> = {
         'Main',
         'Types',
         'Defaults',
+        'Icons',
         'Util',
     ],
 };

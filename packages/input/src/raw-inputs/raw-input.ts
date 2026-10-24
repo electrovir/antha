@@ -1,3 +1,4 @@
+import {InputDirection} from '@antha/gamepad-type';
 import {mapObjectValues, type SelectFrom} from '@augment-vir/common';
 import {type Duration, type DurationUnit} from 'date-vir';
 import {
@@ -7,17 +8,7 @@ import {
     type InputValueWrapper,
 } from 'input-device-handler';
 
-/**
- * All possible directions of an input value.
- *
- * @category Internal
- */
-export enum InputDirection {
-    /** Right at 0. */
-    Flat = 'flat',
-    Negative = 'negative',
-    Positive = 'positive',
-}
+export {InputDirection} from '@antha/gamepad-type';
 
 /**
  * Calculate the {@link InputDirection} value of an input value.

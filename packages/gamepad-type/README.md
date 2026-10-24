@@ -86,6 +86,42 @@ The primary exports of this package are the following:
     }
     ```
 
+-   `getGamepadInputIcons`
+
+    <!-- example-link: src/readme-examples/getting-icons.example.ts -->
+
+    ```TypeScript
+    import {html} from 'element-vir';
+    import {ViraIcon} from 'vira';
+    import {findMatchingGamepadModel, getGamepadInputIcons, KnownInput} from '@antha/gamepad-type';
+
+    const {gamepadBrand, gamepadModel} = findMatchingGamepadModel({
+        gamepad: window.navigator.getGamepads()[0]?.id,
+    });
+
+    /** The first icon is the default. Empty when the gamepad lacks this input. */
+    const [acceptIcon] = getGamepadInputIcons({
+        gamepadBrand,
+        gamepadModel,
+        input: KnownInput.FaceAccept,
+    });
+
+    const template = html`
+        <${ViraIcon.assign({
+            icon: acceptIcon,
+        })}></${ViraIcon}>
+    `;
+    ```
+
+## icons
+
+Every gamepad input in `KnownInput` has [Vira](https://www.npmjs.com/package/vira) icons for each supported gamepad, so you can show players the button they actually need to press. (This makes `element-vir` and `vira` peer dependencies.) The icons come from [Kenney Input Prompts](https://kenney.nl/assets/input-prompts) (CC0), restyled to stay readable on any background.
+
+-   `getGamepadInputIcons`: given the gamepad model and brand from `findMatchingGamepadModel`, returns the icons for an input. Unknown models fall back to their brand's newest model, and unknown brands fall back to Xbox icons.
+-   `getGamepadStickIcon`: same as `getGamepadInputIcons` but returns the single icon for one `InputDirection` of a stick axis, like left stick up.
+-   `gamepadIconSetInputIcons`: every icon for each `GamepadIconSet` (Xbox, PlayStation, Nintendo Switch, Steam Deck, etc.), if you want to pick the icon set yourself.
+-   `keyboardInputIcons` and `mouseInputIcons`: icons for the keyboard and mouse input names that `input-device-handler` creates.
+
 ## predefined mappings
 
 You can access all predefined mappings and values with the following exported values:

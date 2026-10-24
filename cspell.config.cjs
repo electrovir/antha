@@ -7,9 +7,16 @@ module.exports = {
     ],
     words: [
         ...baseConfig.words,
+        'backquote',
+        'capslock',
         'desync',
         'desynced',
         'desyncs',
+        'gamecube',
+        'kenney',
         'lerp',
+        'numlock',
+        'steamdeck',
+        'wiiu',
     ],
 };
