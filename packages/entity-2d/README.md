@@ -53,3 +53,13 @@ const engine = new AnthaEngine<GameState>({
 
 engine.startLoop();
 ```
+
+## Cross-origin isolation
+
+For multithreaded physics, copy `node_modules/@antha/util/dist/cross-origin-isolation-service-worker.js` next to your `index.html` and load it before any other script:
+
+```html
+<script type="module" src="cross-origin-isolation-service-worker.js"></script>
+```
+
+Skip this if your server already sends cross-origin isolation headers.
