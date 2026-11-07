@@ -22,7 +22,6 @@
         "@antha/graphics-2d": "^0.28.0",
         "@antha/input": "^0.28.0",
         "@antha/multiplayer-core": "^0.28.0",
-        "@antha/multiplayer-p2p-authoritative-host": "^0.28.0",
         "@antha/multiplayer-p2p-lock-step": "^0.28.0",
         "@augment-vir/assert": "^32.6.1",
         "@augment-vir/common": "^32.6.1",

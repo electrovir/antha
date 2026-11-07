@@ -6,7 +6,6 @@ import {stutterDetectionDemo} from './demos/11-stutter-detection.demo.js';
 import {multiplayerRoomConnectionDemo} from './demos/12-room-connection.demo.js';
 import {multiplayerRoomSelectionDemo} from './demos/13-room-selection.demo.js';
 import {multiplayerPlayerModeDemo} from './demos/14-multiplayer-player-mode.demo.js';
-import {multiplayerAuthoritativeHostCounterDemo} from './demos/15-authoritative-host-counter.demo.js';
 import {onScreenKeyboardDemo} from './demos/16-on-screen-keyboard.demo.js';
 import {singleplayerToMultiplayerDemo} from './demos/17-singleplayer-to-multiplayer.demo.js';
 import {multiplayerRoomSwitchingDemo} from './demos/18-multiplayer-room-switching.demo.js';
@@ -37,7 +36,6 @@ export const allDemos: AnthaDemo[] = [
     multiplayerRoomConnectionDemo,
     multiplayerRoomSelectionDemo,
     multiplayerPlayerModeDemo,
-    multiplayerAuthoritativeHostCounterDemo,
     onScreenKeyboardDemo,
     singleplayerToMultiplayerDemo,
     multiplayerRoomSwitchingDemo,
