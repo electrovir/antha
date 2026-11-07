@@ -67,6 +67,7 @@ export type AnthaMultiplayerP2pLockStepOptions<
         P2pLockStepMultiplayerControllerParams<MultiplayerPacket>,
         {
             acceptConnection: true;
+            bufferedFrameCount: true;
             debugMultiplayer: true;
             frameDuration: true;
             gameId: true;
@@ -99,7 +100,7 @@ export type AnthaMultiplayerP2pLockStepOptions<
         /**
          * Sends the host's state whenever a peer joins or resyncs, so games don't need their own
          * sync packets. Every peer, the host included, loads that state on the same frame. That
-         * way, state the sync doesn't carry, like the order of hitboxes in a collision tree, gets
+         * way, state the sync doesn't carry, like the order of bodies in a physics world, gets
          * rebuilt the same way on every peer. A joining peer skips every frame until its state is
          * loaded, and desync checks skip it until then too. The host pauses frames while the state
          * is created and loaded.
@@ -223,6 +224,7 @@ export function createAnthaMultiplayerP2pLockStepMod<
                     multiplayerController: new P2pLockStepMultiplayerController<MultiplayerPacket>({
                         gameId: options.gameId || 'antha',
                         acceptConnection: options.acceptConnection,
+                        bufferedFrameCount: options.bufferedFrameCount,
                         debugMultiplayer: options.debugMultiplayer,
                         desyncCheckInterval: options.desyncCheck?.interval,
                         enableStateSync: !!options.stateSync,

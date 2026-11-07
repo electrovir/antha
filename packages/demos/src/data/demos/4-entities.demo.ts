@@ -1,9 +1,11 @@
+import {createAnthaAssetMod} from '@antha/asset';
 /* eslint-disable sonarjs/pseudo-random */
-import {AnthaEngine, SkipExecution, type AnthaMod, type ModExecuteParams} from '@antha/engine';
+import {AnthaEngine, SkipExecution, type AnthaMod} from '@antha/engine';
 import {
+    BodyType,
     createAnthaEntity2dSuite,
     EntityEvent,
-    position2dParamsMap,
+    ShapeType,
     type AnthaEntity2dModState,
     type BaseEntity2d,
     type EntityStore2d,
@@ -12,9 +14,8 @@ import {
 import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {assert, assertWrap} from '@augment-vir/assert';
-import {executeCount, randomInteger} from '@augment-vir/common';
+import {clamp, executeCount, randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
-import {Circle, Polygon} from 'detect-collisions';
 import {css, html, listen} from 'element-vir';
 import {defineShape} from 'object-shape-tester';
 import {Graphics} from 'pixi.js';
@@ -27,6 +28,28 @@ const baselineFrameMs = 1000 / 60;
 
 function calculateGameTickDelta(msSinceLastUpdate: number): number {
     return (msSinceLastUpdate / baselineFrameMs) * gameSpeed;
+}
+
+/** Multiply a speed in pixels per baseline frame by this to get pixels per second. */
+const baselineFramesPerSecond = (1000 / baselineFrameMs) * gameSpeed;
+
+/** Moves a coordinate that left the screen to the opposite edge. */
+function wrapCoordinate({
+    value,
+    size,
+    max,
+}: Readonly<{
+    value: number;
+    size: number;
+    max: number;
+}>) {
+    if (value < -size) {
+        return max + size;
+    } else if (value > max + size) {
+        return -size;
+    } else {
+        return value;
+    }
 }
 
 type AsteroidsGameState = {
@@ -45,13 +68,19 @@ const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<AsteroidsGame
 class AsteroidEntity extends defineEntity({
     key: 'Asteroid',
     paramsShape: defineShape({
-        x: 0,
-        y: 0,
-        directionX: 0,
-        directionY: 0,
         size: 30,
     }),
-    paramsMap: position2dParamsMap,
+    physics(params) {
+        return {
+            type: BodyType.Dynamic,
+            shapes: [
+                {
+                    type: ShapeType.Circle,
+                    radius: params.size,
+                },
+            ],
+        };
+    },
 }) {
     public static readonly minAsteroidSize = 7;
     public static readonly initialSpawnInterval = 120;
@@ -64,40 +93,32 @@ class AsteroidEntity extends defineEntity({
 
         return {
             view: graphic,
-            hitbox: new Circle(
-                {
-                    x: this.params.x,
-                    y: this.params.y,
-                },
-                this.params.size,
-            ),
         };
     }
 
-    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>): void {
-        /** Move the asteroid. */
-        const gameTickDelta = calculateGameTickDelta(msSinceLastExecute);
+    public override update() {
+        const position = this.physics.getPosition();
+        const wrappedPosition = {
+            x: wrapCoordinate({
+                value: position.x,
+                size: this.params.size,
+                max: this.pixi.screen.width,
+            }),
+            y: wrapCoordinate({
+                value: position.y,
+                size: this.params.size,
+                max: this.pixi.screen.height,
+            }),
+        };
 
-        this.params.x += this.params.directionX * gameTickDelta;
-        this.params.y += this.params.directionY * gameTickDelta;
-
-        const {width: screenWidth, height: screenHeight} = this.pixi.screen;
-
-        if (this.params.x < -this.params.size) {
-            this.params.x = screenWidth + this.params.size;
-        } else if (this.params.x > screenWidth + this.params.size) {
-            this.params.x = -this.params.size;
-        }
-
-        if (this.params.y < -this.params.size) {
-            this.params.y = screenHeight + this.params.size;
-        } else if (this.params.y > screenHeight + this.params.size) {
-            this.params.y = -this.params.size;
+        if (wrappedPosition.x !== position.x || wrappedPosition.y !== position.y) {
+            this.physics.setPosition(wrappedPosition);
         }
     }
 
-    public override async collide(otherEntity: BaseEntity2d): Promise<void> {
-        if (otherEntity instanceof PlayerBulletEntity) {
+    public override async contactStart(otherEntity: BaseEntity2d): Promise<void> {
+        /** Two bullets can hit the same asteroid in one step. */
+        if (otherEntity instanceof PlayerBulletEntity && !this.isDestroyed) {
             const scoreValue = Math.floor(100 / this.params.size);
 
             this.dispatch(
@@ -112,19 +133,28 @@ class AsteroidEntity extends defineEntity({
             const halfSize = Math.floor(this.params.size / 3);
 
             if (halfSize >= AsteroidEntity.minAsteroidSize) {
+                const position = this.physics.getPosition();
+                const velocity = this.physics.getVelocity();
+
                 await this.addEntity(AsteroidEntity, {
-                    x: this.params.x,
-                    y: this.params.y,
-                    directionX: this.params.directionY + (Math.random() - 0.5),
-                    directionY: -this.params.directionX + (Math.random() - 0.5),
-                    size: halfSize,
+                    params: {
+                        size: halfSize,
+                    },
+                    position,
+                    velocity: {
+                        x: velocity.y + (Math.random() - 0.5) * baselineFramesPerSecond,
+                        y: -velocity.x + (Math.random() - 0.5) * baselineFramesPerSecond,
+                    },
                 });
                 await this.addEntity(AsteroidEntity, {
-                    x: this.params.x,
-                    y: this.params.y,
-                    directionX: -this.params.directionY + (Math.random() - 0.5),
-                    directionY: this.params.directionX + (Math.random() - 0.5),
-                    size: halfSize,
+                    params: {
+                        size: halfSize,
+                    },
+                    position,
+                    velocity: {
+                        x: -velocity.y + (Math.random() - 0.5) * baselineFramesPerSecond,
+                        y: velocity.x + (Math.random() - 0.5) * baselineFramesPerSecond,
+                    },
                 });
             }
 
@@ -134,68 +164,61 @@ class AsteroidEntity extends defineEntity({
     }
 }
 
+const bulletRadius = 3;
+
 class PlayerBulletEntity extends defineEntity({
     key: 'PlayerBullet',
-    paramsShape: defineShape({
-        x: 0,
-        y: 0,
-        directionX: 0,
-        directionY: 0,
-    }),
-    paramsMap: position2dParamsMap,
+    physics: {
+        type: BodyType.Dynamic,
+        shapes: [
+            {
+                type: ShapeType.Circle,
+                radius: bulletRadius,
+            },
+        ],
+    },
+    touches: [
+        AsteroidEntity,
+    ],
 }) {
-    public static readonly bulletRadius = 3;
-    public static readonly bulletSpeed = 8;
+    /** Pixels per second. */
+    public static readonly bulletSpeed = 8 * baselineFramesPerSecond;
 
     public override createView(): ViewCreation2d {
         const graphic = new Graphics();
-        graphic.circle(0, 0, PlayerBulletEntity.bulletRadius).fill('#ffffff');
+        graphic.circle(0, 0, bulletRadius).fill('#ffffff');
 
         return {
             view: graphic,
-            hitbox: new Circle(
-                {
-                    x: this.params.x,
-                    y: this.params.y,
-                },
-                PlayerBulletEntity.bulletRadius,
-            ),
         };
     }
 
-    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>): void {
-        const gameTickDelta = calculateGameTickDelta(msSinceLastExecute);
-
-        this.params.x += this.params.directionX * gameTickDelta;
-        this.params.y += this.params.directionY * gameTickDelta;
-
+    public override update() {
         if (!this.isInBounds()) {
             this.destroy();
         }
     }
 }
 
+const playerSize = 14;
+
 class PlayerEntity extends defineEntity({
     key: 'Player',
-    paramsShape: defineShape({
-        x: 0,
-        y: 0,
-        direction: 0,
-    }),
-    paramsMap: {
-        hitbox: {
-            x: true,
-            y: true,
-        },
-        view: {
-            x: true,
-            y: true,
-            rotation: 'direction',
-        },
+    physics: {
+        type: BodyType.Kinematic,
+        shapes: [
+            {
+                type: ShapeType.Circle,
+                radius: playerSize * 0.8,
+            },
+        ],
     },
+    touches: [
+        AsteroidEntity,
+    ],
 }) {
-    public static readonly playerSize = 14;
-    public static readonly playerSpeed = 2;
+    /** Pixels per second. */
+    public static readonly playerSpeed = 2 * baselineFramesPerSecond;
     public static readonly playerShootInterval = 30;
     public static readonly maxTurnRate = 0.05;
     public static readonly borderMargin = 40;
@@ -251,106 +274,83 @@ class PlayerEntity extends defineEntity({
     }
 
     public override createView(): ViewCreation2d {
-        const trianglePoints: [
-            number,
-            number,
-        ][] = [
-            [
-                PlayerEntity.playerSize,
-                0,
-            ],
-            [
-                -PlayerEntity.playerSize,
-                -PlayerEntity.playerSize * 0.7,
-            ],
-            [
-                -PlayerEntity.playerSize,
-                PlayerEntity.playerSize * 0.7,
-            ],
-        ];
-
         const graphic = new Graphics();
-        graphic.poly(trianglePoints.flat()).fill('#44ff44');
+        graphic
+            .poly([
+                playerSize,
+                0,
+                -playerSize,
+                -playerSize * 0.7,
+                -playerSize,
+                playerSize * 0.7,
+            ])
+            .fill('#44ff44');
 
         return {
             view: graphic,
-            hitbox: new Polygon(
-                {
-                    x: this.params.x,
-                    y: this.params.y,
-                },
-                trianglePoints.map(
-                    ([
-                        pointX,
-                        pointY,
-                    ]) => {
-                        return {
-                            x: pointX,
-                            y: pointY,
-                        };
-                    },
-                ),
-            ),
         };
     }
 
-    public override async update({msSinceLastExecute}: Readonly<ModExecuteParams>): Promise<void> {
-        const gameTickDelta = calculateGameTickDelta(msSinceLastExecute);
+    public override async update(): Promise<void> {
+        const gameTickDelta = calculateGameTickDelta(this.entityStore.stepMs);
 
         this.shootCooldown += gameTickDelta;
 
         const {width: screenWidth, height: screenHeight} = this.pixi.screen;
+        const position = this.physics.getPosition();
+        const direction = this.physics.getRotation();
 
-        const asteroids = Array.from(this.entityStore.getEntities(AsteroidEntity)).filter(
-            (asteroid) => {
-                return (
-                    asteroid.params.x > PlayerEntity.borderMargin &&
-                    asteroid.params.x < screenWidth - PlayerEntity.borderMargin &&
-                    asteroid.params.y > PlayerEntity.borderMargin &&
-                    asteroid.params.y < screenHeight - PlayerEntity.borderMargin
-                );
-            },
-        );
+        const closestAsteroid = Array.from(this.entityStore.getEntities(AsteroidEntity))
+            .map((asteroid) => {
+                const asteroidPosition = asteroid.physics.getPosition();
 
-        if (asteroids.length === 0) {
-            return;
-        }
-
-        const closestAsteroid = asteroids.reduce<
-            | {
-                  asteroid: AsteroidEntity;
-                  distance: number;
-              }
-            | undefined
-        >((closest, asteroid) => {
-            const distance = Math.hypot(
-                asteroid.params.x - this.params.x,
-                asteroid.params.y - this.params.y,
-            );
-
-            if (!closest || distance < closest.distance) {
                 return {
                     asteroid,
-                    distance,
+                    position: asteroidPosition,
+                    distance: Math.hypot(
+                        asteroidPosition.x - position.x,
+                        asteroidPosition.y - position.y,
+                    ),
                 };
-            }
-            return closest;
-        }, undefined);
+            })
+            .filter((entry) => {
+                return (
+                    entry.position.x > PlayerEntity.borderMargin &&
+                    entry.position.x < screenWidth - PlayerEntity.borderMargin &&
+                    entry.position.y > PlayerEntity.borderMargin &&
+                    entry.position.y < screenHeight - PlayerEntity.borderMargin
+                );
+            })
+            .reduce<
+                | {
+                      asteroid: AsteroidEntity;
+                      position: {x: number; y: number};
+                      distance: number;
+                  }
+                | undefined
+            >((closest, entry) => {
+                return !closest || entry.distance < closest.distance ? entry : closest;
+            }, undefined);
 
         if (!closestAsteroid) {
-            /** If there is no asteroid, do nothing */
+            this.physics.setVelocity({
+                x: 0,
+                y: 0,
+            });
+            this.physics.setAngularVelocity(0);
             return;
         }
 
-        const deltaX = closestAsteroid.asteroid.params.x - this.params.x;
-        const deltaY = closestAsteroid.asteroid.params.y - this.params.y;
+        const deltaX = closestAsteroid.position.x - position.x;
+        const deltaY = closestAsteroid.position.y - position.y;
+        const asteroidVelocity = closestAsteroid.asteroid.physics.getVelocity();
 
         /** Predict where the asteroid will be when a bullet could reach it. */
         const interceptTime = PlayerEntity.computeInterceptTime({
             deltaX,
             deltaY,
-            targetVelocityX: closestAsteroid.asteroid.params.directionX,
-            targetVelocityY: closestAsteroid.asteroid.params.directionY,
+            targetVelocityX: asteroidVelocity.x,
+            targetVelocityY: asteroidVelocity.y,
             bulletSpeed: PlayerBulletEntity.bulletSpeed,
         });
 
@@ -358,51 +358,52 @@ class PlayerEntity extends defineEntity({
             interceptTime == undefined
                 ? Math.atan2(deltaY, deltaX)
                 : Math.atan2(
-                      deltaY + closestAsteroid.asteroid.params.directionY * interceptTime,
-                      deltaX + closestAsteroid.asteroid.params.directionX * interceptTime,
+                      deltaY + asteroidVelocity.y * interceptTime,
+                      deltaX + asteroidVelocity.x * interceptTime,
                   );
 
         /** Compute shortest signed angle difference, wrapping around ±π. */
         const angleDiff = Math.atan2(
-            Math.sin(targetAngle - this.params.direction),
-            Math.cos(targetAngle - this.params.direction),
+            Math.sin(targetAngle - direction),
+            Math.cos(targetAngle - direction),
         );
 
-        /** Clamp the turn to the max turn rate. */
         const maxTurn = PlayerEntity.maxTurnRate * gameTickDelta;
-        const turn = Math.max(-maxTurn, Math.min(maxTurn, angleDiff));
-        this.params.direction += turn;
-
-        const moveSpeed = PlayerEntity.playerSpeed * gameTickDelta;
+        const turn = clamp(angleDiff, {
+            min: -maxTurn,
+            max: maxTurn,
+        });
+        this.physics.setAngularVelocity(turn / (this.entityStore.stepMs / 1000));
 
         /** Move forward normally, or retreat when too close to an asteroid. */
-        if (closestAsteroid.distance > PlayerEntity.stopDistance) {
-            this.params.x += Math.cos(this.params.direction) * moveSpeed;
-            this.params.y += Math.sin(this.params.direction) * moveSpeed;
-        } else {
-            this.params.x -= Math.cos(this.params.direction) * moveSpeed;
-            this.params.y -= Math.sin(this.params.direction) * moveSpeed;
-        }
+        const heading = direction + turn;
+        const moveSpeed =
+            closestAsteroid.distance > PlayerEntity.stopDistance
+                ? PlayerEntity.playerSpeed
+                : -PlayerEntity.playerSpeed;
+        this.physics.setVelocity({
+            x: Math.cos(heading) * moveSpeed,
+            y: Math.sin(heading) * moveSpeed,
+        });
 
         if (this.shootCooldown >= PlayerEntity.playerShootInterval) {
             this.shootCooldown = 0;
+            const muzzleDistance = playerSize + bulletRadius + 2;
             await this.addEntity(PlayerBulletEntity, {
-                x:
-                    this.params.x +
-                    Math.cos(this.params.direction) *
-                        (PlayerEntity.playerSize + PlayerBulletEntity.bulletRadius + 2),
-                y:
-                    this.params.y +
-                    Math.sin(this.params.direction) *
-                        (PlayerEntity.playerSize + PlayerBulletEntity.bulletRadius + 2),
-                directionX: Math.cos(this.params.direction) * PlayerBulletEntity.bulletSpeed,
-                directionY: Math.sin(this.params.direction) * PlayerBulletEntity.bulletSpeed,
+                position: {
+                    x: position.x + Math.cos(heading) * muzzleDistance,
+                    y: position.y + Math.sin(heading) * muzzleDistance,
+                },
+                velocity: {
+                    x: Math.cos(heading) * PlayerBulletEntity.bulletSpeed,
+                    y: Math.sin(heading) * PlayerBulletEntity.bulletSpeed,
+                },
             });
         }
     }
 
-    public override collide(otherEntity: BaseEntity2d): void {
-        if (otherEntity instanceof AsteroidEntity) {
+    public override contactStart(otherEntity: BaseEntity2d): void {
+        if (otherEntity instanceof AsteroidEntity && !this.isDestroyed) {
             this.dispatch(
                 new PlayerDeathEvent({
                     entityInstance: this,
@@ -489,8 +490,17 @@ async function spawnAsteroidFromEdge(
     )();
 
     await entityStore.addEntity(AsteroidEntity, {
-        ...spawn,
-        size,
+        params: {
+            size,
+        },
+        position: {
+            x: spawn.x,
+            y: spawn.y,
+        },
+        velocity: {
+            x: spawn.directionX * baselineFramesPerSecond,
+            y: spawn.directionY * baselineFramesPerSecond,
+        },
     });
 }
 
@@ -510,9 +520,10 @@ const asteroidsGameMod: AnthaMod<AsteroidsState> = {
             state.totalTicks = 0;
 
             await entityStore.addEntity(PlayerEntity, {
-                x: entityStore.pixi.screen.width / 2,
-                y: entityStore.pixi.screen.height / 2,
-                direction: 0,
+                position: {
+                    x: entityStore.pixi.screen.width / 2,
+                    y: entityStore.pixi.screen.height / 2,
+                },
             });
 
             /** Spawn initial asteroids. */
@@ -637,6 +648,7 @@ export const entitiesDemo: AnthaDemo = {
                 createAnthaFpsMod({
                     debugFps: true,
                 }),
+                createAnthaAssetMod(),
                 updateEntitiesMod,
                 asteroidsGameMod,
             ],

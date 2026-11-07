@@ -178,12 +178,25 @@ export type P2pLockStepMultiplayerControllerParams<Action extends JsonCompatible
             desyncCheckInterval?: AnyDuration | undefined;
 
             /**
-             * The duration between each frame. This should probably always be smaller than your
-             * supported render frame duration.
+             * The duration between each frame. The host releases frames from a fixed-step clock
+             * checked on every animation frame, so frames stay on schedule even when the display
+             * refreshes slower than this. Match it to your physics step when each frame runs one
+             * step, as with `@antha/entity-2d`'s default step. Zero disables automatic frames: see
+             * {@link P2pLockStepMultiplayerController.runFrame}.
              *
-             * @default {milliseconds: 10}
+             * @default {seconds: 1 / 120}
              */
             frameDuration?: AnyDuration | undefined;
+
+            /**
+             * How many received frames a member holds before applying them. Frames arrive unevenly
+             * over a network, and the buffer lets members apply them at the same steady pace the
+             * host produces them. Each buffered frame delays a member by one `frameDuration`. Zero
+             * applies frames as soon as they arrive. Ignored when `frameDuration` is zero.
+             *
+             * @default 1
+             */
+            bufferedFrameCount?: number | undefined;
         }>;
 
 /**
@@ -249,7 +262,22 @@ export type MultiplayerControllerFrameListener<MultiplayerPacket extends JsonCom
 ) => MaybePromise<void>;
 
 const defaultFrameDuration: AnyDuration = {
-    milliseconds: 10,
+    seconds: 1 / 120,
+};
+
+/** Once a frame clock falls this far behind, such as in a hidden tab, it skips ahead. */
+const maxCatchUpDuration: AnyDuration = {
+    milliseconds: 250,
+};
+
+/**
+ * When the next frame is due from a fixed-step clock. Advancing this by exactly one frame duration
+ * per frame, instead of timing each frame from the last, keeps frames from drifting late.
+ *
+ * @category Internal
+ */
+export type FrameClock = {
+    nextFrameTime: number;
 };
 
 /**
@@ -282,7 +310,15 @@ export class P2pLockStepMultiplayerController<
 
     protected clientsResponded: Record<ClientId, boolean> = {};
     protected frameActions: MultiplayerFramePacket<MultiplayerPacket>[] = [];
-    protected timeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+    protected animationFrameId: number | undefined;
+    /** On the host, the clock that produces frames. */
+    protected frameClock: FrameClock | undefined;
+    /** On members, the clock that applies buffered frames. */
+    protected playbackClock: FrameClock | undefined;
+    /** On members, received frame messages that haven't been applied yet. */
+    protected bufferedFrameMessages: P2pLockStepMessageByType<MultiplayerPacket>[P2pLockStepMessageType.Frame][] =
+        [];
+    protected readonly bufferedFrameCount: number;
     protected frameTickReady = true;
     public frameMs: number;
     /** On the host, the number of frames produced. */
@@ -322,6 +358,7 @@ export class P2pLockStepMultiplayerController<
         this.frameMs = convertDuration(frameDuration, {
             milliseconds: true,
         }).milliseconds;
+        this.bufferedFrameCount = params.bufferedFrameCount ?? 1;
         this.desyncCheckFrameInterval =
             params.desyncCheckInterval && this.frameMs
                 ? Math.max(
@@ -523,7 +560,7 @@ export class P2pLockStepMultiplayerController<
 
     /** Cleanup everything. */
     public override destroy() {
-        globalThis.clearTimeout(this.timeoutId);
+        this.stopClocks();
         super.destroy();
     }
 
@@ -548,12 +585,12 @@ export class P2pLockStepMultiplayerController<
             this.resetDesyncCheck();
             this.resetStateSync();
             if (previousRoomConnection) {
-                globalThis.clearTimeout(this.timeoutId);
+                this.stopClocks();
                 this.clientsResponded = {};
                 this.frameActions = [];
                 this.frameTickReady = true;
             } else if (wasSingleplayer) {
-                globalThis.clearTimeout(this.timeoutId);
+                this.stopClocks();
                 this.frameTickReady = true;
             }
             this.singleplayer = false;
@@ -602,7 +639,7 @@ export class P2pLockStepMultiplayerController<
     /** Leave the current room or single player connection. */
     public override leaveRoom() {
         if (this.currentConnection) {
-            globalThis.clearTimeout(this.timeoutId);
+            this.stopClocks();
             this.resetStateSync();
         }
 
@@ -648,7 +685,9 @@ export class P2pLockStepMultiplayerController<
             return;
         }
 
-        globalThis.clearTimeout(this.timeoutId);
+        /** Frames this client received as a member come before every frame it produces. */
+        this.applyFrameMessages(this.bufferedFrameMessages);
+        this.stopClocks();
         this.clientsResponded = {};
         this.resetDesyncCheck();
         this.resetStateSync();
@@ -727,26 +766,16 @@ export class P2pLockStepMultiplayerController<
                     sourceClientId: this.clientId,
                     type: P2pLockStepMessageType.Actions,
                 });
-                if (message.stateSync !== undefined) {
-                    this.stateSyncFrameCount = message.frameCount;
-                    this.dispatch(
-                        new MultiplayerControllerStateSyncEvent({
-                            detail: {
-                                stateSync: message.stateSync,
-                            },
-                        }),
-                    );
-                } else if (!message.isSynchronizationFrame) {
-                    this.calculateFps();
-                    this.dispatch(
-                        new MultiplayerControllerFrameEvent({
-                            detail: {
-                                packets: message.packets,
-                                hostStateHash: message.stateHash,
-                                shouldReportNextFrameHash: message.shouldReportNextFrameHash,
-                            },
-                        }),
-                    );
+                if (this.frameMs && this.bufferedFrameCount) {
+                    this.bufferedFrameMessages = [
+                        ...this.bufferedFrameMessages,
+                        message,
+                    ];
+                    this.scheduleClocks();
+                } else {
+                    this.applyFrameMessages([
+                        message,
+                    ]);
                 }
             },
         },
@@ -884,11 +913,146 @@ export class P2pLockStepMultiplayerController<
         this.frameTickReady = false;
         this.calculateFps();
 
-        if (this.frameMs) {
-            this.timeoutId = globalThis.setTimeout(() => {
+        this.frameClock = this.frameMs
+            ? {
+                  nextFrameTime:
+                      (this.frameClock?.nextFrameTime ?? performance.now()) + this.frameMs,
+              }
+            : undefined;
+        if (this.frameClock) {
+            this.scheduleClocks();
+        }
+    }
+
+    /** On members, dispatches the events for frame messages from the host, in order. */
+    protected applyFrameMessages(
+        messages: ReadonlyArray<
+            P2pLockStepMessageByType<MultiplayerPacket>[P2pLockStepMessageType.Frame]
+        >,
+    ) {
+        messages.forEach((message) => {
+            if (message.stateSync !== undefined) {
+                this.stateSyncFrameCount = message.frameCount;
+                this.dispatch(
+                    new MultiplayerControllerStateSyncEvent({
+                        detail: {
+                            stateSync: message.stateSync,
+                        },
+                    }),
+                );
+            } else if (!message.isSynchronizationFrame) {
+                this.calculateFps();
+                this.dispatch(
+                    new MultiplayerControllerFrameEvent({
+                        detail: {
+                            packets: message.packets,
+                            hostStateHash: message.stateHash,
+                            shouldReportNextFrameHash: message.shouldReportNextFrameHash,
+                        },
+                    }),
+                );
+            }
+        });
+    }
+
+    /** Runs {@link P2pLockStepMultiplayerController.runClocks} on the next animation frame. */
+    protected scheduleClocks() {
+        if (this.animationFrameId == undefined) {
+            this.animationFrameId = globalThis.requestAnimationFrame(() => {
+                this.animationFrameId = undefined;
+                this.runClocks();
+            });
+        }
+    }
+
+    /** Stops both frame clocks and discards buffered frames. */
+    protected stopClocks() {
+        if (this.animationFrameId != undefined) {
+            globalThis.cancelAnimationFrame(this.animationFrameId);
+        }
+        this.animationFrameId = undefined;
+        this.frameClock = undefined;
+        this.playbackClock = undefined;
+        this.bufferedFrameMessages = [];
+    }
+
+    /**
+     * On the host, produces every frame that is due. On members, applies every buffered frame that
+     * is due.
+     */
+    protected runClocks(now = performance.now()) {
+        const earliestFrameTime =
+            now -
+            convertDuration(maxCatchUpDuration, {
+                milliseconds: true,
+            }).milliseconds;
+
+        if (this.frameClock && this.isHost()) {
+            this.frameClock = {
+                nextFrameTime: Math.max(this.frameClock.nextFrameTime, earliestFrameTime),
+            };
+            /** Stops early when the frame is blocked, such as by a pending state sync. */
+            while (this.frameClock.nextFrameTime <= now && !this.frameTickReady) {
                 this.frameTickReady = true;
                 this.maybeFinishFrame();
-            }, this.frameMs);
+            }
+        } else if (!this.isHost()) {
+            this.playBufferedFrames({
+                now,
+                earliestFrameTime,
+            });
+        }
+
+        if (this.frameClock || this.playbackClock || this.bufferedFrameMessages.length) {
+            this.scheduleClocks();
+        }
+    }
+
+    /**
+     * Applies buffered frames one frame duration apart, once more than `bufferedFrameCount` have
+     * arrived. If a frame is due with none buffered, playback waits for the buffer to refill. If
+     * frames pile up, such as after a network stall, the extras are applied at once so the delay
+     * doesn't grow.
+     */
+    protected playBufferedFrames({
+        now,
+        earliestFrameTime,
+    }: Readonly<{
+        now: number;
+        earliestFrameTime: number;
+    }>) {
+        if (!this.playbackClock) {
+            if (this.bufferedFrameMessages.length <= this.bufferedFrameCount) {
+                return;
+            }
+            this.playbackClock = {
+                nextFrameTime: now,
+            };
+        }
+
+        this.playbackClock = {
+            nextFrameTime: Math.max(this.playbackClock.nextFrameTime, earliestFrameTime),
+        };
+
+        while (this.playbackClock.nextFrameTime <= now) {
+            const [message] = this.bufferedFrameMessages;
+            if (!message) {
+                this.playbackClock = undefined;
+                return;
+            }
+            this.bufferedFrameMessages = this.bufferedFrameMessages.slice(1);
+            this.applyFrameMessages([
+                message,
+            ]);
+            this.playbackClock = {
+                nextFrameTime: this.playbackClock.nextFrameTime + this.frameMs,
+            };
+        }
+
+        const extraFrameCount = this.bufferedFrameMessages.length - this.bufferedFrameCount - 1;
+        if (extraFrameCount > 0) {
+            this.applyFrameMessages(this.bufferedFrameMessages.slice(0, extraFrameCount));
+            this.bufferedFrameMessages = this.bufferedFrameMessages.slice(extraFrameCount);
         }
     }
 

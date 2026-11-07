@@ -6,7 +6,7 @@ import {
 } from '@antha/asset';
 import {type AudioPlayer, type AudioSetupParams} from '@antha/audio';
 import {getObjectTypedValues, type PartialWithUndefined} from '@augment-vir/common';
-import {type Entity2dConstructor} from './entity.js';
+import {type EntityConstructor} from './entity.js';
 
 /**
  * Audio files and their player to include in {@link loadAnthaAssets}.
@@ -32,7 +32,7 @@ export type LoadAnthaAssetsParams = {
     assetLoader: AssetLoader;
 } & PartialWithUndefined<{
     /** Assets declared by these entity classes are loaded. */
-    entities: ReadonlyArray<Entity2dConstructor>;
+    entities: ReadonlyArray<Pick<EntityConstructor, 'assets'>>;
     /** Audio files to load through their audio player. */
     audio: AnthaAudioFilesToLoad;
     /** Additional assets to load. */

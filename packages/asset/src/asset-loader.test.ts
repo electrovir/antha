@@ -1,5 +1,6 @@
 import {createEngineTime, emptyAnthaLogger} from '@antha/engine';
 import {assert} from '@augment-vir/assert';
+import {DeferredPromise} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {type SpritesheetData} from 'pixi.js';
 import {
@@ -531,6 +532,56 @@ describe(AssetLoader.name, () => {
                 'entity:asset',
                 'entity:asset',
                 'entity:asset',
+            ]);
+        });
+
+        it('keeps naming the first unfinished asset while later ones report progress', async () => {
+            const loader = new AssetLoader();
+            const loadSession = loader.createLoadSession();
+            const resourceNames: (string | undefined)[] = [];
+            const otherAssetLoaded = new DeferredPromise();
+
+            loadSession.listen(AssetLoadSessionUpdateEvent, (event) => {
+                resourceNames.push(event.detail.currentResourceName);
+            });
+
+            await loader.bulkLoadAssets(
+                [
+                    defineAsset({
+                        assetName: 'asset-a',
+                        maxProgress: 1,
+                        async load({incrementProgressCallback}) {
+                            await otherAssetLoaded.promise;
+                            incrementProgressCallback();
+                            return {
+                                value: 'a',
+                            };
+                        },
+                    }),
+                    defineAsset({
+                        assetName: 'asset-b',
+                        maxProgress: 1,
+                        load({incrementProgressCallback}) {
+                            incrementProgressCallback();
+                            otherAssetLoaded.resolve();
+                            return {
+                                value: 'b',
+                            };
+                        },
+                    }),
+                ],
+                {
+                    loadSession,
+                },
+            );
+
+            assert.deepEquals(resourceNames, [
+                'asset-a',
+                'asset-a',
+                'asset-a',
+                'asset-a',
+                'asset-a',
+                'asset-a',
             ]);
         });
 

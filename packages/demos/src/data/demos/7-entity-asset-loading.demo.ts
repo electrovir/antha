@@ -105,8 +105,10 @@ class RedCircleEntity extends defineEntity({
             ],
         });
 
-        viewContainer.x = this.pixi.screen.width / 2;
-        viewContainer.y = this.pixi.screen.height / 2;
+        this.physics.setPosition({
+            x: this.pixi.screen.width / 2,
+            y: this.pixi.screen.height / 2,
+        });
 
         return {
             view: viewContainer,
@@ -181,8 +183,10 @@ class YellowCircleEntity extends defineEntity({
             ],
         });
 
-        viewContainer.x = this.pixi.screen.width / 2;
-        viewContainer.y = this.pixi.screen.height / 2 - 200;
+        this.physics.setPosition({
+            x: this.pixi.screen.width / 2,
+            y: this.pixi.screen.height / 2 - 200,
+        });
 
         return {
             view: viewContainer,
@@ -236,13 +240,15 @@ class BlueDotEntity extends defineEntity({
             ],
         });
 
-        viewContainer.x = randomInteger({
-            min: 100,
-            max: this.pixi.screen.width - 100,
-        });
-        viewContainer.y = randomInteger({
-            min: 100,
-            max: this.pixi.screen.height - 100,
+        this.physics.setPosition({
+            x: randomInteger({
+                min: 100,
+                max: this.pixi.screen.width - 100,
+            }),
+            y: randomInteger({
+                min: 100,
+                max: this.pixi.screen.height - 100,
+            }),
         });
 
         return {

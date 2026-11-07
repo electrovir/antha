@@ -1,11 +1,6 @@
 import {createAnthaAssetMod} from '@antha/asset';
-import {AnthaEngine, SkipExecution, defineAnthaMod, type ModExecuteParams} from '@antha/engine';
-import {
-    createAnthaEntity2dSuite,
-    position2dParamsMap,
-    position2dParamsShape,
-    type AnthaEntity2dModState,
-} from '@antha/entity-2d';
+import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
+import {BodyType, createAnthaEntity2dSuite, type AnthaEntity2dModState} from '@antha/entity-2d';
 import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {
@@ -35,11 +30,14 @@ type PlayerMovementGameState = {
 const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<PlayerMovementGameState>({});
 
 const triangleSize = 20;
+/** Pixels per second. */
+const playerSpeed = 400;
 
 class PlayerEntity extends defineEntity({
     key: 'player',
-    paramsShape: position2dParamsShape,
-    paramsMap: position2dParamsMap,
+    physics: {
+        type: BodyType.Kinematic,
+    },
     assets: {
         sprite: {
             maxProgress: 1,
@@ -65,13 +63,13 @@ class PlayerEntity extends defineEntity({
         },
     },
 }) {
-    public async createView() {
+    public override async createView() {
         return {
             view: await this.getAsset.sprite(),
         };
     }
 
-    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>) {
+    public override update() {
         const movement = getDirectionalInputVector({
             activeBindings: this.state.activeBindings['1'],
             bindingNames: {
@@ -82,19 +80,26 @@ class PlayerEntity extends defineEntity({
             },
         });
 
-        if (movement) {
-            this.params.x += movement.x * msSinceLastExecute * 0.4;
-            this.params.y += movement.y * msSinceLastExecute * 0.4;
-        }
+        this.physics.setVelocity({
+            x: (movement?.x ?? 0) * playerSpeed,
+            y: (movement?.y ?? 0) * playerSpeed,
+        });
 
-        this.params.x = clamp(this.params.x, {
-            min: triangleSize * 0.7,
-            max: this.pixi.screen.width - triangleSize * 0.7,
-        });
-        this.params.y = clamp(this.params.y, {
-            min: triangleSize,
-            max: this.pixi.screen.height - triangleSize,
-        });
+        const position = this.physics.getPosition();
+        const clampedPosition = {
+            x: clamp(position.x, {
+                min: triangleSize * 0.7,
+                max: this.pixi.screen.width - triangleSize * 0.7,
+            }),
+            y: clamp(position.y, {
+                min: triangleSize,
+                max: this.pixi.screen.height - triangleSize,
+            }),
+        };
+
+        if (clampedPosition.x !== position.x || clampedPosition.y !== position.y) {
+            this.physics.setPosition(clampedPosition);
+        }
     }
 }
 
@@ -203,8 +208,10 @@ const playerMovementMod = defineAnthaMod<PlayerMovementState>({
         }
         if (!state.player) {
             state.player = await state.entityStore.addEntity(PlayerEntity, {
-                x: state.pixi.pixiApplication.screen.width / 2,
-                y: state.pixi.pixiApplication.screen.height / 2,
+                position: {
+                    x: state.pixi.pixiApplication.screen.width / 2,
+                    y: state.pixi.pixiApplication.screen.height / 2,
+                },
             });
         }
 

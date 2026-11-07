@@ -1,5 +1,5 @@
-import {defineAnthaMod, type ModExecuteParams, SkipExecution} from '@antha/engine';
-import {position2dParamsMap, position2dParamsShape} from '@antha/entity-2d';
+import {defineAnthaMod, SkipExecution} from '@antha/engine';
+import {BodyType} from '@antha/entity-2d';
 import {Graphics} from '@antha/graphics-2d';
 import {
     AnyGamepad,
@@ -122,8 +122,9 @@ const triangleSize = 20;
 
 class PlayerEntity extends defineEntity({
     key: 'player',
-    paramsShape: position2dParamsShape,
-    paramsMap: position2dParamsMap,
+    physics: {
+        type: BodyType.Kinematic,
+    },
     assets: {
         sprite: {
             maxProgress: 1,
@@ -149,35 +150,37 @@ class PlayerEntity extends defineEntity({
         },
     },
 }) {
-    public async createView() {
+    public override async createView() {
         return {
             view: await this.getAsset.sprite(),
         };
     }
 
-    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>) {
-        const moveDiff = calculatePlayerMovement(msSinceLastExecute, this.state.activeBindings);
+    public override update() {
+        this.physics.setVelocity(calculatePlayerVelocity(this.state.activeBindings));
 
-        if (moveDiff) {
-            this.params.x += moveDiff.x;
-            this.params.y += moveDiff.y;
+        const position = this.physics.getPosition();
+        const clampedPosition = {
+            x: clamp(position.x, {
+                min: triangleSize * 0.7,
+                max: this.pixi.screen.width - triangleSize * 0.7,
+            }),
+            y: clamp(position.y, {
+                min: triangleSize,
+                max: this.pixi.screen.height - triangleSize,
+            }),
+        };
+
+        if (clampedPosition.x !== position.x || clampedPosition.y !== position.y) {
+            this.physics.setPosition(clampedPosition);
         }
-
-        this.params.x = clamp(this.params.x, {
-            min: triangleSize * 0.7,
-            max: this.pixi.screen.width - triangleSize * 0.7,
-        });
-        this.params.y = clamp(this.params.y, {
-            min: triangleSize,
-            max: this.pixi.screen.height - triangleSize,
-        });
     }
 }
 
-function calculatePlayerMovement(
-    msSinceLastUpdate: number,
-    activeBindings: Readonly<PlayersActiveBindings<PlayerAction>>,
-) {
+/** Pixels per second. */
+const playerSpeed = 400;
+
+function calculatePlayerVelocity(activeBindings: Readonly<PlayersActiveBindings<PlayerAction>>) {
     const movement = getDirectionalInputVector({
         activeBindings: activeBindings[LocalPlayerPosition.One],
         bindingNames: {
@@ -188,13 +191,9 @@ function calculatePlayerMovement(
         },
     });
 
-    if (!movement) {
-        return undefined;
-    }
-
     return {
-        x: movement.x * msSinceLastUpdate * 0.4,
-        y: movement.y * msSinceLastUpdate * 0.4,
+        x: (movement?.x ?? 0) * playerSpeed,
+        y: (movement?.y ?? 0) * playerSpeed,
     };
 }
 
@@ -206,8 +205,10 @@ const myGame = defineAnthaMod<typeof StateType>({
         }
         if (!state.player) {
             state.player = await state.entityStore.addEntity(PlayerEntity, {
-                x: state.pixi.pixiApplication.screen.width / 2,
-                y: state.pixi.pixiApplication.screen.height / 2,
+                position: {
+                    x: state.pixi.pixiApplication.screen.width / 2,
+                    y: state.pixi.pixiApplication.screen.height / 2,
+                },
             });
         }
 

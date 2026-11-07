@@ -1,17 +1,17 @@
 import {AssetLoader} from '@antha/asset';
+import {EntityDestroyEvent, EntityEvent} from '@antha/entity-core';
 import {assert} from '@augment-vir/assert';
-import {describe, it, itCases} from '@augment-vir/test';
-import {Circle} from 'detect-collisions';
+import {describe, it} from '@augment-vir/test';
+import {defineShape} from 'object-shape-tester';
 import {Graphics, ParticleContainer} from 'pixi.js';
-import {createTestStore, createTestSuite} from './entity-store-2d.mock.js';
-import {
-    EntityDestroyEvent,
-    EntityEvent,
-    entityPositionParamsShape,
-    position2dParamsMap,
-    reverseParamsMap,
-    type ViewCreation2d,
-} from './entity.js';
+import {createTestStore, createTestSuite, emptyEntityUpdateParams} from './entity-store-2d.mock.js';
+import {type ViewCreation2d} from './entity.js';
+import {BodyType, ShapeType} from './physics.js';
+
+const coordsParamsShape = defineShape({
+    x: 0,
+    y: 0,
+});
 
 describe(EntityEvent.name, () => {
     it('maintains the data type', () => {
@@ -30,75 +30,13 @@ describe(EntityEvent.name, () => {
     });
 });
 
-describe(reverseParamsMap.name, () => {
-    itCases(reverseParamsMap, [
-        {
-            it: 'converts a full params map',
-            input: {
-                hitbox: {
-                    angle: true,
-                    width: 'w',
-                },
-                view: {
-                    alpha: true,
-                    width: 'w',
-                },
-            },
-            expect: {
-                angle: {
-                    hitbox: ['angle'],
-                },
-                w: {
-                    hitbox: ['width'],
-                    view: ['width'],
-                },
-                alpha: {
-                    view: ['alpha'],
-                },
-            },
-        },
-        {
-            it: 'converts a partial params map',
-            input: {
-                hitbox: {
-                    angle: true,
-                    width: 'w',
-                },
-            },
-            expect: {
-                angle: {
-                    hitbox: ['angle'],
-                },
-                w: {
-                    hitbox: ['width'],
-                },
-            },
-        },
-        {
-            it: 'skips falsy mapping values',
-            input: {
-                hitbox: {
-                    // @ts-expect-error: can't assign false to a params map
-                    angle: false,
-                    width: 'w',
-                },
-            },
-            expect: {
-                w: {
-                    hitbox: ['width'],
-                },
-            },
-        },
-    ]);
-});
-
 describe('BaseEntity', () => {
     it('deserializes with paramsShape', () => {
         const suite = createTestSuite();
 
         class WithShape extends suite.defineLogicEntity({
             key: 'WithShape',
-            paramsShape: entityPositionParamsShape,
+            paramsShape: coordsParamsShape,
         }) {
             public override update(): void {}
         }
@@ -131,7 +69,7 @@ describe('BaseEntity', () => {
 
     it('adds a child entity from within an entity', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class ChildEntity extends suite.defineLogicEntity({
             key: 'Child',
@@ -156,7 +94,7 @@ describe('BaseEntity', () => {
 
     it('throws when adding through a destroyed entity', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class Child2 extends suite.defineLogicEntity({
             key: 'Child2',
@@ -181,7 +119,7 @@ describe('BaseEntity', () => {
 
     it('immediately destroys a logic entity', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
         let destroyEventReceived = false;
 
         class DestroyMe extends suite.defineLogicEntity({
@@ -203,7 +141,7 @@ describe('BaseEntity', () => {
 
     it('immediately destroys all current entities', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class DestroyMe extends suite.defineLogicEntity({
             key: 'DestroyAllMe',
@@ -231,9 +169,9 @@ describe('BaseEntity', () => {
         );
     });
 
-    it('throws when immediately destroying all entities from a destroyed store', () => {
+    it('throws when immediately destroying all entities from a destroyed store', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
         store.destroy();
 
         assert.throws(() => store.destroyAllEntities(), {
@@ -243,18 +181,20 @@ describe('BaseEntity', () => {
 
     it('serializes params to JSON', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class WithParams extends suite.defineLogicEntity({
             key: 'WithParams',
-            paramsShape: entityPositionParamsShape,
+            paramsShape: coordsParamsShape,
         }) {
             public override update(): void {}
         }
 
         const instance = await store.addEntity(WithParams, {
-            x: 42,
-            y: 99,
+            params: {
+                x: 42,
+                y: 99,
+            },
         });
         assert.strictEquals(
             instance.serialize(),
@@ -267,7 +207,7 @@ describe('BaseEntity', () => {
 
     it('returns undefined from serialize when no params', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class NoParamsSerialize extends suite.defineLogicEntity({
             key: 'NoParamsSerialize',
@@ -282,7 +222,7 @@ describe('BaseEntity', () => {
 
     it('exposes an not aborted abortSignal before destruction', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
             key: 'AbortableNotAborted',
@@ -297,7 +237,7 @@ describe('BaseEntity', () => {
 
     it('aborts the signal when destroy is called', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
             key: 'AbortableDestroy',
@@ -313,7 +253,7 @@ describe('BaseEntity', () => {
 
     it('aborts the signal when immediatelyDestroy is called', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
             key: 'AbortableImmediate',
@@ -329,7 +269,7 @@ describe('BaseEntity', () => {
 
     it('aborts the signal when the entity store is destroyed', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
             key: 'AbortableStoreDestroy',
@@ -345,9 +285,46 @@ describe('BaseEntity', () => {
 });
 
 describe('ViewEntity', () => {
+    it('builds physics from params', async () => {
+        const suite = createTestSuite();
+        const store = await createTestStore(suite);
+
+        class Sized extends suite.defineEntity({
+            key: 'Sized',
+            paramsShape: defineShape({
+                radius: 1,
+            }),
+            physics(params) {
+                return {
+                    type: BodyType.Dynamic,
+                    shapes: [
+                        {
+                            type: ShapeType.Circle,
+                            radius: params.radius,
+                        },
+                    ],
+                };
+            },
+        }) {}
+
+        const small = await store.addEntity(Sized, {
+            params: {
+                radius: 1,
+            },
+        });
+        const big = await store.addEntity(Sized, {
+            params: {
+                radius: 2,
+            },
+        });
+
+        assert.strictEquals(Math.round(big.physics.getMass() / small.physics.getMass()), 4);
+        store.destroy();
+    });
+
     it('creates a hidden ParticleContainer when createView returns no view', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class NoView extends suite.defineEntity({
             key: 'NoView',
@@ -364,81 +341,12 @@ describe('ViewEntity', () => {
         assert.isFalse(instance.view.visible);
     });
 
-    it('inserts a hitbox into the hitbox system', async () => {
-        const suite = createTestSuite();
-        const store = createTestStore(suite);
-
-        class WithHitbox extends suite.defineEntity({
-            key: 'WithHitbox',
-            paramsShape: undefined,
-        }) {
-            public override update(): void {}
-            public override createView(): ViewCreation2d {
-                return {
-                    view: new Graphics().rect(0, 0, 20, 20).fill('red'),
-                    hitbox: new Circle(
-                        {
-                            x: 0,
-                            y: 0,
-                        },
-                        15,
-                    ),
-                };
-            }
-        }
-
-        const instance = await store.addEntity(WithHitbox);
-        assert.isDefined(instance.hitbox);
-        assert.strictEquals(instance.hitbox.userData, instance);
-    });
-
-    it('propagates params to view and hitbox via proxy', async () => {
-        const suite = createTestSuite();
-        const store = createTestStore(suite);
-
-        class MappedEntity extends suite.defineEntity({
-            key: 'MappedEntity',
-            paramsShape: entityPositionParamsShape,
-            paramsMap: position2dParamsMap,
-        }) {
-            public override update(): void {}
-            public override createView(): ViewCreation2d {
-                return {
-                    view: new Graphics().rect(0, 0, 10, 10).fill('blue'),
-                    hitbox: new Circle(
-                        {
-                            x: 0,
-                            y: 0,
-                        },
-                        10,
-                    ),
-                };
-            }
-        }
-
-        const instance = await store.addEntity(MappedEntity, {
-            x: 100,
-            y: 200,
-        });
-
-        assert.strictEquals(instance.view.x, 100 as number);
-        assert.strictEquals(instance.view.y, 200);
-        assert.strictEquals(instance.hitbox?.x, 100 as number);
-        assert.strictEquals(instance.hitbox.y, 200);
-
-        /** Mutate params and verify propagation. */
-        instance.params.x = 300;
-        assert.strictEquals(instance.view.x, 300);
-        assert.strictEquals(instance.hitbox.x, 300);
-    });
-
     it('preserves asset keys', () => {
         const suite = createTestSuite();
 
         class AssetEntity extends suite.defineEntity({
             key: 'AssetEntity',
-            paramsShape: entityPositionParamsShape,
-            paramsMap: position2dParamsMap,
+            paramsShape: coordsParamsShape,
             assets: {
                 graphic: {
                     maxProgress: 1,
@@ -459,13 +367,6 @@ describe('ViewEntity', () => {
 
                 return {
                     view: graphic,
-                    hitbox: new Circle(
-                        {
-                            x: 0,
-                            y: 0,
-                        },
-                        10,
-                    ),
                 };
             }
         }
@@ -474,14 +375,13 @@ describe('ViewEntity', () => {
     it('accesses assets via getAsset accessor', async () => {
         const suite = createTestSuite();
         const assetLoader = new AssetLoader();
-        const store = createTestStore(suite, {
+        const store = await createTestStore(suite, {
             assetLoader,
         });
 
         class AssetAccessEntity extends suite.defineEntity({
             key: 'AssetAccessEntity',
-            paramsShape: entityPositionParamsShape,
-            paramsMap: position2dParamsMap,
+            paramsShape: coordsParamsShape,
             assets: {
                 sprite: {
                     maxProgress: 1,
@@ -503,8 +403,10 @@ describe('ViewEntity', () => {
         }
 
         const instance = await store.addEntity(AssetAccessEntity, {
-            x: 0,
-            y: 0,
+            params: {
+                x: 0,
+                y: 0,
+            },
         });
         const spriteData = await instance.getAsset.sprite();
         assert.strictEquals(spriteData, 'sprite-data');
@@ -512,12 +414,11 @@ describe('ViewEntity', () => {
 
     it('returns true for isInBounds when entity is within screen', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class InBoundsEntity extends suite.defineEntity({
             key: 'InBoundsEntity',
-            paramsShape: entityPositionParamsShape,
-            paramsMap: position2dParamsMap,
+            paramsShape: coordsParamsShape,
         }) {
             public override update(): void {}
             public override createView(): ViewCreation2d {
@@ -528,9 +429,16 @@ describe('ViewEntity', () => {
         }
 
         const instance = await store.addEntity(InBoundsEntity, {
-            x: 500,
-            y: 500,
+            params: {
+                x: 0,
+                y: 0,
+            },
+            position: {
+                x: 500,
+                y: 500,
+            },
         });
+        await store.renderAllEntities(emptyEntityUpdateParams);
 
         assert.isTrue(instance.isInBounds());
         assert.isTrue(
@@ -542,12 +450,11 @@ describe('ViewEntity', () => {
 
     it('returns false for isInBounds when entity is outside screen', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class OutBoundsEntity extends suite.defineEntity({
             key: 'OutBoundsEntity',
-            paramsShape: entityPositionParamsShape,
-            paramsMap: position2dParamsMap,
+            paramsShape: coordsParamsShape,
         }) {
             public override update(): void {}
             public override createView(): ViewCreation2d {
@@ -558,16 +465,23 @@ describe('ViewEntity', () => {
         }
 
         const instance = await store.addEntity(OutBoundsEntity, {
-            x: -9999,
-            y: -9999,
+            params: {
+                x: 0,
+                y: 0,
+            },
+            position: {
+                x: -9999,
+                y: -9999,
+            },
         });
+        await store.renderAllEntities(emptyEntityUpdateParams);
 
         assert.isFalse(instance.isInBounds());
     });
 
     it('throws when calling isInBounds on a destroyed entity', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
         class DestroyedBounds extends suite.defineEntity({
             key: 'DestroyedBounds',
@@ -588,42 +502,12 @@ describe('ViewEntity', () => {
         });
     });
 
-    it('immediately destroys a view entity with hitbox', async () => {
+    it('removes a view entity via removeEntity', async () => {
         const suite = createTestSuite();
-        const store = createTestStore(suite);
+        const store = await createTestStore(suite);
 
-        class DestroyableView extends suite.defineEntity({
-            key: 'DestroyableView',
-            paramsShape: undefined,
-        }) {
-            public override update(): void {}
-            public override createView(): ViewCreation2d {
-                return {
-                    view: new Graphics().rect(0, 0, 10, 10).fill('red'),
-                    hitbox: new Circle(
-                        {
-                            x: 0,
-                            y: 0,
-                        },
-                        10,
-                    ),
-                };
-            }
-        }
-
-        const instance = await store.addEntity(DestroyableView);
-        assert.isDefined(instance.hitbox);
-        instance.immediatelyDestroy();
-        assert.isTrue(instance.isDestroyed);
-        assert.strictEquals(store.currentEntityInstances.size, 0);
-    });
-
-    it('removes view entity without hitbox via removeEntity', async () => {
-        const suite = createTestSuite();
-        const store = createTestStore(suite);
-
-        class NoHitboxView extends suite.defineEntity({
-            key: 'NoHitboxView',
+        class PlainView extends suite.defineEntity({
+            key: 'PlainView',
             paramsShape: undefined,
         }) {
             public override update(): void {}
@@ -634,7 +518,7 @@ describe('ViewEntity', () => {
             }
         }
 
-        const instance = await store.addEntity(NoHitboxView);
+        const instance = await store.addEntity(PlainView);
         store.removeEntity(instance);
         assert.strictEquals(store.currentEntityInstances.size, 0);
     });

@@ -1,5 +1,7 @@
-import {AnthaEngine, SkipExecution, defineAnthaMod, type ModExecuteParams} from '@antha/engine';
+import {createAnthaAssetMod} from '@antha/asset';
+import {AnthaEngine, SkipExecution, defineAnthaMod} from '@antha/engine';
 import {
+    BodyType,
     createAnthaEntity2dSuite,
     type AnthaEntity2dModState,
     type ViewCreation2d,
@@ -8,7 +10,6 @@ import {createAnthaFpsMod} from '@antha/fps';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {createUtcFullDate} from 'date-vir';
 import {css} from 'element-vir';
-import {defineShape} from 'object-shape-tester';
 import {AnimatedSprite, Assets, Spritesheet, type SpritesheetData} from 'pixi.js';
 import {joinUrlPaths} from 'url-vir';
 import {githubPagesBasePathname, isOnGitHubPages} from '../demo-router.js';
@@ -30,17 +31,8 @@ const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<SpritesGameSt
 
 class PlayerEntity extends defineEntity({
     key: 'PlayerSprite',
-    paramsShape: defineShape({
-        x: 0,
-        y: 0,
-        angle: 0,
-    }),
-    paramsMap: {
-        view: {
-            x: true,
-            y: true,
-            rotation: 'angle',
-        },
+    physics: {
+        type: BodyType.Kinematic,
     },
     assets: {
         sprite: {
@@ -169,7 +161,8 @@ class PlayerEntity extends defineEntity({
 }) {
     protected static readonly spriteProperties = {
         resolution: 4,
-        rotationSpeed: 0.002,
+        /** Radians per second. */
+        rotationSpeed: 2,
         playerDisplaySize: 400,
     };
 
@@ -182,19 +175,23 @@ class PlayerEntity extends defineEntity({
         playerSprite.height = PlayerEntity.spriteProperties.playerDisplaySize;
         playerSprite.play();
 
-        this.params.x = this.pixi.screen.width / 2;
-        this.params.y = this.pixi.screen.height / 2;
+        this.physics.setAngularVelocity(PlayerEntity.spriteProperties.rotationSpeed);
 
         return {
             view: playerSprite,
         };
     }
 
-    public override update({msSinceLastExecute}: Readonly<ModExecuteParams>): void {
-        this.params.x = this.pixi.screen.width / 2;
-        this.params.y = this.pixi.screen.height / 2;
-        this.params.angle =
-            this.params.angle + PlayerEntity.spriteProperties.rotationSpeed * msSinceLastExecute;
+    public override update() {
+        const position = this.physics.getPosition();
+        const screenCenter = {
+            x: this.pixi.screen.width / 2,
+            y: this.pixi.screen.height / 2,
+        };
+
+        if (position.x !== screenCenter.x || position.y !== screenCenter.y) {
+            this.physics.setPosition(screenCenter);
+        }
     }
 }
 
@@ -206,11 +203,7 @@ const dynamicSpriteMod = defineAnthaMod<AnthaEntity2dModState<SpritesGameState>>
         }
 
         if (!state.playerEntity) {
-            state.playerEntity = await state.entityStore.addEntity(PlayerEntity, {
-                x: 0,
-                y: 0,
-                angle: 0,
-            });
+            state.playerEntity = await state.entityStore.addEntity(PlayerEntity);
         }
 
         return undefined;
@@ -230,6 +223,7 @@ export const spriteMovementDemo: AnthaDemo = {
                     `,
                 }),
                 createAnthaFpsMod(),
+                createAnthaAssetMod(),
                 updateEntitiesMod,
                 dynamicSpriteMod,
             ],

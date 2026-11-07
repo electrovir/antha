@@ -11,7 +11,7 @@ import {
     type MultiplayerRoomConnection,
     multiplayerRoomsEndpoint,
 } from '@antha/multiplayer-core';
-import {assert, assertWrap} from '@augment-vir/assert';
+import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {
     type JsonCompatibleValue,
     type MaybePromise,
@@ -46,6 +46,23 @@ class MockP2pLockStepMultiplayerController extends P2pLockStepMultiplayerControl
 
     public setFrameMsForTest(frameMs: number) {
         this.frameMs = frameMs;
+    }
+
+    /** Stops animation frames from running the clocks, so tests can run them at chosen times. */
+    public hasManualClocksForTest = false;
+
+    protected override scheduleClocks() {
+        if (!this.hasManualClocksForTest) {
+            super.scheduleClocks();
+        }
+    }
+
+    public runClocksForTest(now: number) {
+        this.runClocks(now);
+    }
+
+    public getNextFrameTimeForTest() {
+        return this.frameClock?.nextFrameTime;
     }
 
     public setFrameTickReadyForTest(frameTickReady: boolean) {
@@ -188,6 +205,7 @@ async function withMockPeerConnection(callback: () => MaybePromise<void>) {
 
 function createController({
     acceptConnection,
+    bufferedFrameCount = 0,
     debugMultiplayer = false,
     desyncCheckInterval,
     enableStateSync,
@@ -197,6 +215,7 @@ function createController({
     {
         acceptConnection?: ((connectingClientId: ClientId) => MaybePromise<boolean>) | undefined;
     } & PartialWithUndefined<{
+        bufferedFrameCount: number;
         debugMultiplayer: boolean;
         desyncCheckInterval: AnyDuration;
         enableStateSync: boolean;
@@ -206,6 +225,7 @@ function createController({
 > = {}) {
     return new MockP2pLockStepMultiplayerController({
         gameId,
+        bufferedFrameCount,
         debugMultiplayer,
         desyncCheckInterval,
         enableStateSync,
@@ -330,16 +350,12 @@ describe(P2pLockStepMultiplayerController.name, () => {
         const clientId = assertWrap.isDefined(controller.getClientId());
         assert.isLengthExactly(controller.getAllClientIds(), 1);
         controller.act('one');
-        await wait({
-            milliseconds: 5,
-        });
+        await waitUntil.isLengthExactly(1, () => state.frames);
         controller.act([
             'two',
             'three',
         ]);
-        await wait({
-            milliseconds: 5,
-        });
+        await waitUntil.isLengthExactly(2, () => state.frames);
 
         assert.deepEquals(state.frames, [
             [
@@ -1227,6 +1243,223 @@ describe(P2pLockStepMultiplayerController.name, () => {
                 type: P2pLockStepMessageType.Frame,
             },
         ]);
+        controller.destroy();
+    });
+
+    it('produces every due frame from a fixed-step clock, skipping long gaps', () => {
+        const controller = createController();
+        controller.hasManualClocksForTest = true;
+        controller.setFrameMsForTest(10);
+        const frameCounts: number[] = [];
+        const counter = {
+            frames: 0,
+        };
+        controller.listen(MultiplayerControllerFrameEvent, () => {
+            counter.frames++;
+        });
+
+        controller.startSingleplayer();
+        const startTime = assertWrap.isDefined(controller.getNextFrameTimeForTest()) - 10;
+        frameCounts.push(counter.frames);
+        controller.runClocksForTest(startTime + 5);
+        frameCounts.push(counter.frames);
+        controller.runClocksForTest(startTime + 35);
+        frameCounts.push(counter.frames);
+        controller.runClocksForTest(startTime + 10_035);
+        frameCounts.push(counter.frames);
+
+        assert.deepEquals(
+            frameCounts,
+            [
+                /** The first frame starts the session. */
+                1,
+                1,
+                4,
+                /** Gaps longer than the catch-up limit are skipped instead of produced in full. */
+                30,
+            ],
+        );
+        controller.destroy();
+    });
+
+    it('applies buffered member frames one frame duration apart', () => {
+        const controller = createController({
+            bufferedFrameCount: 1,
+        });
+        controller.hasManualClocksForTest = true;
+        controller.setFrameMsForTest(10);
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        const hostClientId = createMultiplayerId.client();
+        const appliedFrames: string[] = [];
+        const appliedFrameHistory: string[][] = [];
+        controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
+            appliedFrames.push(...detail.packets.map(({packet}) => packet));
+        });
+        controller.setRoomConnectionForTest(fakeConnection);
+
+        function receiveFrame(packet: string) {
+            controller.roomController.dispatch(
+                new MultiplayerControllerMessageEvent(
+                    hostClientId,
+                    createFrameMessage([
+                        {
+                            sourceClientId: hostClientId,
+                            packet,
+                        },
+                    ]),
+                ),
+            );
+        }
+
+        function runClocks(now: number) {
+            controller.runClocksForTest(now);
+            appliedFrameHistory.push([
+                ...appliedFrames,
+            ]);
+        }
+
+        receiveFrame('a');
+        runClocks(1000);
+        receiveFrame('b');
+        runClocks(1000);
+        runClocks(1005);
+        receiveFrame('c');
+        runClocks(1010);
+        runClocks(1020);
+        /** A due frame with nothing buffered restarts buffering. */
+        runClocks(1030);
+        receiveFrame('d');
+        runClocks(1031);
+        /** Frames that piled up are applied at once, down to the buffer size. */
+        receiveFrame('e');
+        receiveFrame('f');
+        receiveFrame('g');
+        receiveFrame('h');
+        runClocks(1032);
+
+        assert.deepEquals(
+            {
+                appliedFrameHistory,
+                sentMessageCount: fakeConnection.sentMessages.length,
+            },
+            {
+                appliedFrameHistory: [
+                    [],
+                    [
+                        'a',
+                    ],
+                    [
+                        'a',
+                    ],
+                    [
+                        'a',
+                        'b',
+                    ],
+                    [
+                        'a',
+                        'b',
+                        'c',
+                    ],
+                    [
+                        'a',
+                        'b',
+                        'c',
+                    ],
+                    [
+                        'a',
+                        'b',
+                        'c',
+                    ],
+                    [
+                        'a',
+                        'b',
+                        'c',
+                        'd',
+                        'e',
+                        'f',
+                    ],
+                ],
+                /** Actions go back to the host as soon as each frame arrives. */
+                sentMessageCount: 8,
+            },
+        );
+        controller.destroy();
+    });
+
+    it('does not produce frames on members', () => {
+        const controller = createController();
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        const counter = {
+            frames: 0,
+        };
+        controller.listen(MultiplayerControllerFrameEvent, () => {
+            counter.frames++;
+        });
+        controller.setRoomConnectionForTest(fakeConnection);
+
+        controller.sendStateSync({});
+
+        assert.strictEquals(counter.frames, 0);
+        controller.destroy();
+    });
+
+    it('applies buffered member frames before producing frames as the new host', () => {
+        const controller = createController({
+            bufferedFrameCount: 1,
+        });
+        controller.hasManualClocksForTest = true;
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        const hostClientId = createMultiplayerId.client();
+        const appliedFrames: string[][] = [];
+        controller.listen(MultiplayerControllerFrameEvent, ({detail}) => {
+            appliedFrames.push(detail.packets.map(({packet}) => packet));
+        });
+        controller.setRoomConnectionForTest(fakeConnection);
+        controller.roomController.dispatch(
+            new MultiplayerControllerMessageEvent(
+                hostClientId,
+                createFrameMessage([
+                    {
+                        sourceClientId: hostClientId,
+                        packet: 'from-old-host',
+                    },
+                ]),
+            ),
+        );
+        const appliedBeforeNewHost = [
+            ...appliedFrames,
+        ];
+
+        fakeConnection.setHost(true);
+        controller.roomController.dispatch(
+            new MultiplayerControllerClientStatusEvent({
+                detail: {
+                    newHost: controller.localClientIdForTest,
+                },
+            }),
+        );
+
+        assert.deepEquals(
+            {
+                appliedBeforeNewHost,
+                appliedFrames,
+            },
+            {
+                appliedBeforeNewHost: [],
+                appliedFrames: [
+                    [
+                        'from-old-host',
+                    ],
+                    [],
+                ],
+            },
+        );
         controller.destroy();
     });
 

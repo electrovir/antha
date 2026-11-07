@@ -18,16 +18,13 @@
             "path": "../asset"
         },
         {
-            "path": "../audio"
+            "path": "../entity-core"
         },
         {
             "path": "../engine"
         },
         {
             "path": "../graphics-2d"
-        },
-        {
-            "path": "../util"
         }
     ]
 }

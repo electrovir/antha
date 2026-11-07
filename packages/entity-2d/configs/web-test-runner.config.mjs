@@ -16,6 +16,15 @@ const webTestRunnerConfig = {
         pixiPlugin(),
         ...baseConfig.plugins,
     ],
+    /** Cross-origin isolation lets Box2D load its multithreaded build. */
+    middleware: [
+        ...(baseConfig.middleware || []),
+        (context, next) => {
+            context.set('Cross-Origin-Opener-Policy', 'same-origin');
+            context.set('Cross-Origin-Embedder-Policy', 'require-corp');
+            return next();
+        },
+    ],
 };
 
 export default webTestRunnerConfig;

@@ -493,20 +493,25 @@ export class AssetLoader {
               })
             : [[...assets]];
 
-        const createIncrementProgressCallback = (
-            asset: Readonly<Asset>,
-        ): AssetIncrementProgressCallback => {
-            return (amount) => {
-                currentProgress += amount ?? 1;
-                this.reportProgress({
-                    loadSession: options.loadSession,
-                    progress: {
-                        current: currentProgress,
-                        total: maxProgress,
-                        currentResourceName: asset.assetName,
-                    },
-                });
-            };
+        const finishedAssets: Readonly<Asset>[] = [];
+        /**
+         * Parallel assets take turns reporting progress, so naming whichever one reported last
+         * makes the loading screen flicker between them.
+         */
+        function findCurrentResourceName() {
+            return assetsToLoad.find((asset) => !finishedAssets.includes(asset))?.assetName;
+        }
+
+        const incrementProgress: AssetIncrementProgressCallback = (amount) => {
+            currentProgress += amount ?? 1;
+            this.reportProgress({
+                loadSession: options.loadSession,
+                progress: {
+                    current: currentProgress,
+                    total: maxProgress,
+                    currentResourceName: findCurrentResourceName(),
+                },
+            });
         };
 
         const results: unknown[] = (
@@ -522,14 +527,17 @@ export class AssetLoader {
                             progress: {
                                 current: currentProgress,
                                 total: maxProgress,
-                                currentResourceName: asset.assetName,
+                                currentResourceName: findCurrentResourceName(),
                             },
                         });
 
-                        return await this.loadIndividualAsset({
-                            incrementProgressCallback: createIncrementProgressCallback(asset),
+                        const value = await this.loadIndividualAsset({
+                            incrementProgressCallback: incrementProgress,
                             asset,
                         });
+                        finishedAssets.push(asset);
+
+                        return value;
                     }),
                 );
             })

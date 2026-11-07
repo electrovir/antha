@@ -60,7 +60,19 @@ async function addIsolationHeaders(request: Request) {
         },
     );
 
-    return new Response(response.body, {
+    /**
+     * The `Response` constructor throws if these statuses get a body. Browsers send cached module
+     * requests with revalidation headers, so dev servers answer many of them with a 304.
+     */
+    const hasNullBody = [
+        101,
+        103,
+        204,
+        205,
+        304,
+    ].includes(response.status);
+
+    return new Response(hasNullBody ? null : response.body, {
         headers,
         status: response.status,
         statusText: response.statusText,

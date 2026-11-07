@@ -2,18 +2,17 @@ import {AssetLoader} from '@antha/asset';
 import {type AudioPlayer, type AudioSetupParams} from '@antha/audio';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {createAnthaEntity2dSuite} from './antha-entity-2d.mod.js';
+import {createTestSuite} from './entity-store.mock.js';
 import {loadAnthaAssets} from './load-antha-assets.js';
 
 describe(loadAnthaAssets.name, () => {
     it('loads entity assets, audio files, and additional assets', async () => {
         const loadedResourceNames: string[] = [];
         const assetLoader = new AssetLoader();
-        const {defineLogicEntity} = createAnthaEntity2dSuite({});
+        const {defineEntity} = createTestSuite();
 
-        class AssetEntity extends defineLogicEntity({
+        const AssetEntity = defineEntity({
             key: 'AssetEntity',
-            paramsShape: undefined,
             assets: {
                 entityAsset: {
                     maxProgress: 1,
@@ -26,9 +25,7 @@ describe(loadAnthaAssets.name, () => {
                     },
                 },
             },
-        }) {
-            public override update(): void {}
-        }
+        });
 
         const audioFiles = [
             {

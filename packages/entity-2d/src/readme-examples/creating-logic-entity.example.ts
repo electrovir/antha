@@ -1,3 +1,4 @@
+import {createAnthaAssetMod} from '@antha/asset';
 import {AnthaEngine, defineAnthaMod} from '@antha/engine';
 import {createAnthaGraphics2dMod} from '@antha/graphics-2d';
 import {type AnthaEntity2dModState, createAnthaEntity2dSuite} from '../index.js';
@@ -23,6 +24,7 @@ const engine = new AnthaEngine<GameState>({
     },
     mods: [
         createAnthaGraphics2dMod(),
+        createAnthaAssetMod(),
         updateEntitiesMod,
         defineAnthaMod<GameState>({
             modName: 'game-logic',

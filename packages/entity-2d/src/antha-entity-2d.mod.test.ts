@@ -1,45 +1,71 @@
-import {createAnthaAssetMod} from '@antha/asset';
+import {AssetLoader, createAnthaAssetMod, type Asset} from '@antha/asset';
 import {AnthaEngine, type ModExecuteParams} from '@antha/engine';
-import {AnthaMockPixiMod} from '@antha/graphics-2d';
+import {AnthaMockPixiMod, createMockPixi} from '@antha/graphics-2d';
 import {assert, assertWrap} from '@augment-vir/assert';
+import {awaitedForEach, createArray} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
-import {Graphics} from 'pixi.js';
-import {defineTypedCustomEvent} from 'typed-event-target';
-import {createAnthaEntity2dSuite, type AnthaEntity2dModState} from './antha-entity-2d.mod.js';
-import {type ViewCreation2d} from './entity.js';
+import {
+    createAnthaEntity2dSuite,
+    type AnthaEntity2dModOptions,
+    type AnthaEntity2dModState,
+} from './antha-entity-2d.mod.js';
+import {emptyEntityUpdateParams} from './entity-store-2d.mock.js';
+import {BodyType, ShapeType, type EntityPhysicsDefinition} from './physics.js';
 
-function createTickEntity({
-    defineEntity,
-    key,
-    onRender,
-    onUpdate,
-}: Readonly<{
-    defineEntity: ReturnType<typeof createAnthaEntity2dSuite>['defineEntity'];
-    key: string;
-    onRender?: (() => void) | undefined;
-    onUpdate: () => void;
-}>) {
-    return class TickEntity extends defineEntity({
-        key,
-        paramsShape: undefined,
+const ballPhysics = {
+    type: BodyType.Dynamic,
+    shapes: [
+        {
+            type: ShapeType.Circle,
+            radius: 1,
+        },
+    ],
+} as const satisfies EntityPhysicsDefinition;
+
+/** Runs `updateEntitiesMod` directly so each run's elapsed time is exact. */
+function createModHarness(options: Readonly<AnthaEntity2dModOptions> = {}) {
+    const suite = createAnthaEntity2dSuite(options);
+    const state: Partial<AnthaEntity2dModState> = {
+        ...suite.updateEntitiesMod.initState,
+        pixi: {
+            pixiApplication: createMockPixi(),
+        },
+        assetLoader: new AssetLoader(),
+    };
+    const counts = {
+        update: 0,
+        render: 0,
+    };
+
+    class Counter extends suite.defineEntity({
+        key: 'Counter',
     }) {
-        public override update(): void {
-            onUpdate();
+        public override update() {
+            counts.update++;
         }
 
-        public override render(): void {
-            onRender?.();
+        public override render() {
+            counts.render++;
         }
+    }
 
-        public override createView(): ViewCreation2d {
-            return {
-                view: new Graphics().rect(0, 0, 10, 10).fill('green'),
-            };
-        }
+    async function runMod(msSinceLastExecute: number) {
+        await assertWrap.isDefined(suite.updateEntitiesMod.execute)({
+            ...emptyEntityUpdateParams,
+            state,
+            msSinceLastExecute,
+        } satisfies ModExecuteParams<any> as ModExecuteParams<AnthaEntity2dModState>);
+        return assertWrap.isDefined(state.entityStore);
+    }
+
+    return {
+        suite,
+        state,
+        counts,
+        Counter,
+        runMod,
     };
 }
-
-class TestSimulationEvent extends defineTypedCustomEvent<number>()('test-simulation') {}
 
 describe(createAnthaEntity2dSuite.name, () => {
     it('skips execution when pixi is not available', async () => {
@@ -57,19 +83,35 @@ describe(createAnthaEntity2dSuite.name, () => {
         assert.isUndefined(engine.state.entityStore);
     });
 
+    it('creates an entity store and destroys it on cleanup', async () => {
+        const {updateEntitiesMod} = createAnthaEntity2dSuite({});
+
+        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
+            mods: [
+                createAnthaAssetMod(),
+                AnthaMockPixiMod,
+                updateEntitiesMod,
+            ],
+        });
+
+        await engine.runSingleTick();
+        const entityStore = assertWrap.isDefined(engine.state.entityStore);
+        await engine.reset();
+
+        assert.isTrue(entityStore.isDestroyed);
+    });
+
     it('rejects duplicate entity keys', () => {
         const {defineLogicEntity} = createAnthaEntity2dSuite({});
 
         defineLogicEntity({
             key: 'DuplicateEntity',
-            paramsShape: undefined,
         });
 
         assert.throws(
             () => {
                 defineLogicEntity({
                     key: 'DuplicateEntity',
-                    paramsShape: undefined,
                 });
             },
             {
@@ -79,306 +121,127 @@ describe(createAnthaEntity2dSuite.name, () => {
         );
     });
 
-    it('creates an entity store when pixi is available', async () => {
-        const {updateEntitiesMod} = createAnthaEntity2dSuite({});
+    it('names assets after their entity', () => {
+        const {defineEntity} = createAnthaEntity2dSuite({});
 
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
-
-        await engine.runSingleTick();
-
-        assert.isDefined(engine.state.entityStore);
-    });
-
-    it('defines entities that can be added to the store', async () => {
-        const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite<{score: number}>({});
-
-        class TestEntity extends defineEntity({
-            key: 'TestEntity',
-            paramsShape: undefined,
-        }) {
-            public override update(): void {
-                /** No-op. */
-            }
-
-            public override createView(): ViewCreation2d {
+        const image = {
+            maxProgress: 1,
+            load() {
                 return {
-                    view: new Graphics().rect(0, 0, 10, 10).fill('red'),
+                    value: 'image',
                 };
-            }
-        }
-
-        const engine = new AnthaEngine<AnthaEntity2dModState<{score: number}>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
-
-        await engine.runSingleTick();
-
-        assert.isDefined(engine.state.entityStore);
-        const instance = await engine.state.entityStore.addEntity(TestEntity);
-        assert.instanceOf(instance, TestEntity);
-    });
-
-    it('cleans up entity store on cleanup', async () => {
-        const {updateEntitiesMod} = createAnthaEntity2dSuite({});
-
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
-
-        await engine.runSingleTick();
-
-        assert.isDefined(engine.state.entityStore);
-
-        await engine.reset();
-    });
-
-    it('initializes showHitboxDebug from options', async () => {
-        const {updateEntitiesMod} = createAnthaEntity2dSuite({
-            debug: true,
-        });
-
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
-
-        await engine.runSingleTick();
-
-        assert.isTrue(engine.state.showHitboxDebug);
-    });
-
-    it('updates entity data and rendering on subsequent ticks', async () => {
-        const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite({});
-        let renderCount = 0;
-        let updateCount = 0;
-        const TickEntity = createTickEntity({
-            defineEntity,
-            key: 'TickEntity',
-            onRender() {
-                renderCount++;
             },
-            onUpdate() {
-                updateCount++;
+        };
+        defineEntity({
+            key: 'Sprite',
+            assets: {
+                image,
             },
         });
 
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
+        assert.strictEquals((image as typeof image & Partial<Asset>).assetName, 'Sprite:image');
+    });
+
+    it('steps once per stepDuration of elapsed time, carrying leftover time', async () => {
+        const {counts, Counter, runMod} = createModHarness({
+            physics: {
+                stepDuration: {
+                    milliseconds: 10,
+                },
+            },
         });
 
-        /** First tick creates the entity store. */
-        await engine.runSingleTick();
-
-        assert.isDefined(engine.state.entityStore);
-        await engine.state.entityStore.addEntity(TickEntity);
-
-        /** Second tick calls updateAllEntities. */
-        await engine.runSingleTick();
+        const entityStore = await runMod(0);
+        await entityStore.addEntity(Counter);
+        await runMod(25);
+        const afterFirstRun = counts.update;
+        await runMod(5);
+        const afterSecondRun = counts.update;
+        await runMod(10_000);
 
         assert.deepEquals(
             {
-                renderCount,
-                updateCount,
+                afterFirstRun,
+                afterSecondRun,
+                afterLongGap: counts.update,
+                renders: counts.render,
             },
             {
-                renderCount: 1,
-                updateCount: 1,
+                afterFirstRun: 2,
+                afterSecondRun: 3,
+                /** Long gaps are capped instead of simulated in full. */
+                afterLongGap: 28,
+                renders: 3,
             },
         );
     });
 
-    it('updates entity data and rendering from the same trigger', async () => {
-        const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite({
-            updateTrigger: {
-                event: TestSimulationEvent,
-                executeImmediately: true,
-            },
-        });
-        let renderCount = 0;
-        let updateCount = 0;
-
-        const SeparateEntity = createTickEntity({
-            defineEntity,
-            key: 'SeparateEntity',
-            onRender() {
-                renderCount++;
-            },
-            onUpdate() {
-                updateCount++;
+    it('marks the last step time so renders blend from it', async () => {
+        const {runMod, Counter} = createModHarness({
+            physics: {
+                stepDuration: {
+                    milliseconds: 10,
+                },
             },
         });
 
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
+        const entityStore = await runMod(0);
+        await entityStore.addEntity(Counter);
+        const lastStepTimeBeforeSteps = entityStore.lastStepTime;
+        await runMod(14);
 
-        await engine.runSingleTick();
-        await assertWrap.isDefined(engine.state.entityStore).addEntity(SeparateEntity);
-
-        engine.dispatch(
-            new TestSimulationEvent({
-                detail: 1,
-            }),
-        );
-        await engine.runSingleTick();
-
-        assert.deepEquals(
-            {
-                renderCount,
-                updateCount,
-            },
-            {
-                renderCount: 1,
-                updateCount: 1,
-            },
-        );
+        assert.isUndefined(lastStepTimeBeforeSteps);
+        assert.isAbove(performance.now() - assertWrap.isDefined(entityStore.lastStepTime), 3);
     });
 
-    it('does not update entities when all updates are disabled', async () => {
-        const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite({
+    it('honors disabled updates and renders, including changes to state', async () => {
+        const {counts, Counter, runMod, state, suite} = createModHarness({
             disableEntityUpdate: true,
             disableEntityRender: true,
         });
-        let renderCount = 0;
-        let updateCount = 0;
-        const IdleEntity = createTickEntity({
-            defineEntity,
-            key: 'IdleEntity',
-            onRender() {
-                renderCount++;
-            },
-            onUpdate() {
-                updateCount++;
-            },
-        });
 
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
+        const entityStore = await runMod(0);
+        await entityStore.addEntity(Counter);
+        const stepMs = entityStore.stepMs;
+        await runMod(stepMs);
+        const bothDisabled = {
+            ...counts,
+        };
 
-        await engine.runSingleTick();
-        await assertWrap.isDefined(engine.state.entityStore).addEntity(IdleEntity);
-        await engine.runSingleTick();
+        state.disableEntityUpdate = false;
+        await runMod(stepMs);
+        const renderDisabled = {
+            ...counts,
+        };
+
+        state.disableEntityRender = false;
+        state.disableEntityUpdate = true;
+        await runMod(stepMs);
 
         assert.deepEquals(
             {
-                renderCount,
-                updateCount,
+                bothDisabled,
+                renderDisabled,
+                updateDisabled: counts,
+                initState: suite.updateEntitiesMod.initState,
             },
             {
-                renderCount: 0,
-                updateCount: 0,
-            },
-        );
-    });
-
-    it('only renders entities when data updates are disabled', async () => {
-        const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite({
-            disableEntityUpdate: true,
-        });
-        let renderCount = 0;
-        let updateCount = 0;
-        const RenderEntity = createTickEntity({
-            defineEntity,
-            key: 'RenderEntity',
-            onRender() {
-                renderCount++;
-            },
-            onUpdate() {
-                updateCount++;
-            },
-        });
-
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
-
-        await engine.runSingleTick();
-        await assertWrap.isDefined(engine.state.entityStore).addEntity(RenderEntity);
-        await engine.runSingleTick();
-
-        assert.deepEquals(
-            {
-                renderCount,
-                updateCount,
-            },
-            {
-                renderCount: 1,
-                updateCount: 0,
-            },
-        );
-    });
-
-    it('only updates entity data when rendering is disabled', async () => {
-        const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite({
-            disableEntityRender: true,
-        });
-        let renderCount = 0;
-        let updateCount = 0;
-        const DataEntity = createTickEntity({
-            defineEntity,
-            key: 'DataEntity',
-            onRender() {
-                renderCount++;
-            },
-            onUpdate() {
-                updateCount++;
-            },
-        });
-
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
-
-        await engine.runSingleTick();
-        await assertWrap.isDefined(engine.state.entityStore).addEntity(DataEntity);
-        await engine.runSingleTick();
-
-        assert.deepEquals(
-            {
-                renderCount,
-                updateCount,
-            },
-            {
-                renderCount: 0,
-                updateCount: 1,
+                bothDisabled: {
+                    update: 0,
+                    render: 0,
+                },
+                renderDisabled: {
+                    update: 1,
+                    render: 0,
+                },
+                updateDisabled: {
+                    update: 1,
+                    render: 1,
+                },
+                initState: {
+                    disableEntityRender: true,
+                    disableEntityUpdate: true,
+                },
             },
         );
     });
@@ -387,19 +250,17 @@ describe(createAnthaEntity2dSuite.name, () => {
         const {defineLogicEntity, updateEntitiesMod} = createAnthaEntity2dSuite<{score: number}>(
             {},
         );
-        let receivedEngine: undefined | AnthaEngine<AnthaEntity2dModState<{score: number}>>;
-        let receivedState: undefined | Partial<AnthaEntity2dModState<{score: number}>>;
+        const received: Partial<ModExecuteParams<AnthaEntity2dModState<{score: number}>>> = {};
 
         class ContextEntity extends defineLogicEntity({
             key: 'ContextEntity',
-            paramsShape: undefined,
         }) {
             public override update({
                 engine,
                 state,
             }: Readonly<ModExecuteParams<AnthaEntity2dModState<{score: number}>>>) {
-                receivedEngine = engine;
-                receivedState = state;
+                received.engine = engine;
+                received.state = state;
             }
         }
 
@@ -415,74 +276,140 @@ describe(createAnthaEntity2dSuite.name, () => {
         });
 
         await engine.runSingleTick();
-
-        await assertWrap.isDefined(engine.state.entityStore).addEntity(ContextEntity);
-
-        await engine.runSingleTick();
-
-        assert.strictEquals(receivedEngine, engine);
-        assert.strictEquals(receivedState, engine.state);
-        assert.strictEquals(receivedState.score, 42);
-    });
-
-    it('independently disables entity updates and rendering', async () => {
-        const {defineEntity, updateEntitiesMod} = createAnthaEntity2dSuite({});
-        let renderCount = 0;
-        let updateCount = 0;
-        const TickEntity = createTickEntity({
-            defineEntity,
-            key: 'DisabledTickEntity',
-            onRender() {
-                renderCount++;
-            },
-            onUpdate() {
-                updateCount++;
-            },
-        });
-
-        const engine = new AnthaEngine<AnthaEntity2dModState<Record<string, never>>>({
-            mods: [
-                createAnthaAssetMod(),
-                AnthaMockPixiMod,
-                updateEntitiesMod,
-            ],
-        });
-
-        await engine.runSingleTick();
-
-        assert.isDefined(engine.state.entityStore);
-        const entityStore = engine.state.entityStore;
-        await entityStore.addEntity(TickEntity);
-        engine.state.disableEntityUpdate = true;
-
-        await engine.runSingleTick();
-
-        assert.strictEquals(engine.state.entityStore, entityStore);
+        const entity = await assertWrap
+            .isDefined(engine.state.entityStore)
+            .addEntity(ContextEntity);
+        await engine.state.entityStore?.updateAllEntities({
+            ...emptyEntityUpdateParams,
+            engine,
+            state: engine.state,
+        } satisfies ModExecuteParams<any> as ModExecuteParams<
+            AnthaEntity2dModState<{score: number}>
+        >);
 
         assert.deepEquals(
             {
-                renderCount,
-                updateCount,
+                isSameEngine: received.engine === engine,
+                score: received.state?.score,
+                mass: entity.physics.getMass(),
             },
             {
-                renderCount: 1,
-                updateCount: 0,
+                isSameEngine: true,
+                score: 42,
+                mass: 0,
+            },
+        );
+        await engine.reset();
+    });
+
+    it('creates stores with the suite physics options', async () => {
+        const suite = createAnthaEntity2dSuite({
+            physics: {
+                stepDuration: {
+                    milliseconds: 20,
+                },
+            },
+        });
+        const store = await suite.createEntityStore({
+            pixi: createMockPixi(),
+            assetLoader: new AssetLoader(),
+            state: {},
+        });
+
+        assert.strictEquals(store.stepMs, 20);
+        store.destroy();
+    });
+
+    it('only collides classes that list each other', async () => {
+        const {suite, runMod} = createModHarness();
+
+        class Wall extends suite.defineEntity({
+            key: 'Wall',
+            physics: {
+                type: BodyType.Static,
+                shapes: [
+                    {
+                        type: ShapeType.Box,
+                        width: 1,
+                        height: 10,
+                    },
+                ],
+            },
+        }) {}
+
+        class Ghost extends suite.defineEntity({
+            key: 'Ghost',
+            physics: ballPhysics,
+        }) {}
+
+        class Solid extends suite.defineEntity({
+            key: 'Solid',
+            physics: ballPhysics,
+            touches: [
+                Wall,
+            ],
+        }) {}
+
+        const entityStore = await runMod(0);
+        await entityStore.addEntity(Wall, {
+            position: {
+                x: 3,
+                y: 0,
+            },
+        });
+        const movingBodies = {
+            ghost: await entityStore.addEntity(Ghost, {
+                velocity: {
+                    x: 10,
+                    y: 0,
+                },
+            }),
+            solid: await entityStore.addEntity(Solid, {
+                velocity: {
+                    x: 10,
+                    y: 0,
+                },
+            }),
+        };
+        await awaitedForEach(
+            createArray(60, () => undefined),
+            async () => {
+                await entityStore.updateAllEntities(emptyEntityUpdateParams);
             },
         );
 
-        engine.state.disableEntityUpdate = false;
-        engine.state.disableEntityRender = true;
-
-        await engine.runSingleTick();
-
         assert.deepEquals(
             {
-                renderCount,
-                updateCount,
+                ghostPassed: movingBodies.ghost.physics.getPosition().x > 4,
+                solidStopped: movingBodies.solid.physics.getPosition().x < 3,
             },
             {
-                renderCount: 1,
-                updateCount: 1,
+                ghostPassed: true,
+                solidStopped: true,
+            },
+        );
+    });
+
+    it('rejects more touching classes than Box2D has categories', () => {
+        const {defineEntity} = createAnthaEntity2dSuite({});
+
+        createArray(64, (index) => {
+            return defineEntity({
+                key: `Toucher${index}`,
+                touchesSelf: true,
+            });
+        });
+
+        assert.throws(
+            () => {
+                return defineEntity({
+                    key: 'OneTooMany',
+                    touchesSelf: true,
+                });
+            },
+            {
+                matchMessage:
+                    "Entity class 'OneTooMany' cannot touch anything: an entity suite supports at most 64 classes that touch other classes.",
             },
         );
     });
