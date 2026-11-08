@@ -35,8 +35,8 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.6.1",
-        "@augment-vir/common": "^32.6.1",
+        "@augment-vir/assert": "^32.7.0",
+        "@augment-vir/common": "^32.7.0",
         "box2d3-wasm": "^6.0.0",
         "date-vir": "^9.4.1"
     },
@@ -46,13 +46,13 @@
         "@antha/entity-core": "^0.28.0",
         "@antha/graphics-2d": "^0.28.0",
         "@antha/web-test-runner-plugin-pixi": "^0.28.0",
-        "@augment-vir/test": "^32.6.1",
+        "@augment-vir/test": "^32.7.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
         "markdown-code-example-inserter": "^3.1.1",
-        "object-shape-tester": "^6.15.2",
+        "object-shape-tester": "^6.15.3",
         "pixi.js": "^8.22.0",
         "typedoc": "^0.28.20"
     },

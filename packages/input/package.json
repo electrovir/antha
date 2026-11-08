@@ -33,19 +33,19 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.6.1",
-        "@augment-vir/common": "^32.6.1",
+        "@augment-vir/assert": "^32.7.0",
+        "@augment-vir/common": "^32.7.0",
         "date-vir": "^9.4.1",
         "device-navigation": "^5.0.0",
         "input-device-handler": "^9.0.4",
-        "object-shape-tester": "^6.15.2",
-        "vira": "^33.9.0"
+        "object-shape-tester": "^6.15.3",
+        "vira": "^33.15.0"
     },
     "devDependencies": {
         "@antha/engine": "^0.28.0",
         "@antha/gamepad-type": "^0.28.0",
         "@antha/util": "^0.28.0",
-        "@augment-vir/test": "^32.6.1",
+        "@augment-vir/test": "^32.7.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",

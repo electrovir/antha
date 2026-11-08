@@ -35,14 +35,14 @@
         "test:docs": "virmator docs check"
     },
     "dependencies": {
-        "@augment-vir/assert": "^32.6.1",
-        "@augment-vir/common": "^32.6.1",
-        "bowser": "^2.14.1",
+        "@augment-vir/assert": "^32.7.0",
+        "@augment-vir/common": "^32.7.0",
+        "bowser": "^2.15.0",
         "input-device-handler": "^9.0.4"
     },
     "devDependencies": {
-        "@augment-vir/test": "^32.6.1",
-        "@augment-vir/web": "^32.6.1",
+        "@augment-vir/test": "^32.7.0",
+        "@augment-vir/web": "^32.7.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-commands": "^1.0.1",
@@ -55,8 +55,8 @@
         "sentry-vir": "^4.5.3",
         "typedoc": "^0.28.20",
         "typescript": "^6.0.3",
-        "vira": "^33.9.0",
-        "vite": "^8.3.4"
+        "vira": "^33.15.0",
+        "vite": "^8.3.5"
     },
     "peerDependencies": {
         "element-vir": "^27",
