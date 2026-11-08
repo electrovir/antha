@@ -27,7 +27,12 @@ import {
 import {type MultiplayerApiClient} from '../multiplayer-api/multiplayer-client.js';
 import {type ClientId, createMultiplayerId} from '../multiplayer-id.js';
 import {MultiplayerWebSocketMessageType} from './web-rtc-communication.js';
-import {WebrtcConnectEvent, WebrtcController, WebrtcMessageEvent} from './webrtc-controller.js';
+import {
+    MessageDelivery,
+    WebrtcConnectEvent,
+    WebrtcController,
+    WebrtcMessageEvent,
+} from './webrtc-controller.js';
 
 /**
  * An event that is omitted from {@link WebrtcController} when a WebRTC message is received.
@@ -245,7 +250,10 @@ export class WebrtcMultiplayerController<
      * - If the current client is the room host, this message is sent to all other room clients.
      * - If the current client is just a room member (not the host), the message is sent to the host.
      */
-    public sendMessage(data: Readonly<MessageData>) {
+    public sendMessage(
+        data: Readonly<MessageData>,
+        delivery: MessageDelivery = MessageDelivery.Reliable,
+    ) {
         /**
          * When this client is the host, this set of connections will be the all the member clients.
          * When this client is a member client, there will only be one connection and it will be the
@@ -257,7 +265,7 @@ export class WebrtcMultiplayerController<
             }
 
             try {
-                connection.sendMessage(data);
+                connection.sendMessage(data, delivery);
             } catch (error) {
                 log.error(extractErrorMessage(error));
             }
@@ -265,7 +273,11 @@ export class WebrtcMultiplayerController<
     }
 
     /** Send a message to just a single client. This is only allowed on a host client. */
-    public sendToOnlyOneClient(clientId: ClientId, data: Readonly<MessageData>) {
+    public sendToOnlyOneClient(
+        clientId: ClientId,
+        data: Readonly<MessageData>,
+        delivery: MessageDelivery = MessageDelivery.Reliable,
+    ) {
         if (!this.isHost()) {
             log.error(new Error('Cannot send to an individual client as not a host.'));
             return;
@@ -278,7 +290,7 @@ export class WebrtcMultiplayerController<
             return;
         }
 
-        client.sendMessage(data);
+        client.sendMessage(data, delivery);
     }
 
     /**

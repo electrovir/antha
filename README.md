@@ -15,6 +15,7 @@ This is a mono-repo. Look in [`./packages/`](./packages/) to see where all the s
 -   [`@antha/gamepad-type`](https://www.npmjs.com/package/@antha/gamepad-type): gamepad model and layout detection.
 -   [`@antha/graphics-2d`](https://www.npmjs.com/package/@antha/graphics-2d): 2D canvas graphics.
 -   [`@antha/input`](https://www.npmjs.com/package/@antha/input): keyboard and gamepad input.
+-   [`@antha/multiplayer-p2p-authoritative-client`](https://www.npmjs.com/package/@antha/multiplayer-p2p-authoritative-client): authoritative-client P2P multiplayer.
 -   [`@antha/multiplayer-p2p-lock-step`](https://www.npmjs.com/package/@antha/multiplayer-p2p-lock-step): lock-step P2P multiplayer.
 -   [`@antha/multiplayer-server`](https://www.npmjs.com/package/@antha/multiplayer-server): multiplayer signaling server.
 -   [`@antha/util`](https://www.npmjs.com/package/@antha/util): engine utilities.

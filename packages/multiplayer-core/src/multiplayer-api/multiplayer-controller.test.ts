@@ -27,6 +27,10 @@ type TestMessage = {
 };
 
 class FakeDataChannel extends EventTarget {
+    constructor(public readonly label = '') {
+        super();
+    }
+
     public isClosed = false;
 
     public send() {}
@@ -66,8 +70,8 @@ class FakePeerConnection extends EventTarget {
         }
     }
 
-    public createDataChannel() {
-        const dataChannel = new FakeDataChannel();
+    public createDataChannel(label: string) {
+        const dataChannel = new FakeDataChannel(label);
         this.createdDataChannels.push(dataChannel);
 
         return dataChannel;

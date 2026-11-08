@@ -51,6 +51,22 @@ export class WebrtcMessageEvent<
 export class WebrtcConnectEvent extends defineTypedCustomEvent<boolean>()('webrtc-connect') {}
 
 /**
+ * How a WebRTC message is delivered.
+ *
+ * @category Internal
+ */
+export enum MessageDelivery {
+    /** Every message arrives, in the order it was sent. */
+    Reliable = 'reliable',
+    /**
+     * Messages may arrive out of order or not at all, but a lost message never delays later ones.
+     * Use this for frequently repeated state, where only the newest message matters. Until the
+     * unreliable channel opens, messages are sent reliably instead.
+     */
+    Unreliable = 'unreliable',
+}
+
+/**
  * All events fro {@link WebrtcController}.
  *
  * @category Internal
@@ -88,6 +104,7 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
     WebrtcEvents<MessageData>
 > {
     protected dataChannel: undefined | Readonly<RTCDataChannel>;
+    protected unreliableDataChannel: undefined | Readonly<RTCDataChannel>;
     protected connection: undefined | Readonly<RTCPeerConnection>;
     /** Indicates whether the WebRTC connection is live or not. */
     public readonly isConnected: boolean = false;
@@ -100,7 +117,13 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
     public async createOffer(stunServerUrls: ReadonlyArray<string>): Promise<WebrtcOffer> {
         const candidatePromise = this.createConnection(stunServerUrls);
         assert.isDefined(this.connection);
-        this.handleDataChannel(this.connection.createDataChannel('chat'));
+        this.handleDataChannel(this.connection.createDataChannel(MessageDelivery.Reliable));
+        this.handleDataChannel(
+            this.connection.createDataChannel(MessageDelivery.Unreliable, {
+                ordered: false,
+                maxRetransmits: 0,
+            }),
+        );
         await this.connection.setLocalDescription(await this.connection.createOffer());
 
         await candidatePromise;
@@ -159,7 +182,10 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
      * Send a message to the other peer in the WebRTC connection. This will throw an error if the
      * connection has not been established yet.
      */
-    public sendMessage(data: Readonly<MessageData>) {
+    public sendMessage(
+        data: Readonly<MessageData>,
+        delivery: MessageDelivery = MessageDelivery.Reliable,
+    ) {
         assert.isTrue(
             this.isConnected,
             `There is no WebRTC connection to send a message to from ${this.clientId}.`,
@@ -169,36 +195,28 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
             `There is no WebRTC connection to send a message to from ${this.clientId}.`,
         );
 
-        this.dataChannel.send(JSON.stringify(data));
+        const dataChannel =
+            delivery === MessageDelivery.Unreliable &&
+            this.unreliableDataChannel?.readyState === 'open'
+                ? this.unreliableDataChannel
+                : this.dataChannel;
+
+        dataChannel.send(JSON.stringify(data));
     }
 
     public override destroy() {
+        this.unreliableDataChannel?.close();
         this.dataChannel?.close();
         this.connection?.close();
         super.destroy();
     }
 
-    /** Attach connection and message handling to a WebRTC data channel. */
+    /**
+     * Attach message handling to a WebRTC data channel. The reliable channel also tracks the
+     * connection state.
+     */
     protected handleDataChannel(dataChannel: Readonly<RTCDataChannel>) {
-        this.dataChannel?.close();
-        this.dataChannel = dataChannel;
-        this.dataChannel.addEventListener('open', () => {
-            makeWritable(this).isConnected = true;
-            this.dispatch(
-                new WebrtcConnectEvent({
-                    detail: true,
-                }),
-            );
-        });
-        this.dataChannel.addEventListener('closing', () => {
-            makeWritable(this).isConnected = false;
-            this.dispatch(
-                new WebrtcConnectEvent({
-                    detail: false,
-                }),
-            );
-        });
-        this.dataChannel.addEventListener('message', (event) => {
+        dataChannel.addEventListener('message', (event) => {
             const detail: any = wrapInTry(
                 () => (check.isString(event.data) ? JSON.parse(event.data) : event.data),
                 {
@@ -212,6 +230,40 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
                 }),
             );
         });
+
+        if (dataChannel.label === MessageDelivery.Unreliable) {
+            this.unreliableDataChannel?.close();
+            this.unreliableDataChannel = dataChannel;
+            return;
+        }
+
+        this.dataChannel?.close();
+        this.dataChannel = dataChannel;
+        this.dataChannel.addEventListener('open', () => {
+            makeWritable(this).isConnected = true;
+            this.dispatch(
+                new WebrtcConnectEvent({
+                    detail: true,
+                }),
+            );
+        });
+        this.dataChannel.addEventListener('closing', () => {
+            this.handleDisconnect();
+        });
+    }
+
+    /** Mark this connection as lost. Only the first loss of a live connection is reported. */
+    protected handleDisconnect() {
+        if (!this.isConnected) {
+            return;
+        }
+
+        makeWritable(this).isConnected = false;
+        this.dispatch(
+            new WebrtcConnectEvent({
+                detail: false,
+            }),
+        );
     }
 
     /** Create a peer connection and wait for ICE candidate gathering to finish. */
@@ -234,6 +286,16 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
             iceServers: formatStunServerUrls(stunServerUrls),
         });
         this.connection.addEventListener('icecandidate', iceCandidateListener);
+        /**
+         * When the peers stop answering each other's ICE consent checks (such as after the page was
+         * suspended), the connection fails while the data channel can still report itself as open
+         * and never fire `closing`.
+         */
+        this.connection.addEventListener('iceconnectionstatechange', () => {
+            if (this.connection?.iceConnectionState === 'failed') {
+                this.handleDisconnect();
+            }
+        });
 
         /**
          * This must be awaited so the candidate list can finish populating before we present the

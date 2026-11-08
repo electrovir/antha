@@ -1,4 +1,4 @@
-import {assert} from '@augment-vir/assert';
+import {assert, assertWrap} from '@augment-vir/assert';
 import {type MaybePromise} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {assertValidShape} from 'object-shape-tester';
@@ -9,6 +9,7 @@ import {
     webrtcOfferShape,
 } from './web-rtc-communication.js';
 import {
+    MessageDelivery,
     toPlainSessionDescription,
     WebrtcConnectEvent,
     WebrtcController,
@@ -18,6 +19,14 @@ import {
 class FakeDataChannel extends EventTarget {
     public readonly sentMessages: string[] = [];
     public isClosed = false;
+    public readyState: RTCDataChannelState = 'connecting';
+
+    constructor(
+        public readonly label = '',
+        public readonly options?: RTCDataChannelInit | undefined,
+    ) {
+        super();
+    }
 
     public send(message: string) {
         this.sentMessages.push(message);
@@ -33,6 +42,7 @@ class FakeDataChannel extends EventTarget {
     }
 
     public open() {
+        this.readyState = 'open';
         this.dispatchEvent(new Event('open'));
     }
 
@@ -51,6 +61,7 @@ class FakePeerConnection extends EventTarget {
     public readonly createdDataChannels: FakeDataChannel[] = [];
     public readonly iceServers: RTCIceServer[] | undefined;
     public isClosed = false;
+    public iceConnectionState: RTCIceConnectionState = 'new';
     public localDescription: RTCSessionDescriptionInit | undefined;
     public remoteDescription: RTCSessionDescriptionInit | undefined;
 
@@ -78,8 +89,8 @@ class FakePeerConnection extends EventTarget {
         }
     }
 
-    public createDataChannel() {
-        const dataChannel = new FakeDataChannel();
+    public createDataChannel(label: string, options?: RTCDataChannelInit | undefined) {
+        const dataChannel = new FakeDataChannel(label, options);
         this.createdDataChannels.push(dataChannel);
 
         return dataChannel;
@@ -123,6 +134,11 @@ class FakePeerConnection extends EventTarget {
 
     public close() {
         this.isClosed = true;
+    }
+
+    public setIceConnectionState(state: RTCIceConnectionState) {
+        this.iceConnectionState = state;
+        this.dispatchEvent(new Event('iceconnectionstatechange'));
     }
 }
 
@@ -273,6 +289,95 @@ describe(WebrtcController.name, () => {
         });
     });
 
+    it('reports a failed ICE connection as lost only once', async () => {
+        await withMockPeerConnection(async () => {
+            const controller = new WebrtcController(createMultiplayerId.client());
+            const connectionStates: boolean[] = [];
+
+            controller.listen(WebrtcConnectEvent, ({detail}) => {
+                connectionStates.push(detail);
+            });
+
+            await controller.createOffer([]);
+            const connection = assertWrap.isDefined(FakePeerConnection.instances[0]);
+            assertWrap.isDefined(connection.createdDataChannels[0]).open();
+            connection.setIceConnectionState('disconnected');
+            connection.setIceConnectionState('failed');
+            assertWrap.isDefined(connection.createdDataChannels[0]).close();
+
+            assert.deepEquals(
+                {
+                    connectionStates,
+                    isConnected: controller.isConnected,
+                },
+                {
+                    connectionStates: [
+                        true,
+                        false,
+                    ],
+                    isConnected: false,
+                },
+            );
+            controller.destroy();
+        });
+    });
+
+    it('sends unreliable messages over the unreliable channel once it opens', async () => {
+        await withMockPeerConnection(async () => {
+            const controller = new WebrtcController(createMultiplayerId.client());
+            const messages: unknown[] = [];
+
+            controller.listen(WebrtcMessageEvent, ({detail}) => {
+                messages.push(detail);
+            });
+
+            await controller.createOffer([]);
+
+            const [
+                reliableChannel,
+                unreliableChannel,
+            ] = assertWrap.isLengthExactly(
+                assertWrap.isDefined(FakePeerConnection.instances[0]).createdDataChannels,
+                2,
+            );
+
+            reliableChannel.open();
+            controller.sendMessage('before unreliable open', MessageDelivery.Unreliable);
+            unreliableChannel.open();
+            controller.sendMessage('after unreliable open', MessageDelivery.Unreliable);
+            controller.sendMessage('reliable');
+            unreliableChannel.receive('"unreliable from peer"');
+            controller.destroy();
+
+            assert.deepEquals(
+                {
+                    messages,
+                    reliableSent: reliableChannel.sentMessages,
+                    unreliableClosed: unreliableChannel.isClosed,
+                    unreliableOptions: unreliableChannel.options,
+                    unreliableSent: unreliableChannel.sentMessages,
+                },
+                {
+                    messages: [
+                        'unreliable from peer',
+                    ],
+                    reliableSent: [
+                        '"before unreliable open"',
+                        '"reliable"',
+                    ],
+                    unreliableClosed: true,
+                    unreliableOptions: {
+                        ordered: false,
+                        maxRetransmits: 0,
+                    },
+                    unreliableSent: [
+                        '"after unreliable open"',
+                    ],
+                },
+            );
+        });
+    });
+
     it('creates answers from string offers', async () => {
         await withMockPeerConnection(async () => {
             const controller = new WebrtcController(createMultiplayerId.client());
@@ -299,15 +404,26 @@ describe(WebrtcController.name, () => {
             });
             const initialDataChannel = connection.createdDataChannels[0];
             assert.isDefined(initialDataChannel);
-
-            const replacementDataChannel = new FakeDataChannel();
+            const initialUnreliableDataChannel = new FakeDataChannel('unreliable');
             connection.dispatchEvent(
                 Object.assign(new Event('datachannel'), {
-                    channel: replacementDataChannel,
+                    channel: initialUnreliableDataChannel,
                 }),
             );
 
+            [
+                new FakeDataChannel(),
+                new FakeDataChannel('unreliable'),
+            ].forEach((replacementDataChannel) => {
+                connection.dispatchEvent(
+                    Object.assign(new Event('datachannel'), {
+                        channel: replacementDataChannel,
+                    }),
+                );
+            });
+
             assert.isTrue(initialDataChannel.isClosed);
+            assert.isTrue(initialUnreliableDataChannel.isClosed);
         });
     });
 

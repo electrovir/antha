@@ -14,6 +14,7 @@ import {
     type RemoveListenerCallback,
 } from 'typed-event-target';
 import {type ClientId, type RoomId} from '../multiplayer-id.js';
+import {type MessageDelivery} from '../webrtc/webrtc-controller.js';
 import {
     type MultiplayerConnectionUpdate,
     type RoomInput,
@@ -98,10 +99,17 @@ export type MultiplayerRoomConnection<Message extends JsonCompatibleValue> = {
     getConnectedClientIds(): ClientId[];
     /** Get every known client id in the room, including the host when known. */
     getAllClientIds(): ClientId[];
-    /** Send a message through the room connection. */
-    sendMessage(message: Readonly<Message>): void;
-    /** Send a message to one specific room client. */
-    sendToOnlyOneClient(clientId: ClientId, message: Readonly<Message>): void;
+    /**
+     * Send a message through the room connection: from the host to every member, or from a member
+     * to the host. Delivery defaults to reliable.
+     */
+    sendMessage(message: Readonly<Message>, delivery?: MessageDelivery | undefined): void;
+    /** Send a message from the host to one specific room client. Delivery defaults to reliable. */
+    sendToOnlyOneClient(
+        clientId: ClientId,
+        message: Readonly<Message>,
+        delivery?: MessageDelivery | undefined,
+    ): void;
     /** Terminate the room connection and release transport resources. */
     destroy(): void;
 };
