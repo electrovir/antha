@@ -23,7 +23,6 @@ import box2dFactory, {
     type b2Vec2,
     type b2WorldId,
     type Box2DModule,
-    type TaskSystem,
 } from 'box2d3-wasm';
 import {defineShape} from 'object-shape-tester';
 
@@ -125,14 +124,6 @@ export type PhysicsOptions = PartialWithUndefined<{
      * @default 1
      */
     pixelsPerMeter: number;
-    /**
-     * How many threads step the world, from 1 to 4. More than 1 only works when the page is
-     * cross-origin isolated; otherwise Box2D runs on the main thread alone. Results are identical
-     * for every thread count.
-     *
-     * @default 4
-     */
-    threadCount: number;
 }>;
 
 /**
@@ -195,22 +186,9 @@ const bodyTypeNames = {
     [BodyType.Dynamic]: 'b2_dynamicBody',
 } as const satisfies Record<BodyType, keyof Box2DModule['b2BodyType']>;
 
-/** The package's own comment calls its all-cores default a bad one and recommends 4. */
-const physicsThreadCount = 4;
 const subStepCount = 4;
 
-/**
- * A loaded Box2D module, shared by every world with the same `pixelsPerMeter`.
- *
- * @category Internal
- */
-export type LoadedBox2d = {
-    box2d: Box2DModule;
-    /** Only exists in the multithreaded build. */
-    taskSystem: TaskSystem | undefined;
-};
-
-const box2dModules = new Map<number, Promise<LoadedBox2d>>();
+const box2dModules = new Map<number, Promise<Box2DModule>>();
 
 /**
  * Loads one Box2D module per length scale, because `b2SetLengthUnitsPerMeter` applies to a whole
@@ -218,14 +196,16 @@ const box2dModules = new Map<number, Promise<LoadedBox2d>>();
  */
 async function loadBox2d(pixelsPerMeter: number) {
     return await getOrSetFromMap(box2dModules, pixelsPerMeter, () => {
+        /**
+         * On cross-origin isolated pages the package loads its threaded build, which is also its
+         * only build with SIMD. We want SIMD, but splitting a step across its worker threads was
+         * never faster in benchmarks, so no workers are started.
+         */
         return box2dFactory({
-            pthreadCount: physicsThreadCount,
+            pthreadCount: 0,
         }).then((box2d) => {
             box2d.b2SetLengthUnitsPerMeter(pixelsPerMeter);
-            return {
-                box2d,
-                taskSystem: createTaskSystem(box2d),
-            };
+            return box2d;
         });
     });
 }
@@ -482,24 +462,12 @@ export class PhysicsWorld2d
 {
     /** Loads Box2D (shared by every world with the same `pixelsPerMeter`) and creates a world. */
     public static async create(options: Readonly<PhysicsOptions> = {}) {
-        const threadCount = options.threadCount ?? physicsThreadCount;
-        if (!Number.isInteger(threadCount) || threadCount < 1 || threadCount > physicsThreadCount) {
-            throw new Error(
-                `Physics threadCount must be an integer from 1 to ${physicsThreadCount}, got ${threadCount}.`,
-            );
-        }
-
-        return new PhysicsWorld2d({
-            ...(await loadBox2d(options.pixelsPerMeter ?? 1)),
-            threadCount,
-        });
+        return new PhysicsWorld2d(await loadBox2d(options.pixelsPerMeter ?? 1));
     }
 
     /** Validates {@link BodyState} entries in snapshots. */
     public readonly bodyStateShape = bodyStateShape;
     protected readonly box2d: Box2DModule;
-    protected readonly taskSystem: TaskSystem | undefined;
-    protected readonly threadCount: number;
     protected worldId: b2WorldId | undefined;
     protected gravity: Coords = {
         x: 0,
@@ -507,36 +475,16 @@ export class PhysicsWorld2d
     };
 
     /** Use {@link PhysicsWorld2d.create} instead, which loads Box2D first. */
-    protected constructor({
-        box2d,
-        taskSystem,
-        threadCount,
-    }: Readonly<
-        LoadedBox2d & {
-            threadCount: number;
-        }
-    >) {
+    protected constructor(box2d: Box2DModule) {
         this.box2d = box2d;
-        this.taskSystem = taskSystem;
-        this.threadCount = threadCount;
         this.createWorld();
     }
 
-    /** Whether steps are split across several threads. */
-    public isThreaded() {
-        return !!this.taskSystem && this.threadCount > 1;
-    }
-
-    /** Creates the Box2D world, threaded when this world has more than one thread. */
+    /** Creates the Box2D world. */
     protected createWorld() {
         const worldDef = this.box2d.b2DefaultWorldDef();
         worldDef.gravity.Set(this.gravity.x, this.gravity.y);
-        if (this.taskSystem && this.isThreaded()) {
-            worldDef.workerCount = this.threadCount;
-            this.worldId = this.box2d.b2CreateThreadedWorld(worldDef, this.taskSystem);
-        } else {
-            this.worldId = this.box2d.b2CreateWorld(worldDef);
-        }
+        this.worldId = this.box2d.b2CreateWorld(worldDef);
         worldDef.delete();
     }
 
@@ -721,17 +669,4 @@ export class PhysicsWorld2d
         }
         this.worldId = undefined;
     }
-}
-
-/**
- * The package picks its multithreaded `deluxe` build only when the page is cross-origin isolated.
- * The single-threaded `compat` build still has `TaskSystem`, but constructing one aborts the wasm
- * module. Only `deluxe` sets `sharedMemEnabled`.
- */
-function createTaskSystem(box2d: Box2DModule) {
-    /* c8 ignore start: tests run cross-origin isolated, so they never load `compat`. */
-    return check.hasKey(box2d, 'sharedMemEnabled') && box2d.sharedMemEnabled
-        ? new box2d.TaskSystem(physicsThreadCount)
-        : undefined;
-    /* c8 ignore stop */
 }

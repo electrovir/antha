@@ -196,7 +196,7 @@ engine.startLoop();
 
 ## Cross-origin isolation
 
-Physics runs on multiple threads (set with `physics.threadCount`) when the page is cross-origin isolated, and on the main thread otherwise. Results are identical either way. To make a page cross-origin isolated without server headers, copy `node_modules/@antha/util/dist/cross-origin-isolation-service-worker.js` next to your `index.html` and load it before any other script:
+Physics runs a faster Box2D build that uses SIMD (several numbers per CPU instruction) when the page is cross-origin isolated, and a slower one otherwise. Results are identical either way. To make a page cross-origin isolated without server headers, copy `node_modules/@antha/util/dist/cross-origin-isolation-service-worker.js` next to your `index.html` and load it before any other script:
 
 ```html
 <script type="module" src="cross-origin-isolation-service-worker.js"></script>
@@ -206,7 +206,7 @@ Skip this if your server already sends cross-origin isolation headers.
 
 ### Vite
 
-The threaded physics build starts its threads as ES module workers. Vite bundles workers as IIFE by default, which can't hold those, so set the worker format to `es` in your Vite config:
+The SIMD physics build contains ES module worker code, even though Antha never starts its workers. Vite bundles workers as IIFE by default, which can't hold that code, so set the worker format to `es` in your Vite config:
 
 ```ts
 import {defineConfig} from 'vite';
