@@ -3,6 +3,7 @@ import {
     applyBrand,
     awaitedForEach,
     ensureArray,
+    ensureErrorAndPrependMessage,
     getOrSetFromMap,
     makeWritable,
     mergeDefinedProperties,
@@ -269,6 +270,12 @@ export type AnthaEngineOptions = PartialWithUndefined<{
      * console.
      */
     logger: AnthaLogger;
+    /**
+     * Let the screen dim or lock while the loop runs. By default the engine asks the browser to
+     * keep the screen on while the loop runs, because some systems don't count gamepad input as
+     * activity.
+     */
+    allowScreenSleep: boolean;
 }>;
 
 /**
@@ -278,6 +285,7 @@ export type AnthaEngineOptions = PartialWithUndefined<{
  */
 export const defaultAnthaEngineOptions: RequiredAndNotNull<AnthaEngineOptions> = {
     logger: browserAnthaLogger,
+    allowScreenSleep: false,
 };
 
 /**
@@ -428,6 +436,59 @@ export class AnthaEngine<State extends AnyObject = AnyObject> extends GenericLis
     public readonly isTickRunning = false as boolean;
     /** Events waiting for their triggered mod's next normal tick. */
     protected eventTriggeredMods = new Map<AnthaMod, Event[]>();
+    /** The screen wake lock held while the loop runs, or being requested. */
+    protected screenWakeLock: Promise<WakeLockSentinel | undefined> | undefined;
+
+    /** Asks the browser to keep the screen on, unless it is already on or isn't needed. */
+    protected keepScreenOn() {
+        if (
+            this.screenWakeLock ||
+            this.options.allowScreenSleep ||
+            !this.isLoopRunning ||
+            globalThis.document.hidden ||
+            !('wakeLock' in globalThis.navigator)
+        ) {
+            return;
+        }
+
+        const screenWakeLock = globalThis.navigator.wakeLock.request('screen').then(
+            (sentinel) => {
+                /** The browser releases the lock on its own whenever the page is hidden. */
+                sentinel.addEventListener('release', () => {
+                    this.forgetScreenWakeLock(screenWakeLock);
+                });
+                return sentinel;
+            },
+            (error: unknown) => {
+                this.forgetScreenWakeLock(screenWakeLock);
+                this.log.warning(
+                    ensureErrorAndPrependMessage(error, 'Failed to keep the screen on.'),
+                );
+                return undefined;
+            },
+        );
+        this.screenWakeLock = screenWakeLock;
+    }
+
+    /** Clears the held screen wake lock, unless a newer one has replaced it. */
+    protected forgetScreenWakeLock(screenWakeLock: Promise<WakeLockSentinel | undefined>) {
+        if (this.screenWakeLock === screenWakeLock) {
+            this.screenWakeLock = undefined;
+        }
+    }
+
+    /** Lets the screen dim or lock again. */
+    protected async allowScreenSleep() {
+        const screenWakeLock = this.screenWakeLock;
+        this.screenWakeLock = undefined;
+        globalThis.document.removeEventListener('visibilitychange', this.handleVisibilityChange);
+        await (await screenWakeLock)?.release();
+    }
+
+    /** Takes the screen wake lock again when the page is shown. */
+    protected readonly handleVisibilityChange = () => {
+        this.keepScreenOn();
+    };
 
     /**
      * Stop the tick loop. If the loop already isn't running, no changes will be made.
@@ -488,6 +549,8 @@ export class AnthaEngine<State extends AnyObject = AnyObject> extends GenericLis
 
         this.engineStartTime = performance.now();
         this.isLoopRunning = true;
+        globalThis.document.addEventListener('visibilitychange', this.handleVisibilityChange);
+        this.keepScreenOn();
 
         void this.runTickInLoop();
         return true;
@@ -496,6 +559,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> extends GenericLis
     /** Execute a single tick on each render frame. */
     protected async runTickInLoop() {
         if (!this.isLoopRunning) {
+            await this.allowScreenSleep();
             return;
         }
 

@@ -1,4 +1,4 @@
-import {assert} from '@augment-vir/assert';
+import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
 import {DeferredPromise, selectFrom, wait, type AnyObject} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {html} from 'element-vir';
@@ -381,6 +381,133 @@ describe(AnthaEngine.name, () => {
             engine.stopLoop();
 
             assert.isAbove(engine.currentTick, 0);
+        });
+    });
+
+    describe('screen wake lock', () => {
+        /** Replaces `navigator.wakeLock` and `document.hidden` until `callback` finishes. */
+        async function withFakeWakeLock(
+            callback: (
+                fake: Readonly<{
+                    requests: EventTarget[];
+                    releases: EventTarget[];
+                    setPageHidden: (hidden: boolean) => void;
+                    rejectNextRequest: () => void;
+                }>,
+            ) => Promise<void>,
+        ) {
+            const requests: EventTarget[] = [];
+            const releases: EventTarget[] = [];
+            const page = {
+                hidden: false,
+                rejectNextRequest: false,
+            };
+
+            Object.defineProperty(globalThis.navigator, 'wakeLock', {
+                configurable: true,
+                value: {
+                    request() {
+                        if (page.rejectNextRequest) {
+                            page.rejectNextRequest = false;
+                            return Promise.reject(new Error('not allowed'));
+                        }
+
+                        const sentinel = new EventTarget();
+                        Object.assign(sentinel, {
+                            release() {
+                                releases.push(sentinel);
+                                sentinel.dispatchEvent(new Event('release'));
+                                return Promise.resolve();
+                            },
+                        });
+                        requests.push(sentinel);
+                        return Promise.resolve(sentinel);
+                    },
+                },
+            });
+            Object.defineProperty(globalThis.document, 'hidden', {
+                configurable: true,
+                get() {
+                    return page.hidden;
+                },
+            });
+
+            try {
+                await callback({
+                    requests,
+                    releases,
+                    setPageHidden(hidden) {
+                        page.hidden = hidden;
+                        globalThis.document.dispatchEvent(new Event('visibilitychange'));
+                    },
+                    rejectNextRequest() {
+                        page.rejectNextRequest = true;
+                    },
+                });
+            } finally {
+                Reflect.deleteProperty(globalThis.navigator, 'wakeLock');
+                Reflect.deleteProperty(globalThis.document, 'hidden');
+            }
+        }
+
+        it('keeps the screen on while the loop runs, including after the page is shown again', async () => {
+            await withFakeWakeLock(async ({requests, releases, setPageHidden}) => {
+                const engine = new AnthaEngine();
+
+                engine.startLoop();
+                await waitUntil.isLengthExactly(1, () => requests);
+
+                setPageHidden(true);
+                assertWrap.isDefined(requests[0]).dispatchEvent(new Event('release'));
+                setPageHidden(false);
+                await waitUntil.isLengthExactly(2, () => requests);
+
+                engine.stopLoop();
+                await waitUntil.isLengthExactly(1, () => releases);
+
+                assert.strictEquals(releases[0], requests[1]);
+            });
+        });
+
+        it('lets the screen sleep when asked to, and warns when the browser refuses', async () => {
+            await withFakeWakeLock(async ({requests, rejectNextRequest}) => {
+                const warnings: string[] = [];
+                const sleepyEngine = new AnthaEngine({
+                    engineOptions: {
+                        allowScreenSleep: true,
+                    },
+                });
+                const refusedEngine = new AnthaEngine({
+                    engineOptions: {
+                        logger: {
+                            ...defaultAnthaEngineOptions.logger,
+                            warning(message) {
+                                warnings.push(String(message));
+                            },
+                        },
+                    },
+                });
+
+                sleepyEngine.startLoop();
+                rejectNextRequest();
+                refusedEngine.startLoop();
+                await waitUntil.isLengthExactly(1, () => warnings);
+                sleepyEngine.stopLoop();
+                refusedEngine.stopLoop();
+
+                assert.deepEquals(
+                    {
+                        requests,
+                        warnings,
+                    },
+                    {
+                        requests: [],
+                        warnings: [
+                            'Error: Failed to keep the screen on: not allowed',
+                        ],
+                    },
+                );
+            });
         });
     });
 

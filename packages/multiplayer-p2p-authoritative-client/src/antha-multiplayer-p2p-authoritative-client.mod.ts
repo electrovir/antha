@@ -48,6 +48,7 @@ export type AnthaMultiplayerP2pAuthoritativeClientOptions<
             debugMultiplayer: true;
             gameId: true;
             sendInterval: true;
+            hostHandoffDelay: true;
         }
     >
 > &
@@ -100,6 +101,7 @@ export function createAnthaMultiplayerP2pAuthoritativeClientMod<
                             acceptConnection: options.acceptConnection,
                             debugMultiplayer: options.debugMultiplayer,
                             sendInterval: options.sendInterval,
+                            hostHandoffDelay: options.hostHandoffDelay,
                             createLocalState: createLocalState
                                 ? () => {
                                       return createLocalState({

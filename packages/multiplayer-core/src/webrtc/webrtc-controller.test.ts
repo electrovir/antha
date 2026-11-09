@@ -57,6 +57,10 @@ class FakeDataChannel extends EventTarget {
 
 class FakePeerConnection extends EventTarget {
     public static readonly instances: FakePeerConnection[] = [];
+    /** The candidates each connection gathers, in order. `undefined` ends gathering. */
+    public static readonly gatheredCandidateTypes: (RTCIceCandidateType | undefined)[] = [];
+
+    public readonly removedListenerTypes: string[] = [];
 
     public readonly createdDataChannels: FakeDataChannel[] = [];
     public readonly iceServers: RTCIceServer[] | undefined;
@@ -80,13 +84,26 @@ class FakePeerConnection extends EventTarget {
 
         if (type === 'icecandidate' && listener) {
             queueMicrotask(() => {
-                this.dispatchEvent(
-                    Object.assign(new Event('icecandidate'), {
-                        candidate: undefined,
-                    }),
-                );
+                FakePeerConnection.gatheredCandidateTypes.forEach((candidateType) => {
+                    this.dispatchEvent(
+                        Object.assign(new Event('icecandidate'), {
+                            candidate: candidateType && {
+                                type: candidateType,
+                            },
+                        }),
+                    );
+                });
             });
         }
+    }
+
+    public override removeEventListener(
+        type: string,
+        listener: EventListenerOrEventListenerObject | null,
+        options?: EventListenerOptions | boolean | undefined,
+    ) {
+        super.removeEventListener(type, listener, options);
+        this.removedListenerTypes.push(type);
     }
 
     public createDataChannel(label: string, options?: RTCDataChannelInit | undefined) {
@@ -145,6 +162,7 @@ class FakePeerConnection extends EventTarget {
 async function withMockPeerConnection(callback: () => MaybePromise<void>) {
     const originalPeerConnection = globalThis.RTCPeerConnection;
     FakePeerConnection.instances.length = 0;
+    FakePeerConnection.gatheredCandidateTypes.splice(0, Infinity, undefined);
 
     Object.defineProperty(globalThis, 'RTCPeerConnection', {
         configurable: true,
@@ -286,6 +304,23 @@ describe(WebrtcController.name, () => {
                     ],
                 },
             );
+        });
+    });
+
+    it('stops gathering at the first server-reflexive candidate', async () => {
+        await withMockPeerConnection(async () => {
+            FakePeerConnection.gatheredCandidateTypes.splice(0, Infinity, 'host', 'srflx');
+            const controller = new WebrtcController(createMultiplayerId.client());
+
+            await controller.createOffer([]);
+
+            assert.deepEquals(
+                assertWrap.isDefined(FakePeerConnection.instances[0]).removedListenerTypes,
+                [
+                    'icecandidate',
+                ],
+            );
+            controller.destroy();
         });
     });
 

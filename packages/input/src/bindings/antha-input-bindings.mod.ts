@@ -4,11 +4,18 @@ import {
     filterMap,
     getEnumValues,
     getObjectTypedEntries,
+    getObjectTypedValues,
     mapObjectValuesSync,
+    type EmptyFunction,
     type SelectFrom,
 } from '@augment-vir/common';
 import {html} from 'element-vir';
-import {GamepadInputDeviceKey} from 'input-device-handler';
+import {
+    createButtonName,
+    GamepadInputDeviceKey,
+    getKeyCode,
+    InputDeviceKey,
+} from 'input-device-handler';
 import {
     AnthaReadRawInputMod,
     type AnthaReadRawInputModState,
@@ -64,6 +71,7 @@ export type AnthaInputBindingsModState<BindingNames extends string = string> = P
     activeBindings: PlayersActiveBindings<BindingNames>;
     debugBindingAssignments: boolean;
     debugActiveBindings: boolean;
+    boundKeyDefaultsCleanup: EmptyFunction | undefined;
 };
 
 /**
@@ -84,7 +92,15 @@ export function createAnthaInputBindingsMod<const BindingNames extends string = 
             inputDisableEndsAt: undefined,
             ...options,
         },
+        cleanup({state}) {
+            state.boundKeyDefaultsCleanup?.();
+            state.boundKeyDefaultsCleanup = undefined;
+        },
         execute({engine, state, msSinceLastExecute}) {
+            if (!state.boundKeyDefaultsCleanup) {
+                state.boundKeyDefaultsCleanup = preventBoundKeyDefaults(state);
+            }
+
             if (
                 state.inputDisableEndsAt != undefined &&
                 state.inputDisableEndsAt <= engine.engineTime
@@ -152,6 +168,61 @@ export function createAnthaInputBindingsMod<const BindingNames extends string = 
 export type AnthaInputBindingsMod = ReturnType<typeof createAnthaInputBindingsMod>;
 
 const gamepadInputDeviceKeys = getEnumValues(GamepadInputDeviceKey);
+
+/** Elements whose keys belong to the page: text fields, buttons, links, and anything in a dialog. */
+const pageUiTagNames = [
+    'A',
+    'BUTTON',
+    'DIALOG',
+    'INPUT',
+    'SELECT',
+    'TEXTAREA',
+];
+
+/**
+ * Stops the browser's own action (scrolling on Space or the arrows, Tab moving focus, Firefox's
+ * quick find) for keys bound to a player action. Cmd shortcuts and keys aimed at the page's own UI
+ * (a text field, a focused button or link, an open dialog) are left to the browser.
+ */
+function preventBoundKeyDefaults(
+    state: Readonly<Pick<Partial<AnthaInputBindingsModState>, 'bindingAssignments'>>,
+) {
+    function preventDefault(event: KeyboardEvent) {
+        if (
+            event.metaKey ||
+            event.composedPath().some((target) => {
+                return (
+                    target instanceof HTMLElement &&
+                    (target.isContentEditable || pageUiTagNames.includes(target.tagName))
+                );
+            })
+        ) {
+            return;
+        }
+
+        const inputName = createButtonName(getKeyCode(event));
+        const isBound = getObjectTypedValues(state.bindingAssignments || {}).some((bindingsMap) => {
+            return getObjectTypedValues(bindingsMap).some((bindings) => {
+                return bindings.some((binding) => {
+                    return (
+                        binding.deviceKey === InputDeviceKey.Keyboard &&
+                        binding.inputName === inputName
+                    );
+                });
+            });
+        });
+
+        if (isBound) {
+            event.preventDefault();
+        }
+    }
+
+    globalThis.addEventListener('keydown', preventDefault);
+
+    return () => {
+        globalThis.removeEventListener('keydown', preventDefault);
+    };
+}
 
 function filterRawInput(
     entry: RawInput | undefined,

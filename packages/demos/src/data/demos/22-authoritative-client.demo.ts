@@ -14,8 +14,10 @@ import {
 import {
     combineErrorMessages,
     getObjectTypedEntries,
+    getObjectTypedValues,
     getOrSetFromMap,
     log,
+    pickObjectKeys,
 } from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, defineElement, html, listen, nothing, unsafeCSS} from 'element-vir';
@@ -27,8 +29,13 @@ type PlayerPosition = {
     y: number;
 };
 
-type DemoClientState = AnthaMultiplayerP2pAuthoritativeClientState<PlayerPosition> & {
-    localPlayer: PlayerPosition;
+type PlayerState = PlayerPosition & {
+    /** Increased when the pointer re-enters the arena, so other clients jump instead of sliding. */
+    teleportCount: number;
+};
+
+type DemoClientState = AnthaMultiplayerP2pAuthoritativeClientState<PlayerState> & {
+    localPlayer: PlayerState;
     connectionStarted: boolean;
     connectionError: string;
 };
@@ -79,6 +86,7 @@ function createDemoClientMod(
                 state.localPlayer = {
                     x: arenaSize.width / 2,
                     y: arenaSize.height / 2,
+                    teleportCount: 0,
                 };
 
                 await controller.initMultiplayer({
@@ -98,7 +106,10 @@ function createDemoClientMod(
 
             return html`
                 <strong>${controller.isHost() ? 'Host Client' : 'Member Client'}</strong>
-                <span>Move the mouse over this box to move the green player.</span>
+                <span>
+                    Move the mouse over this box to move the green player. Leaving and re-entering
+                    teleports it.
+                </span>
                 <div
                     style=${css`
                         position: relative;
@@ -107,10 +118,18 @@ function createDemoClientMod(
                         background: #eeeeee;
                         cursor: none;
                     `}
+                    ${listen('pointerenter', (event) => {
+                        state.localPlayer = {
+                            x: event.offsetX,
+                            y: event.offsetY,
+                            teleportCount: (state.localPlayer?.teleportCount ?? 0) + 1,
+                        };
+                    })}
                     ${listen('pointermove', (event) => {
                         state.localPlayer = {
                             x: event.offsetX,
                             y: event.offsetY,
+                            teleportCount: state.localPlayer?.teleportCount ?? 0,
                         };
                     })}
                 >
@@ -127,12 +146,19 @@ function createDemoClientMod(
                                         delay: {
                                             milliseconds: 50,
                                         },
+                                        correctionFade: {
+                                            milliseconds: 100,
+                                        },
                                     });
                                 },
                             );
                             interpolator.add({
-                                time: remote.receivedAt,
-                                value: remote.state,
+                                time: remote.smoothedReceivedAt,
+                                value: pickObjectKeys(remote.state, [
+                                    'x',
+                                    'y',
+                                ]),
+                                teleportCount: remote.state.teleportCount,
                             });
 
                             return renderPlayer(
@@ -143,6 +169,21 @@ function createDemoClientMod(
                     )}
                     ${state.localPlayer ? renderPlayer(state.localPlayer, '#22aa22') : nothing}
                 </div>
+                ${getObjectTypedValues(
+                    controller.getConnectionStats({
+                        seconds: 10,
+                    }),
+                ).map((stats) => {
+                    return html`
+                        <span>
+                            Last 10 s: round trip
+                            ${stats.roundTrip ? Math.round(stats.roundTrip.milliseconds) : '?'} ms,
+                            jitter ${Math.round(stats.jitter.milliseconds)} ms, longest gap
+                            ${Math.round(stats.longestGap.milliseconds)} ms, missed
+                            ${stats.missedCount}, recovered ${stats.recoveredCount}
+                        </span>
+                    `;
+                })}
                 ${state.connectionError
                     ? html`
                           <${ViraError}>${state.connectionError}</${ViraError}>
@@ -160,7 +201,7 @@ function createDemoClientEngine(
     return new AnthaEngine({
         mods: [
             createDemoClientMod(mockApiClient, room),
-            createAnthaMultiplayerP2pAuthoritativeClientMod<PlayerPosition, DemoClientState>({
+            createAnthaMultiplayerP2pAuthoritativeClientMod<PlayerState, DemoClientState>({
                 gameId: 'authoritative-client-demo',
                 sendInterval: {
                     seconds: 1 / 60,

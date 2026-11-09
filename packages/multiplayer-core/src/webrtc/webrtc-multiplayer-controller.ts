@@ -14,10 +14,10 @@ import {
     mergeDefinedProperties,
     randomString,
     removeDuplicates,
-    retry,
     stringify,
 } from '@augment-vir/common';
 import {type ClientWebSocket} from '@rest-vir/api';
+import {type AnyDuration, convertDuration} from 'date-vir';
 import {ListenTarget, defineTypedCustomEvent} from 'typed-event-target';
 import {rejectOnAbort} from '../multiplayer-api/connection-timeout.js';
 import {
@@ -116,6 +116,37 @@ export type ShouldAllowConnectionCheck<MultiplayerController> = (data: {
 }) => MaybePromise<boolean>;
 
 /**
+ * Resolves once the browser fires `online`, `maxWait` passes, or `abortSignal` aborts. Resolves to
+ * whether `abortSignal` aborted.
+ */
+function waitUntilOnline({
+    maxWait,
+    abortSignal,
+}: Readonly<{
+    maxWait: Readonly<AnyDuration>;
+    abortSignal: AbortSignal;
+}>) {
+    return new Promise<boolean>((resolve) => {
+        const timeoutId = globalThis.setTimeout(
+            finish,
+            convertDuration(maxWait, {
+                milliseconds: true,
+            }).milliseconds,
+        );
+
+        function finish() {
+            globalThis.clearTimeout(timeoutId);
+            globalThis.removeEventListener('online', finish);
+            abortSignal.removeEventListener('abort', finish);
+            resolve(abortSignal.aborted);
+        }
+
+        globalThis.addEventListener('online', finish);
+        abortSignal.addEventListener('abort', finish);
+    });
+}
+
+/**
  * A controller that connects to the multiplayer api and establishes a WebRTC connection to the
  * selected room, or, if the room does not exist yet, creates the room and becomes the host.
  *
@@ -143,6 +174,7 @@ export class WebrtcMultiplayerController<
     protected hostPingTimeoutId: ReturnType<typeof setTimeout> | undefined;
     protected reconnectPromise: Promise<void> | undefined;
     protected isCleaningUpConnection = false;
+    protected readonly destroyAbortController = new AbortController();
 
     constructor(
         protected readonly gameId: string,
@@ -236,6 +268,7 @@ export class WebrtcMultiplayerController<
     /** Destroy this controller and clean everything up. */
     public override destroy() {
         makeWritable(this).isDestroyed = true;
+        this.destroyAbortController.abort();
         globalThis.clearTimeout(this.hostPingTimeoutId);
         this.hostPingTimeoutId = undefined;
         Object.values(this.connections).forEach((connection) => connection.destroy());
@@ -390,23 +423,40 @@ export class WebrtcMultiplayerController<
             return;
         }
 
-        this.reconnectPromise = retry(3, () => this.initConnection(), {
-            interval: {
-                seconds: 1,
-            },
-        })
-            .then(() => undefined)
-            .catch((error: unknown) => {
-                log.warning(
-                    ensureErrorAndPrependMessage(
-                        error,
-                        'Failed to reconnect to the multiplayer room.',
-                    ),
-                );
-            })
-            .finally(() => {
-                this.reconnectPromise = undefined;
+        this.reconnectPromise = this.reconnectUntilDestroyed().finally(() => {
+            this.reconnectPromise = undefined;
+        });
+    }
+
+    /**
+     * Keep trying to connect, waiting longer after each failure, until it works or this controller
+     * is destroyed. The browser coming back online skips the wait.
+     */
+    protected async reconnectUntilDestroyed(failureCount = 0) {
+        try {
+            await this.initConnection({
+                abortSignal: this.destroyAbortController.signal,
             });
+            return;
+        } catch (error) {
+            if (this.destroyAbortController.signal.aborted) {
+                return;
+            }
+            log.warning(
+                ensureErrorAndPrependMessage(error, 'Failed to reconnect to the multiplayer room.'),
+            );
+        }
+
+        const isDestroyed = await waitUntilOnline({
+            maxWait: {
+                seconds: Math.min(2 ** failureCount, 30),
+            },
+            abortSignal: this.destroyAbortController.signal,
+        });
+
+        if (!isDestroyed) {
+            await this.reconnectUntilDestroyed(failureCount + 1);
+        }
     }
 
     protected connectionQueue = new PromiseQueue();

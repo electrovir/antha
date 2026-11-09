@@ -60,10 +60,10 @@ describe(createAnthaMultiplayerP2pAuthoritativeClientMod.name, () => {
             isHost() {
                 return true;
             },
-            sendMessage() {},
-            sendToOnlyOneClient(clientId, message) {
+            sendMessage(message) {
                 sentMessages.push(message);
             },
+            sendToOnlyOneClient() {},
         };
 
         engine.listen(MultiplayerControllerClientStateEvent<number>, ({detail}) => {
@@ -89,6 +89,8 @@ describe(createAnthaMultiplayerP2pAuthoritativeClientMod.name, () => {
                 {
                     clientId: memberClientId,
                     sentAt: 1,
+                    sequence: 1,
+                    echoes: [],
                     state: 3,
                 },
             ],
@@ -123,6 +125,10 @@ describe(createAnthaMultiplayerP2pAuthoritativeClientMod.name, () => {
                     clientId: memberClientId,
                     receivedAt: 2,
                     sentAt: 2,
+                    smoothedReceivedAt: 2,
+                    sequence: 2,
+                    echoes: [],
+                    roundTrip: undefined,
                     state: 4,
                 },
             }),

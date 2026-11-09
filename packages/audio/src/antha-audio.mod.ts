@@ -45,7 +45,9 @@ export function resumeAnthaAudioContext({
 }
 
 /**
- * Attempts to resume audio when it becomes allowed due to the user inputs.
+ * Resumes audio on each click or key press while it isn't playing: first when the browser allows
+ * audio at all, then whenever the browser stops it again later. Gamepad presses are handled by
+ * {@link resumeAudioOnGamepadPress}.
  *
  * @category Internal
  */
@@ -54,14 +56,12 @@ export function createAudioResumeListeners({
 }: Readonly<{
     audioPlayer: AudioPlayer;
 }>) {
-    let cleanup: EmptyFunction | undefined;
-
     function resumeAudio() {
-        resumeAnthaAudioContext({
-            audioPlayer,
-        });
-        cleanup?.();
-        cleanup = undefined;
+        if (audioPlayer.audioContext.state !== 'running') {
+            resumeAnthaAudioContext({
+                audioPlayer,
+            });
+        }
     }
 
     const cleanupCallbacks = [
@@ -72,11 +72,35 @@ export function createAudioResumeListeners({
             capture: true,
         }),
     ];
-    cleanup = () => {
+
+    return () => {
         cleanupCallbacks.forEach((cleanupCallback) => cleanupCallback());
     };
+}
 
-    return cleanup;
+/**
+ * Resumes audio while it isn't playing and a gamepad button is pressed. Browsers don't count a
+ * gamepad press as user interaction, so this only works once the page has had a click or key
+ * press.
+ *
+ * @category Internal
+ */
+export function resumeAudioOnGamepadPress({
+    audioPlayer,
+}: Readonly<{
+    audioPlayer: AudioPlayer;
+}>) {
+    if (
+        audioPlayer.audioContext.state !== 'running' &&
+        globalThis.navigator.userActivation.hasBeenActive &&
+        globalThis.navigator.getGamepads().some((gamepad) => {
+            return gamepad?.buttons.some((button) => button.pressed);
+        })
+    ) {
+        resumeAnthaAudioContext({
+            audioPlayer,
+        });
+    }
 }
 
 function syncChannelVolumes(state: Partial<AnthaAudioState>) {
@@ -129,6 +153,9 @@ export function createAnthaAudioMod(audioPlayerOptions: Readonly<AnthaAudioModOp
             }
 
             syncChannelVolumes(state);
+            resumeAudioOnGamepadPress({
+                audioPlayer: state.audioPlayer,
+            });
 
             if (state.audioResumeListenersCleanup) {
                 return;

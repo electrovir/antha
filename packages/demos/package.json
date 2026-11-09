@@ -32,11 +32,11 @@
         "element-vir": "^27.0.2",
         "object-shape-tester": "^6.15.3",
         "pixi.js": "^8.22.0",
-        "spa-router-vir": "^6.10.0",
+        "spa-router-vir": "^6.11.0",
         "theme-vir": "^29.0.3",
         "typed-event-target": "^4.3.4",
         "url-vir": "^2.2.2",
-        "vira": "^33.15.0"
+        "vira": "^33.17.0"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.7.0",

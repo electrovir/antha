@@ -894,7 +894,7 @@ describe(WebrtcMultiplayerController.name, () => {
         });
     });
 
-    it('handles a failed reconnect and skips reconnecting after destruction', async () => {
+    it('keeps reconnecting when the browser comes back online until it works', async () => {
         const localClientId = createMultiplayerId.client();
         const controller = new WebrtcMultiplayerController<TestMessage>(
             'mock',
@@ -908,27 +908,80 @@ describe(WebrtcMultiplayerController.name, () => {
 
         makeWritable(controller).initConnection = () => {
             reconnectCalls.push(1);
-            return Promise.reject(new Error('reconnect failed'));
+
+            if (reconnectCalls.length < 3) {
+                globalThis.setTimeout(() => globalThis.dispatchEvent(new Event('online')));
+                return Promise.reject(new Error('reconnect failed'));
+            }
+
+            return Promise.resolve(true);
         };
         internals.reconnectAfterHostLoss();
-        const reconnectPromise = internals.reconnectPromise;
-        assert.isDefined(reconnectPromise);
-        await reconnectPromise;
-
-        controller.destroy();
-        internals.reconnectAfterHostLoss();
+        await internals.reconnectPromise;
 
         assert.deepEquals(
             {
-                isCleaningUpConnection: internals.isCleaningUpConnection,
                 reconnectCallCount: reconnectCalls.length,
                 reconnectPromise: internals.reconnectPromise,
             },
             {
-                isCleaningUpConnection: false,
-                reconnectCallCount: 4,
+                reconnectCallCount: 3,
                 reconnectPromise: undefined,
             },
+        );
+        controller.destroy();
+    });
+
+    it('stops reconnecting once destroyed, during an attempt or while waiting', async () => {
+        async function countReconnectCalls(isDestroyedDuringAttempt: boolean) {
+            const localClientId = createMultiplayerId.client();
+            const controller = new WebrtcMultiplayerController<TestMessage>(
+                'mock',
+                createCapturingApiClient(new FakeClientWebSocket(localClientId)).apiClient,
+                [],
+                createNewRoom(),
+                localClientId,
+            );
+            const internals = extractInternals(controller);
+            const reconnectCalls: number[] = [];
+
+            makeWritable(controller).initConnection = () => {
+                reconnectCalls.push(1);
+
+                if (isDestroyedDuringAttempt) {
+                    controller.destroy();
+                } else {
+                    globalThis.setTimeout(() => controller.destroy());
+                }
+
+                return Promise.reject(new Error('reconnect failed'));
+            };
+            internals.reconnectAfterHostLoss();
+            await internals.reconnectPromise;
+            internals.reconnectAfterHostLoss();
+
+            return {
+                isCleaningUpConnection: internals.isCleaningUpConnection,
+                reconnectCallCount: reconnectCalls.length,
+                reconnectPromise: internals.reconnectPromise,
+            };
+        }
+
+        const expected = {
+            isCleaningUpConnection: false,
+            reconnectCallCount: 1,
+            reconnectPromise: undefined,
+        };
+
+        assert.deepEquals(
+            [
+                await countReconnectCalls(true),
+                await countReconnectCalls(false),
+            ],
+            [
+                expected,
+                expected,
+            ],
         );
     });
 });

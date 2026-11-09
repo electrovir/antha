@@ -51,7 +51,7 @@
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
-        "markdown-code-example-inserter": "^3.1.1",
+        "markdown-code-example-inserter": "^3.1.2",
         "object-shape-tester": "^6.15.3",
         "pixi.js": "^8.22.0",
         "typedoc": "^0.28.20"

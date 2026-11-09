@@ -1,7 +1,13 @@
 import {AnthaEngine, createEngineTime} from '@antha/engine';
+import {LocalPlayerPosition} from '@antha/util';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
-import {GamepadInputDeviceKey, InputDeviceKey, InputDeviceType} from 'input-device-handler';
+import {
+    createButtonName,
+    GamepadInputDeviceKey,
+    InputDeviceKey,
+    InputDeviceType,
+} from 'input-device-handler';
 import {InputDirection} from '../raw-inputs/raw-input.js';
 import {
     createAnthaInputBindingsMod,
@@ -583,5 +589,106 @@ describe(createAnthaInputBindingsMod.name, () => {
         await engine.runSingleTick();
 
         assert.isDefined(engine.currentTemplateMap.get(mod));
+    });
+
+    it('stops browser actions for bound keys outside page UI until cleaned up', async () => {
+        const engine = new AnthaEngine<AnthaInputBindingsModState<'jump'>>({
+            mods: [
+                createAnthaInputBindingsMod<'jump'>(),
+            ],
+        });
+        engine.state.bindingAssignments = {
+            [LocalPlayerPosition.One]: {
+                jump: [
+                    {
+                        deviceKey: InputDeviceKey.Keyboard,
+                        inputName: createButtonName('Space'),
+                        direction: InputDirection.Positive,
+                    },
+                ],
+            },
+        };
+        await engine.runSingleTick();
+
+        const textField = document.createElement('input');
+        const editable = document.createElement('div');
+        editable.contentEditable = 'true';
+        const button = document.createElement('button');
+        const dialog = document.createElement('dialog');
+        const dialogContent = document.createElement('span');
+        dialog.append(dialogContent);
+        document.body.append(textField, editable, button, dialog);
+
+        function isPrevented({
+            code,
+            metaKey,
+            target,
+        }: Readonly<{
+            code: string;
+            metaKey?: boolean | undefined;
+            target?: EventTarget | undefined;
+        }>) {
+            const event = new KeyboardEvent('keydown', {
+                code,
+                metaKey: !!metaKey,
+                bubbles: true,
+                cancelable: true,
+                composed: true,
+            });
+            (target || globalThis).dispatchEvent(event);
+
+            return event.defaultPrevented;
+        }
+
+        const results = {
+            bound: isPrevented({
+                code: 'Space',
+            }),
+            unbound: isPrevented({
+                code: 'KeyQ',
+            }),
+            withCmd: isPrevented({
+                code: 'Space',
+                metaKey: true,
+            }),
+            inTextField: isPrevented({
+                code: 'Space',
+                target: textField,
+            }),
+            inEditable: isPrevented({
+                code: 'Space',
+                target: editable,
+            }),
+            onButton: isPrevented({
+                code: 'Space',
+                target: button,
+            }),
+            inDialog: isPrevented({
+                code: 'Space',
+                target: dialogContent,
+            }),
+            afterCleanup: false,
+        };
+        await engine.reset();
+        results.afterCleanup = isPrevented({
+            code: 'Space',
+        });
+        [
+            textField,
+            editable,
+            button,
+            dialog,
+        ].forEach((element) => element.remove());
+
+        assert.deepEquals(results, {
+            bound: true,
+            unbound: false,
+            withCmd: false,
+            inTextField: false,
+            inEditable: false,
+            onButton: false,
+            inDialog: false,
+            afterCleanup: false,
+        });
     });
 });
