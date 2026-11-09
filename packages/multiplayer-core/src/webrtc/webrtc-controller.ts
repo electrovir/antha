@@ -6,6 +6,7 @@ import {
     wrapInTry,
     type JsonCompatibleValue,
 } from '@augment-vir/common';
+import {convertDuration} from 'date-vir';
 import {assertValidShape} from 'object-shape-tester';
 import {defineTypedCustomEvent, ListenTarget} from 'typed-event-target';
 import {type ClientId} from '../multiplayer-id.js';
@@ -266,21 +267,36 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
         );
     }
 
-    /** Create a peer connection and wait for ICE candidate gathering to finish. */
+    /** Create a peer connection and wait until it has enough ICE candidates to connect. */
     protected createConnection(stunServerUrls: ReadonlyArray<string>) {
         if (this.connection) {
             throw new Error('Connection already created!');
         }
 
         const deferredIceCandidatePromise = new DeferredPromise();
+        function finishGathering() {
+            globalThis.clearTimeout(gatheringTimeoutId);
+            deferredIceCandidatePromise.resolve();
+        }
         const iceCandidateListener = (event: RTCPeerConnectionIceEvent) => {
-            // all candidates are done
-            if (!event.candidate) {
+            /** Full gathering can stall on an unreachable STUN path. */
+            if (!event.candidate || event.candidate.type === 'srflx') {
                 assert.isDefined(this.connection);
-                deferredIceCandidatePromise.resolve();
+                finishGathering();
                 this.connection.removeEventListener('icecandidate', iceCandidateListener);
             }
         };
+        const gatheringTimeoutId = globalThis.setTimeout(
+            finishGathering,
+            convertDuration(
+                {
+                    seconds: 3,
+                },
+                {
+                    milliseconds: true,
+                },
+            ).milliseconds,
+        );
 
         this.connection = new RTCPeerConnection({
             iceServers: formatStunServerUrls(stunServerUrls),
