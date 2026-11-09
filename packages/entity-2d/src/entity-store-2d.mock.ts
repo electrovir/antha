@@ -7,14 +7,10 @@ import {
 } from '@antha/engine';
 import {createMockPixi} from '@antha/graphics-2d';
 import {applyBrand} from '@augment-vir/common';
-import {createAnthaEntity2dSuite, type AnthaEntity2dModOptions} from './antha-entity-2d.mod.js';
-
-export function createTestSuite(options?: Readonly<AnthaEntity2dModOptions>) {
-    return createAnthaEntity2dSuite(options);
-}
+import {type createAnthaEntity2dSuite} from './antha-entity-2d.mod.js';
 
 export function createTestStore(
-    suite: ReturnType<typeof createTestSuite>,
+    suite: ReturnType<typeof createAnthaEntity2dSuite>,
     options?: {
         assetLoader?: AssetLoader;
     },

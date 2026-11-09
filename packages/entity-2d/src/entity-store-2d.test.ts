@@ -1,12 +1,14 @@
+import {BodyType} from '@antha/entity-core';
 import {assert} from '@augment-vir/assert';
 import {awaitedForEach, createArray, type Coords} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {defineShape} from 'object-shape-tester';
 import {Graphics} from 'pixi.js';
+import {createAnthaEntity2dSuite} from './antha-entity-2d.mod.js';
 import {EntityStore2d, type SerializedEntity2d} from './entity-store-2d.js';
-import {createTestStore, createTestSuite, emptyEntityUpdateParams} from './entity-store-2d.mock.js';
+import {createTestStore, emptyEntityUpdateParams} from './entity-store-2d.mock.js';
 import {type BaseEntity2d, type ViewCreation2d} from './entity.js';
-import {bodyStateShape, BodyType, ShapeType, type EntityPhysicsDefinition} from './physics.js';
+import {bodyStateShape, ShapeType, type EntityPhysicsDefinition} from './physics.js';
 
 const ballPhysics = {
     type: BodyType.Dynamic,
@@ -19,7 +21,7 @@ const ballPhysics = {
 } as const satisfies EntityPhysicsDefinition;
 
 async function createBallSuite() {
-    const suite = createTestSuite();
+    const suite = createAnthaEntity2dSuite();
     const contactLog: string[] = [];
 
     class Ball extends suite.defineEntity({
@@ -119,7 +121,7 @@ describe(EntityStore2d.name, () => {
     });
 
     it('steps by stepDuration regardless of msSinceLastExecute', async () => {
-        const suite = createTestSuite({
+        const suite = createAnthaEntity2dSuite({
             physics: {
                 stepDuration: {
                     milliseconds: 100,
@@ -161,7 +163,7 @@ describe(EntityStore2d.name, () => {
     });
 
     it('calls update before each step', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
         const velocitiesSeenInUpdate: Coords[] = [];
 
@@ -195,7 +197,7 @@ describe(EntityStore2d.name, () => {
     });
 
     it('removes entities destroyed before or during their update', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
         const updatedKeys: string[] = [];
 
@@ -320,7 +322,7 @@ describe(EntityStore2d.name, () => {
     });
 
     it('calls the default contact hooks', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class Quiet extends suite.defineEntity({
@@ -355,7 +357,7 @@ describe(EntityStore2d.name, () => {
     });
 
     it('moves views to body positions blended between the last two steps', async () => {
-        const suite = createTestSuite({
+        const suite = createAnthaEntity2dSuite({
             physics: {
                 stepDuration: {
                     milliseconds: 100,
@@ -409,7 +411,7 @@ describe(EntityStore2d.name, () => {
     });
 
     it('turns views the short way around', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class Spinner extends suite.defineEntity({
@@ -440,7 +442,7 @@ describe(EntityStore2d.name, () => {
     });
 
     it('renders every entity that is not destroyed', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
         const renderedNames: string[] = [];
 
@@ -636,7 +638,7 @@ describe(EntityStore2d.name, () => {
 
     it('deserializes registered entities and rejects unknown keys', async () => {
         const {Ball} = await createBallSuite();
-        const suite = createTestSuite({
+        const suite = createAnthaEntity2dSuite({
             preregisteredEntities: [
                 Ball,
             ],

@@ -1,12 +1,13 @@
 import {AssetLoader} from '@antha/asset';
-import {EntityDestroyEvent, EntityEvent} from '@antha/entity-core';
+import {BodyType, EntityDestroyEvent, EntityEvent} from '@antha/entity-core';
 import {assert} from '@augment-vir/assert';
 import {describe, it} from '@augment-vir/test';
 import {defineShape} from 'object-shape-tester';
 import {Graphics, ParticleContainer} from 'pixi.js';
-import {createTestStore, createTestSuite, emptyEntityUpdateParams} from './entity-store-2d.mock.js';
+import {createAnthaEntity2dSuite} from './antha-entity-2d.mod.js';
+import {createTestStore, emptyEntityUpdateParams} from './entity-store-2d.mock.js';
 import {type ViewCreation2d} from './entity.js';
-import {BodyType, ShapeType} from './physics.js';
+import {ShapeType} from './physics.js';
 
 const coordsParamsShape = defineShape({
     x: 0,
@@ -32,7 +33,7 @@ describe(EntityEvent.name, () => {
 
 describe('BaseEntity', () => {
     it('deserializes with paramsShape', () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
 
         class WithShape extends suite.defineLogicEntity({
             key: 'WithShape',
@@ -54,7 +55,7 @@ describe('BaseEntity', () => {
     });
 
     it('deserializes without paramsShape', () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
 
         class WithoutShape extends suite.defineLogicEntity({
             key: 'WithoutShape',
@@ -68,7 +69,7 @@ describe('BaseEntity', () => {
     });
 
     it('adds a child entity from within an entity', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class ChildEntity extends suite.defineLogicEntity({
@@ -93,7 +94,7 @@ describe('BaseEntity', () => {
     });
 
     it('throws when adding through a destroyed entity', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class Child2 extends suite.defineLogicEntity({
@@ -118,7 +119,7 @@ describe('BaseEntity', () => {
     });
 
     it('immediately destroys a logic entity', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
         let destroyEventReceived = false;
 
@@ -140,7 +141,7 @@ describe('BaseEntity', () => {
     });
 
     it('immediately destroys all current entities', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class DestroyMe extends suite.defineLogicEntity({
@@ -170,7 +171,7 @@ describe('BaseEntity', () => {
     });
 
     it('throws when immediately destroying all entities from a destroyed store', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
         store.destroy();
 
@@ -180,7 +181,7 @@ describe('BaseEntity', () => {
     });
 
     it('serializes params to JSON', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class WithParams extends suite.defineLogicEntity({
@@ -206,7 +207,7 @@ describe('BaseEntity', () => {
     });
 
     it('returns undefined from serialize when no params', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class NoParamsSerialize extends suite.defineLogicEntity({
@@ -221,7 +222,7 @@ describe('BaseEntity', () => {
     });
 
     it('exposes an not aborted abortSignal before destruction', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
@@ -236,7 +237,7 @@ describe('BaseEntity', () => {
     });
 
     it('aborts the signal when destroy is called', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
@@ -252,7 +253,7 @@ describe('BaseEntity', () => {
     });
 
     it('aborts the signal when immediatelyDestroy is called', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
@@ -268,7 +269,7 @@ describe('BaseEntity', () => {
     });
 
     it('aborts the signal when the entity store is destroyed', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class Abortable extends suite.defineLogicEntity({
@@ -286,7 +287,7 @@ describe('BaseEntity', () => {
 
 describe('ViewEntity', () => {
     it('builds physics from params', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class Sized extends suite.defineEntity({
@@ -323,7 +324,7 @@ describe('ViewEntity', () => {
     });
 
     it('creates a hidden ParticleContainer when createView returns no view', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class NoView extends suite.defineEntity({
@@ -342,7 +343,7 @@ describe('ViewEntity', () => {
     });
 
     it('preserves asset keys', () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
 
         class AssetEntity extends suite.defineEntity({
             key: 'AssetEntity',
@@ -373,7 +374,7 @@ describe('ViewEntity', () => {
     });
 
     it('accesses assets via getAsset accessor', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const assetLoader = new AssetLoader();
         const store = await createTestStore(suite, {
             assetLoader,
@@ -413,7 +414,7 @@ describe('ViewEntity', () => {
     });
 
     it('returns true for isInBounds when entity is within screen', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class InBoundsEntity extends suite.defineEntity({
@@ -449,7 +450,7 @@ describe('ViewEntity', () => {
     });
 
     it('returns false for isInBounds when entity is outside screen', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class OutBoundsEntity extends suite.defineEntity({
@@ -480,7 +481,7 @@ describe('ViewEntity', () => {
     });
 
     it('throws when calling isInBounds on a destroyed entity', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class DestroyedBounds extends suite.defineEntity({
@@ -503,7 +504,7 @@ describe('ViewEntity', () => {
     });
 
     it('removes a view entity via removeEntity', async () => {
-        const suite = createTestSuite();
+        const suite = createAnthaEntity2dSuite();
         const store = await createTestStore(suite);
 
         class PlainView extends suite.defineEntity({

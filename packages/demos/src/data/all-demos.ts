@@ -14,6 +14,7 @@ import {graphics2dDemo} from './demos/2-graphics-2d.demo.js';
 import {eventTriggeredModsDemo} from './demos/20-event-triggered-mods.demo.js';
 import {inputIconsDemo} from './demos/21-input-icons.demo.js';
 import {authoritativeClientDemo} from './demos/22-authoritative-client.demo.js';
+import {physics3dDemo} from './demos/23-physics-3d.demo.js';
 import {audioEngineDemo} from './demos/3-audio-engine.demo.js';
 import {entitiesDemo} from './demos/4-entities.demo.js';
 import {spriteMovementDemo} from './demos/5-sprite-movement.demo.js';
@@ -44,6 +45,7 @@ export const allDemos: AnthaDemo[] = [
     eventTriggeredModsDemo,
     inputIconsDemo,
     authoritativeClientDemo,
+    physics3dDemo,
 ];
 
 export const allDemosByPathKey = arrayToObject(allDemos, (demo) => {

@@ -1,5 +1,6 @@
 import {AssetLoader, createAnthaAssetMod, type Asset} from '@antha/asset';
 import {AnthaEngine, type ModExecuteParams} from '@antha/engine';
+import {BodyType} from '@antha/entity-core';
 import {AnthaMockPixiMod, createMockPixi} from '@antha/graphics-2d';
 import {assert, assertWrap} from '@augment-vir/assert';
 import {awaitedForEach, createArray} from '@augment-vir/common';
@@ -10,7 +11,7 @@ import {
     type AnthaEntity2dModState,
 } from './antha-entity-2d.mod.js';
 import {emptyEntityUpdateParams} from './entity-store-2d.mock.js';
-import {BodyType, ShapeType, type EntityPhysicsDefinition} from './physics.js';
+import {ShapeType, type EntityPhysicsDefinition} from './physics.js';
 
 const ballPhysics = {
     type: BodyType.Dynamic,

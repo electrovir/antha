@@ -1,4 +1,40 @@
+import {type PartialWithUndefined} from '@augment-vir/common';
 import {type Shape} from 'object-shape-tester';
+
+/**
+ * How a physics body moves.
+ *
+ * @category Main
+ */
+export enum BodyType {
+    /** Never moves, like walls and floors. */
+    Static = 'static',
+    /** Moves only by the velocity you set, ignoring forces and collisions. */
+    Kinematic = 'kinematic',
+    /** Moved by forces, gravity, and collisions. */
+    Dynamic = 'dynamic',
+}
+
+/**
+ * The physics body of an entity class, built from a physics engine's `ShapeDefinition`.
+ *
+ * @category Internal
+ */
+export type BaseEntityPhysicsDefinition<ShapeDefinition> = {
+    type: BodyType;
+} & PartialWithUndefined<{
+    /** Entities with no shapes never touch anything. */
+    shapes: ReadonlyArray<ShapeDefinition>;
+    /** Prevents the body from rotating. */
+    fixedRotation: boolean;
+    /**
+     * Slows the body down. Each step is split into several smaller solver steps, and each of those
+     * divides linear velocity by `1 + seconds * linearDamping`, where `seconds` is the length of
+     * the smaller step.
+     */
+    linearDamping: number;
+    angularDamping: number;
+}>;
 
 /**
  * A pair of entity ids whose shapes started or stopped touching.

@@ -1,0 +1,33 @@
+{
+    "compilerOptions": {
+        "outDir": "./dist/",
+        "rootDir": "./src/"
+    },
+    "exclude": [
+        "./configs/",
+        "./coverage/",
+        "./dist-*/",
+        "./dist/",
+        "./node_modules/",
+        "./test-files/",
+        "src/all-files-for-code-coverage.test.ts"
+    ],
+    "extends": "../../configs/tsconfig.base.json",
+    "references": [
+        {
+            "path": "../asset"
+        },
+        {
+            "path": "../entity-core"
+        },
+        {
+            "path": "../engine"
+        },
+        {
+            "path": "../graphics-2d"
+        },
+        {
+            "path": "../graphics-3d"
+        }
+    ]
+}

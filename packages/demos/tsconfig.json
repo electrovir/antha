@@ -27,6 +27,9 @@
             "path": "../entity-2d"
         },
         {
+            "path": "../entity-3d"
+        },
+        {
             "path": "../fps"
         },
         {
@@ -34,6 +37,9 @@
         },
         {
             "path": "../graphics-2d"
+        },
+        {
+            "path": "../graphics-3d"
         },
         {
             "path": "../input"

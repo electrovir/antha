@@ -1,5 +1,7 @@
 // cspell:word pthread
 import {
+    BodyType,
+    type BaseEntityPhysicsDefinition,
     type CollisionFilter,
     type ContactEvents,
     type ContactPair,
@@ -25,20 +27,6 @@ import box2dFactory, {
     type Box2DModule,
 } from 'box2d3-wasm';
 import {defineShape} from 'object-shape-tester';
-
-/**
- * How a physics body moves.
- *
- * @category Main
- */
-export enum BodyType {
-    /** Never moves, like walls and floors. */
-    Static = 'static',
-    /** Moves only by the velocity you set, ignoring forces and collisions. */
-    Kinematic = 'kinematic',
-    /** Moved by forces, gravity, and collisions. */
-    Dynamic = 'dynamic',
-}
 
 /**
  * The geometry of one physics shape.
@@ -99,17 +87,7 @@ export type PhysicsShapeDefinition = (
  *
  * @category Internal
  */
-export type EntityPhysicsDefinition = {
-    type: BodyType;
-} & PartialWithUndefined<{
-    /** Entities with no shapes never touch anything. */
-    shapes: ReadonlyArray<PhysicsShapeDefinition>;
-    /** Prevents the body from rotating. */
-    fixedRotation: boolean;
-    /** Slows linear velocity by `v / (1 + stepSeconds * linearDamping)` every step. */
-    linearDamping: number;
-    angularDamping: number;
-}>;
+export type EntityPhysicsDefinition = BaseEntityPhysicsDefinition<PhysicsShapeDefinition>;
 
 /**
  * Options for the physics world of an entity suite.

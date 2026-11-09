@@ -1,7 +1,8 @@
+import {BodyType} from '@antha/entity-core';
 import {assert} from '@augment-vir/assert';
 import {awaitedForEach, createArray} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
-import {BodyType, PhysicsWorld2d, ShapeType, type EntityPhysicsDefinition} from './physics.js';
+import {PhysicsWorld2d, ShapeType, type EntityPhysicsDefinition} from './physics.js';
 
 const ballDefinition = {
     type: BodyType.Dynamic,
