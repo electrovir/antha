@@ -6,6 +6,7 @@
     "type": "module",
     "scripts": {
         "build": "tsx src/build.script.ts",
+        "build:physics": "tsx src/build-physics.script.ts",
         "compile": "virmator compile",
         "test": "exit 0",
         "test:coverage": "npm test"

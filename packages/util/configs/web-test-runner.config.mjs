@@ -11,14 +11,6 @@ const baseConfig = defineConfig({
 /** @type {import('@web/test-runner').TestRunnerConfig} */
 const webTestRunnerConfig = {
     ...baseConfig,
-    coverageConfig: {
-        ...baseConfig.coverageConfig,
-        exclude: [
-            ...(baseConfig.coverageConfig?.exclude || []),
-            /** Importing it into a test page registers a service worker and reloads the page. */
-            'src/cross-origin-isolation-service-worker.ts',
-        ],
-    },
 };
 
 export default webTestRunnerConfig;

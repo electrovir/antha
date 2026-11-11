@@ -4,6 +4,8 @@ module.exports = {
     ...baseConfig,
     ignorePaths: [
         ...baseConfig.ignorePaths,
+        'packages/entity-*/src/box*d/box*d.*',
+        'packages/entity-*/src/box*d/LICENSE-*',
     ],
     words: [
         ...baseConfig.words,
@@ -12,6 +14,10 @@ module.exports = {
         'desync',
         'desynced',
         'desyncs',
+        'emcc',
+        'emscripten',
+        'heapf',
+        'heapu',
         'gamecube',
         'kenney',
         'lerp',

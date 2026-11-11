@@ -1,6 +1,6 @@
 # @antha/entity-3d
 
-This package provides a pre-built [Antha game engine](https://www.npmjs.com/package/@antha/engine) mod for creating, updating, and rendering 3D entities with [Box3D](https://www.npmjs.com/package/box3d.js) physics. It uses the 3D scene supplied by [`@antha/graphics-3d`](https://npmjs.com/package/@antha/graphics-3d) to display entity views.
+This package provides a pre-built [Antha game engine](https://www.npmjs.com/package/@antha/engine) mod for creating, updating, and rendering 3D entities with [Box3D](https://github.com/erincatto/box3d) physics. It uses the 3D scene supplied by [`@antha/graphics-3d`](https://npmjs.com/package/@antha/graphics-3d) to display entity views.
 
 ## Install
 
@@ -18,6 +18,18 @@ Every entity has a Box3D body, available as `this.physics`. Set its body type an
 Bodies only collide when one of their classes lists the other in `touches` (or sets `touchesSelf`). An entity suite supports at most 64 classes that touch anything. Colliding entities get `contactStart` and `contactEnd` calls.
 
 `updateEntitiesMod` steps physics at a fixed rate, one `update` call per entity per step, and draws each view between the last two steps so motion stays smooth at any frame rate. Set the step length with `createAnthaEntity3dSuite`'s `physics.stepDuration`.
+
+Shapes with `isSensor` report entities that enter and leave them through `sensorStart` and `sensorEnd` instead of colliding. Set `enableHitEvents` on a body to get `contactHit` calls for fast collisions, and set a shape's `oneWayDirection` for platforms that can be jumped up through. Connect two entities with `entityStore.addJoint`. Each joint gets a `jointStrained` call when it pulls harder than its force or torque threshold.
+
+`this.physics` also handles runtime materials (`setMaterial`) and kinematic movement to a target pose (`setTargetTransform`). `entityStore.physicsWorld` handles queries (`castRay`, `castShape`, `overlapBox`, `overlapShape`), explosions (`explode`), and character movement (`castMover`, `collideMover`, `solveMoverPlanes`).
+
+Materials take `rollingResistance` to slow rolling spheres and capsules, and `tangentSpeed` to move whatever touches them along their surface, like a conveyor belt. `entityStore.physicsWorld.setHooks` installs `customFilter` and `preSolve` callbacks, which only run for shapes with `enableCustomFiltering` or `enablePreSolve`, and `mixFriction` and `mixRestitution` callbacks for combining materials.
+
+`entityStore.createSnapshot({includePhysicsState: true})` also saves Box3D's internal state, so loading the snapshot resumes the exact same simulation. This uses an internal Box3D format (the one its replays use), so saved states may not load in a newer Box3D version.
+
+`entityStore.physicsWorld.drawDebug` returns whatever you turn on, such as shapes, joints, contacts, and bounding boxes, as plain geometry to draw however you like. `getProfile`, `getCounters`, and `getAwakeBodyCount` report on the simulation. `startRecording` and `stopRecording` capture every step, and `PhysicsReplay3d.create(recording)` plays a recording back, steps it, and seeks to any frame. `PhysicsReplay3d.replaysExactly(recording)` checks that a recording replays to the same state.
+
+`PhysicsGeometry3d.create()` gives shape math without a world: mass, bounds, overlap and ray tests, shape casts, distances, time of impact, and contacts between single shapes and triangles. It also builds hulls (cylinders, cones, rocks, or from points), meshes, and height fields, and queries their triangles. Its `createTree` makes a `DynamicTree3d`, a bounding-box tree for your own broad-phase queries.
 
 An entity's view is destroyed with its entity, but its geometry and materials are kept because entities often share them. Override `viewDestroyOptions` when each entity owns its own, as below.
 
@@ -192,3 +204,17 @@ const engine = new AnthaEngine<GameState>({
 
 engine.startLoop();
 ```
+
+## Dev
+
+<!-- cspell:word emsdk -->
+
+`src/box3d/box3d.mjs` is Box3D compiled to WebAssembly, together with the C bindings in `src/box3d/bindings.c`. Rebuild it whenever `bindings.c` changes:
+
+1. Install [emsdk](https://emscripten.org/docs/getting_started/downloads.html) into `~/emsdk`.
+2. Put emcc on your path: `export PATH="$HOME/emsdk:$HOME/emsdk/upstream/emscripten:$PATH"`
+3. From the monorepo root, run `cd packages/scripts && npm run build:physics`. This rebuilds both Box2D and Box3D.
+
+The build clones the Box3D source into `node_modules/.cache/antha-physics/` and reuses it on later runs.
+
+To upgrade Box3D, change its `tag` and `commit` in `packages/scripts/src/build-physics.script.ts`, then rebuild. Physics states saved with the old version may not load in the new one.

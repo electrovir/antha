@@ -1,3 +1,4 @@
+export * from './binding-values.js';
 export * from './entity-store.js';
 export * from './entity-suite.js';
 export * from './entity.js';

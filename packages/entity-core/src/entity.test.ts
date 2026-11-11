@@ -188,6 +188,10 @@ describe(BaseEntity.name, () => {
         assert.isUndefined(await entity.render({} as any));
         assert.isUndefined(await entity.contactStart(entity));
         assert.isUndefined(await entity.contactEnd(entity));
+        assert.isUndefined(await entity.contactHit(entity, undefined));
+        assert.isUndefined(await entity.sensorStart(entity));
+        assert.isUndefined(await entity.sensorEnd(entity));
+        assert.isUndefined(await entity.jointStrained({} as any, entity));
         entity.immediatelyDestroy();
     });
 });

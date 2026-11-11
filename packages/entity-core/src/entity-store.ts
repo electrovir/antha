@@ -1,7 +1,7 @@
 import {type AssetLoader} from '@antha/asset';
 import {type ModExecuteParams} from '@antha/engine';
 import {hashObject} from '@antha/util';
-import {assert} from '@augment-vir/assert';
+import {assert, assertWrap, check} from '@augment-vir/assert';
 import {
     awaitedBlockingMap,
     awaitedForEach,
@@ -21,7 +21,10 @@ import {
     type AnyPhysicsWorld,
     type BodyStateOf,
     type ContactPair,
+    type HitOf,
     type InitialBodyStateOf,
+    type JointDefinitionOf,
+    type JointOf,
 } from './physics-world.js';
 
 /**
@@ -111,6 +114,46 @@ export type SerializedEntity<World extends AnyPhysicsWorld = AnyPhysicsWorld> = 
     body: BodyStateOf<World>;
 };
 
+/**
+ * Creates the shape of one joint in a snapshot, given its physics engine's joint definition shape.
+ *
+ * @category Internal
+ */
+export function defineSerializedJointShape<const JointDefinitionShape extends Shape>(
+    jointDefinitionShape: JointDefinitionShape,
+) {
+    return defineShape({
+        entityIndexes: [0],
+        definition: jointDefinitionShape,
+    });
+}
+
+/**
+ * One joint in a snapshot from {@link EntityStore.createSnapshot}.
+ *
+ * @category Internal
+ */
+export type SerializedJoint<World extends AnyPhysicsWorld = AnyPhysicsWorld> = {
+    /** Indexes into the snapshot's `entities` of the two joined entities. */
+    entityIndexes: [
+        number,
+        number,
+    ];
+    definition: JointDefinitionOf<World>;
+};
+
+/**
+ * Everything {@link EntityStore.createSnapshot} saves.
+ *
+ * @category Internal
+ */
+export type EntitySnapshot<World extends AnyPhysicsWorld = AnyPhysicsWorld> = {
+    entities: SerializedEntity<World>[];
+    joints: SerializedJoint<World>[];
+    /** Only saved with `includePhysicsState`. */
+    physicsState?: Uint8Array | undefined;
+};
+
 const defaultStepDuration: AnyDuration = {
     seconds: 1 / 120,
 };
@@ -158,14 +201,30 @@ export abstract class EntityStore<
     public lastStepTime: number | undefined;
     protected nextEntityId = 1;
     protected readonly entitiesById = new Map<number, Entity>();
+    protected nextJointId = 1;
+    protected readonly jointsById = new Map<
+        number,
+        {
+            joint: JointOf<World>;
+            entities: [
+                Entity,
+                Entity,
+            ];
+        }
+    >();
     /** Validates snapshot entries before {@link EntityStore.loadSnapshot} destroys anything. */
     protected readonly serializedEntityShape: Shape;
+    /** Validates snapshot joints before {@link EntityStore.loadSnapshot} destroys anything. */
+    protected readonly serializedJointShape: Shape;
 
     constructor(args: Readonly<EntityStoreConstructorParams<State, World>>) {
         this.assetLoader = args.assetLoader;
         this.state = args.state;
         this.physicsWorld = args.physicsWorld;
         this.serializedEntityShape = defineSerializedEntityShape(args.physicsWorld.bodyStateShape);
+        this.serializedJointShape = defineSerializedJointShape(
+            args.physicsWorld.jointDefinitionShape,
+        );
         this.stepMs = convertDuration(args.stepDuration || defaultStepDuration, {
             milliseconds: true,
         }).milliseconds;
@@ -249,6 +308,56 @@ export abstract class EntityStore<
         await this.callContactHooks(contacts.ended, (entity, otherEntity) => {
             return entity.contactEnd(otherEntity);
         });
+        await this.callSensorHooks(contacts.sensorStarted, (sensor, visitor) => {
+            return sensor.sensorStart(visitor);
+        });
+        await this.callSensorHooks(contacts.sensorEnded, (sensor, visitor) => {
+            return sensor.sensorEnd(visitor);
+        });
+        await awaitedForEach(contacts.hits, async ({entityId, otherEntityId, hit}) => {
+            const entity = this.getEntity(entityId);
+            const otherEntity = this.getEntity(otherEntityId);
+            if (entity && otherEntity) {
+                await entity.contactHit(otherEntity, hit as HitOf<World>);
+            }
+        });
+        await awaitedForEach(contacts.strainedJoints, async (jointId) => {
+            const stored = this.jointsById.get(jointId);
+            if (!stored || stored.entities.some((entity) => entity.isDestroyed)) {
+                return;
+            }
+            await stored.entities[0].jointStrained(stored.joint, stored.entities[1]);
+            await stored.entities[1].jointStrained(stored.joint, stored.entities[0]);
+        });
+    }
+
+    /**
+     * The entity with the given id, such as one from a ray cast or overlap query. Undefined if it
+     * was removed or is marked destroyed.
+     */
+    public getEntity(entityId: number) {
+        const entity = this.entitiesById.get(entityId);
+        return entity?.isDestroyed ? undefined : entity;
+    }
+
+    /** Calls `callHook` on the sensor's entity, skipping pairs where either entity is gone. */
+    protected async callSensorHooks(
+        pairs: ReadonlyArray<Readonly<ContactPair>>,
+        callHook: (sensor: Entity, visitor: Entity) => unknown,
+    ) {
+        await awaitedForEach(
+            pairs,
+            async ([
+                sensorId,
+                visitorId,
+            ]) => {
+                const sensor = this.getEntity(sensorId);
+                const visitor = this.getEntity(visitorId);
+                if (sensor && visitor) {
+                    await callHook(sensor, visitor);
+                }
+            },
+        );
     }
 
     /** Calls `callHook` on both entities of each pair, skipping pairs where either entity is gone. */
@@ -262,15 +371,10 @@ export abstract class EntityStore<
                 firstId,
                 secondId,
             ]) => {
-                const firstEntity = this.entitiesById.get(firstId);
-                const secondEntity = this.entitiesById.get(secondId);
+                const firstEntity = this.getEntity(firstId);
+                const secondEntity = this.getEntity(secondId);
 
-                if (
-                    !firstEntity ||
-                    !secondEntity ||
-                    firstEntity.isDestroyed ||
-                    secondEntity.isDestroyed
-                ) {
+                if (!firstEntity || !secondEntity) {
                     return;
                 }
 
@@ -307,9 +411,63 @@ export abstract class EntityStore<
         return this.entityInstanceMap.getInstances(entityClassConstructor);
     }
 
-    /** Remove an entity, and its body and view, from the store. */
+    /**
+     * Connects the bodies of two entities in this store. The joint is removed along with either
+     * entity.
+     */
+    public addJoint({
+        entities,
+        definition,
+    }: Readonly<{
+        entities: Readonly<
+            [
+                Entity,
+                Entity,
+            ]
+        >;
+        definition: JointDefinitionOf<World>;
+    }>): JointOf<World> {
+        this.assertNotDestroyed();
+        if (entities[0] === entities[1]) {
+            throw new Error('Cannot join an entity to itself.');
+        }
+        entities.forEach((entity) => {
+            if (this.getEntity(entity.entityId) !== entity) {
+                throw new Error(`Cannot join entity ${entity.entityId}: it is not in this store.`);
+            }
+        });
+        const jointId = this.nextJointId++;
+        const joint = this.physicsWorld.createJoint({
+            bodies: [
+                entities[0].physics,
+                entities[1].physics,
+            ],
+            definition,
+            jointId,
+        }) as JointOf<World>;
+        this.jointsById.set(jointId, {
+            joint,
+            entities: [...entities],
+        });
+        return joint;
+    }
+
+    /** Disconnects a joint from {@link EntityStore.addJoint}. Does nothing if it was already removed. */
+    public removeJoint(joint: JointOf<World>) {
+        this.assertNotDestroyed();
+        if (this.jointsById.delete(joint.jointId)) {
+            this.physicsWorld.destroyJoint(joint);
+        }
+    }
+
+    /** Remove an entity, and its joints, body, and view, from the store. */
     public removeEntity(entity: Entity) {
         this.assertNotDestroyed();
+        this.jointsById.forEach((stored) => {
+            if (stored.entities.includes(entity)) {
+                this.removeJoint(stored.joint);
+            }
+        });
         this.currentEntityInstances.delete(entity);
         this.entityInstanceMap.remove(entity);
         this.entitiesById.delete(entity.entityId);
@@ -339,26 +497,82 @@ export abstract class EntityStore<
     }
 
     /**
-     * Serializes every current entity, in update order, for {@link EntityStore.loadSnapshot}.
-     * Entities that are marked destroyed but not yet removed are skipped.
+     * Serializes every current entity, in update order, and every joint, in creation order, for
+     * {@link EntityStore.loadSnapshot}. Entities that are marked destroyed but not yet removed are
+     * skipped, along with their joints.
+     *
+     * With `includePhysicsState`, also saves the physics engine's internal state, so that loading
+     * the snapshot continues the simulation exactly as if it never stopped. Box3D can't save its
+     * state.
      */
-    public createSnapshot(): SerializedEntity<World>[] {
+    public createSnapshot({
+        includePhysicsState,
+    }: Readonly<{
+        includePhysicsState?: boolean | undefined;
+    }> = {}): EntitySnapshot<World> {
         this.assertNotDestroyed();
 
-        return [...this.currentEntityInstances]
-            .filter((entity) => !entity.isDestroyed)
-            .map((entity) => {
+        const entities = [...this.currentEntityInstances].filter((entity) => !entity.isDestroyed);
+        const entityIndexes = new Map(
+            entities.map((entity, index) => {
+                return [
+                    entity,
+                    index,
+                ];
+            }),
+        );
+        const joints = [...this.jointsById.values()].flatMap(({joint, entities: joined}) => {
+            const firstIndex = entityIndexes.get(joined[0]);
+            const secondIndex = entityIndexes.get(joined[1]);
+            return firstIndex == undefined || secondIndex == undefined
+                ? []
+                : [
+                      {
+                          joint,
+                          entityIndexes: [
+                              firstIndex,
+                              secondIndex,
+                          ] satisfies SerializedJoint['entityIndexes'],
+                      },
+                  ];
+        });
+
+        return {
+            entities: entities.map((entity) => {
                 return {
                     entityKey: entity.entityDefinition.entityKey,
                     serializedParams: entity.serialize(),
                     body: entity.physics.getState() as BodyStateOf<World>,
                 };
-            });
+            }),
+            joints: joints.map(({joint, entityIndexes}) => {
+                return {
+                    entityIndexes,
+                    definition: joint.getDefinition() as JointDefinitionOf<World>,
+                };
+            }),
+            ...(includePhysicsState
+                ? {
+                      physicsState: this.physicsWorld.createPhysicsState({
+                          bodies: entities.map((entity) => entity.physics),
+                          droppedBodies: [...this.currentEntityInstances].flatMap((entity) => {
+                              return entity.isDestroyed
+                                  ? [
+                                        entity.physics,
+                                    ]
+                                  : [];
+                          }),
+                          joints: joints.map(({joint}) => joint),
+                      }),
+                  }
+                : {}),
+        };
     }
 
     /**
      * Hashes {@link EntityStore.createSnapshot} with `hashObject` from `@antha/util`, so it covers
-     * every entity's params and body state. Compare this across lock-step peers to detect desyncs.
+     * every entity's params and body state and every joint. Compare this across lock-step peers to
+     * detect desyncs.
      */
     public hashEntities() {
         return hashObject(this.createSnapshot());
@@ -366,18 +580,21 @@ export abstract class EntityStore<
 
     /**
      * Immediately destroys every current entity, resets the physics world, and recreates the
-     * entities from a snapshot made by {@link EntityStore.createSnapshot}, in the same order. Only
-     * entity params and body state are restored. The physics engine's internal state (such as which
-     * contacts are already touching) starts over, so lock-step peers must all load the snapshot on
-     * the same frame to stay in sync. Every entity class in the snapshot must be registered in this
-     * store (see `preregisteredEntities`).
+     * entities and then the joints from a snapshot made by {@link EntityStore.createSnapshot}, in
+     * the same order. Unless the snapshot has a `physicsState`, only entity params, body state, and
+     * joint definitions are restored. The physics engine's internal state (such as which contacts
+     * are already touching) starts over, so lock-step peers must all load the snapshot on the same
+     * frame to stay in sync. Every entity class in the snapshot must be registered in this store
+     * (see `preregisteredEntities`).
      *
      * The snapshot is validated before any entity is destroyed, so a malformed snapshot throws and
      * leaves the current entities in place.
      */
-    public async loadSnapshot(snapshot: ReadonlyArray<Readonly<SerializedEntity<World>>>) {
-        assert.isArray(snapshot, 'Entity snapshot must be an array.');
-        snapshot.forEach((serializedEntity, index) => {
+    public async loadSnapshot(snapshot: Readonly<EntitySnapshot<World>>) {
+        assert.isObject(snapshot, 'Entity snapshot must be an object.');
+        assert.isArray(snapshot.entities, 'Entity snapshot entities must be an array.');
+        assert.isArray(snapshot.joints, 'Entity snapshot joints must be an array.');
+        snapshot.entities.forEach((serializedEntity, index) => {
             assertValidShape(
                 serializedEntity,
                 this.serializedEntityShape,
@@ -385,6 +602,42 @@ export abstract class EntityStore<
                 `Invalid entity snapshot entry at index ${index}`,
             );
         });
+        snapshot.joints.forEach((serializedJoint, index) => {
+            assertValidShape(
+                serializedJoint,
+                this.serializedJointShape,
+                {},
+                `Invalid joint snapshot entry at index ${index}`,
+            );
+            const hasValidIndexes =
+                check.isLengthExactly(serializedJoint.entityIndexes, 2) &&
+                serializedJoint.entityIndexes[0] !== serializedJoint.entityIndexes[1] &&
+                serializedJoint.entityIndexes.every((entityIndex) => {
+                    return (
+                        Number.isInteger(entityIndex) &&
+                        entityIndex >= 0 &&
+                        entityIndex < snapshot.entities.length
+                    );
+                });
+            if (!hasValidIndexes) {
+                throw new Error(
+                    `Invalid joint snapshot entry at index ${index}: entityIndexes must be two different indexes into entities.`,
+                );
+            }
+        });
+
+        if (snapshot.physicsState != undefined) {
+            assert.instanceOf(
+                snapshot.physicsState,
+                Uint8Array,
+                'Entity snapshot physicsState must be a Uint8Array.',
+            );
+            this.physicsWorld.assertValidPhysicsState({
+                state: snapshot.physicsState,
+                bodyCount: snapshot.entities.length,
+                jointCount: snapshot.joints.length,
+            });
+        }
 
         this.destroyAllEntities();
         this.physicsWorld.reset();
@@ -394,9 +647,30 @@ export abstract class EntityStore<
          * `addEntity` inserts each entity only after its async init finishes, so creating them in
          * parallel could order the store differently on each peer.
          */
-        return await awaitedBlockingMap(snapshot, async (serializedEntity) => {
+        const entities = await awaitedBlockingMap(snapshot.entities, async (serializedEntity) => {
             return await this.deserializeEntity(serializedEntity);
         });
+        const joints = snapshot.joints.map(({entityIndexes, definition}) => {
+            return this.addJoint({
+                entities: [
+                    assertWrap.isDefined(entities[entityIndexes[0]]),
+                    assertWrap.isDefined(entities[entityIndexes[1]]),
+                ],
+                definition,
+            });
+        });
+        if (snapshot.physicsState) {
+            this.physicsWorld.restorePhysicsState({
+                state: snapshot.physicsState,
+                bodies: entities.map((entity) => entity.physics),
+                joints,
+            });
+        }
+
+        return {
+            entities,
+            joints,
+        };
     }
 
     /** Create a new instance of the given entity class and add it to this entity store. */
@@ -444,6 +718,7 @@ export abstract class EntityStore<
         this.listenTarget.destroy();
         this.currentEntityInstances.clear();
         this.entitiesById.clear();
+        this.jointsById.clear();
         this.entityInstanceMap.destroy();
         this.physicsWorld.destroy();
         delete (this as Writable<Partial<EntityStore>>).listenTarget;

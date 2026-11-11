@@ -64,6 +64,18 @@ Bodies only collide when one of their classes lists the other in `touches` (or s
 
 `updateEntitiesMod` steps physics at a fixed rate, one `update` call per entity per step, and draws each view between the last two steps so motion stays smooth at any frame rate. Set the step length with `createAnthaEntity2dSuite`'s `physics.stepDuration`. Velocities are in game units per second.
 
+Shapes with `isSensor` report entities that enter and leave them through `sensorStart` and `sensorEnd` instead of colliding. Set `enableHitEvents` on a body to get `contactHit` calls for fast collisions, and set a shape's `oneWayDirection` for platforms that can be jumped up through. Connect two entities with `entityStore.addJoint`. Each joint gets a `jointStrained` call when it pulls harder than its force or torque threshold.
+
+`this.physics` also handles runtime materials (`setMaterial`) and kinematic movement to a target pose (`setTargetTransform`). `entityStore.physicsWorld` handles queries (`castRay`, `castShape`, `overlapBox`, `overlapShape`), explosions (`explode`), and character movement (`castMover`, `collideMover`, `solveMoverPlanes`).
+
+Materials take `rollingResistance` to slow rolling circles and capsules, and `tangentSpeed` to move whatever touches them along their surface, like a conveyor belt. `entityStore.physicsWorld.setHooks` installs `customFilter` and `preSolve` callbacks, which only run for shapes with `enableCustomFiltering` or `enablePreSolve`, and `mixFriction` and `mixRestitution` callbacks for combining materials.
+
+`entityStore.createSnapshot({includePhysicsState: true})` also saves Box2D's internal state, so loading the snapshot resumes the exact same simulation. Box2D marks this format as experimental, so saved states may not load in a newer Box2D version.
+
+`entityStore.physicsWorld.drawDebug` returns whatever you turn on, such as shapes, joints, contacts, and bounding boxes, as plain polygons, segments, and points to draw however you like. `getProfile`, `getCounters`, `getAwakeBodyCount`, and `getStateHash` report on the simulation. `startRecording` and `stopRecording` capture every step, and `PhysicsReplay2d.create(recording)` plays a recording back, steps it, and seeks to any frame. `PhysicsReplay2d.replaysExactly(recording)` checks that a recording replays to the same state.
+
+`PhysicsGeometry2d.create()` gives shape math without a world: mass, bounds, point and ray tests, shape casts, distances, time of impact, and contacts between single shapes. Its `createTree` makes a `DynamicTree2d`, a bounding-box tree for your own broad-phase queries.
+
 <!-- example-link: src/readme-examples/physics-entities.example.ts -->
 
 ```TypeScript
@@ -194,26 +206,16 @@ const engine = new AnthaEngine<GameState>({
 engine.startLoop();
 ```
 
-## Cross-origin isolation
+## Dev
 
-Physics runs a faster Box2D build that uses SIMD (several numbers per CPU instruction) when the page is cross-origin isolated, and a slower one otherwise. Results are identical either way. To make a page cross-origin isolated without server headers, copy `node_modules/@antha/util/dist/cross-origin-isolation-service-worker.js` next to your `index.html` and load it before any other script:
+<!-- cspell:word emsdk -->
 
-```html
-<script type="module" src="cross-origin-isolation-service-worker.js"></script>
-```
+`src/box2d/box2d.mjs` is Box2D compiled to WebAssembly, together with the C bindings in `src/box2d/bindings.c`. Rebuild it whenever `bindings.c` changes:
 
-Skip this if your server already sends cross-origin isolation headers.
+1. Install [emsdk](https://emscripten.org/docs/getting_started/downloads.html) into `~/emsdk`.
+2. Put emcc on your path: `export PATH="$HOME/emsdk:$HOME/emsdk/upstream/emscripten:$PATH"`
+3. From the monorepo root, run `cd packages/scripts && npm run build:physics`. This rebuilds both Box2D and Box3D.
 
-### Vite
+The build clones the Box2D source into `node_modules/.cache/antha-physics/` and reuses it on later runs.
 
-The SIMD physics build contains ES module worker code, even though Antha never starts its workers. Vite bundles workers as IIFE by default, which can't hold that code, so set the worker format to `es` in your Vite config:
-
-```ts
-import {defineConfig} from 'vite';
-
-export default defineConfig({
-    worker: {
-        format: 'es',
-    },
-});
-```
+To upgrade Box2D, change its `tag` and `commit` in `packages/scripts/src/build-physics.script.ts`, then rebuild. Physics states saved with the old version may not load in the new one.

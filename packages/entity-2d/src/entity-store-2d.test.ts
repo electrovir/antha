@@ -1,5 +1,5 @@
 import {BodyType} from '@antha/entity-core';
-import {assert} from '@augment-vir/assert';
+import {assert, assertWrap} from '@augment-vir/assert';
 import {awaitedForEach, createArray, type Coords} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {defineShape} from 'object-shape-tester';
@@ -8,7 +8,13 @@ import {createAnthaEntity2dSuite} from './antha-entity-2d.mod.js';
 import {EntityStore2d, type SerializedEntity2d} from './entity-store-2d.js';
 import {createTestStore, emptyEntityUpdateParams} from './entity-store-2d.mock.js';
 import {type BaseEntity2d, type ViewCreation2d} from './entity.js';
-import {bodyStateShape, ShapeType, type EntityPhysicsDefinition} from './physics.js';
+import {
+    bodyStateShape,
+    JointType,
+    ShapeType,
+    type EntityPhysicsDefinition,
+    type JointDefinition2d,
+} from './physics.js';
 
 const ballPhysics = {
     type: BodyType.Dynamic,
@@ -509,14 +515,14 @@ describe(EntityStore2d.name, () => {
         store.destroy();
     });
 
-    it('snapshots and restores params and body state in order', async () => {
+    it('snapshots and restores params, body state, and joints in order', async () => {
         const {suite, store, Ball} = await createBallSuite();
 
         class Marker extends suite.defineEntity({
             key: 'Marker',
         }) {}
 
-        await store.addEntity(Ball, {
+        const first = await store.addEntity(Ball, {
             params: {
                 name: 'first',
             },
@@ -530,7 +536,7 @@ describe(EntityStore2d.name, () => {
             },
             angularVelocity: 1,
         });
-        await store.addEntity(Marker, {
+        const marker = await store.addEntity(Marker, {
             position: {
                 x: 5,
                 y: 5,
@@ -543,6 +549,35 @@ describe(EntityStore2d.name, () => {
             position: {
                 x: 50,
                 y: 50,
+            },
+        });
+        const jointDefinition = {
+            type: JointType.Distance,
+            frameA: {
+                position: {
+                    x: 0.5,
+                    y: 0,
+                },
+                angle: 0,
+            },
+            length: 4,
+            enableSpring: true,
+            hertz: 2,
+        } as const satisfies JointDefinition2d;
+        store.addJoint({
+            entities: [
+                first,
+                marker,
+            ],
+            definition: jointDefinition,
+        });
+        store.addJoint({
+            entities: [
+                first,
+                destroyed,
+            ],
+            definition: {
+                type: JointType.Weld,
             },
         });
         destroyed.destroy();
@@ -560,8 +595,10 @@ describe(EntityStore2d.name, () => {
 
         assert.deepEquals(
             {
-                keys: snapshot.map((entry) => entry.entityKey),
-                loadedClasses: loaded.map((entity) => entity.constructor),
+                keys: snapshot.entities.map((entry) => entry.entityKey),
+                joints: snapshot.joints,
+                loadedClasses: loaded.entities.map((entity) => entity.constructor),
+                loadedJoints: loaded.joints.map((joint) => joint.getDefinition()),
                 hashesMatch: otherStore.hashEntities() === store.hashEntities(),
             },
             {
@@ -569,9 +606,21 @@ describe(EntityStore2d.name, () => {
                     'Ball',
                     'Marker',
                 ],
+                joints: [
+                    {
+                        entityIndexes: [
+                            0,
+                            1,
+                        ],
+                        definition: jointDefinition,
+                    },
+                ],
                 loadedClasses: [
                     Ball,
                     Marker,
+                ],
+                loadedJoints: [
+                    jointDefinition,
                 ],
                 hashesMatch: true,
             },
@@ -583,6 +632,102 @@ describe(EntityStore2d.name, () => {
 
         store.destroy();
         otherStore.destroy();
+    });
+
+    it('continues the simulation exactly from snapshots with physics states', async () => {
+        const {suite, store, Ball} = await createBallSuite();
+        await awaitedForEach(
+            [
+                0,
+                1.9,
+                3.8,
+                40,
+            ],
+            async (x, index) => {
+                await store.addEntity(Ball, {
+                    params: {
+                        name: `ball ${index}`,
+                    },
+                    position: {
+                        x,
+                        y: index * 0.3,
+                    },
+                    velocity: {
+                        x: index ? 0 : 6,
+                        y: 0,
+                    },
+                });
+            },
+        );
+        const [
+            first,
+            second,
+            ,
+            destroyed,
+        ] = [...store.currentEntityInstances];
+        store.addJoint({
+            entities: [
+                assertWrap.isDefined(first),
+                assertWrap.isDefined(second),
+            ],
+            definition: {
+                type: JointType.Distance,
+                length: 3,
+                enableSpring: true,
+                hertz: 1,
+            },
+        });
+        await stepTimes(store, 20);
+        assertWrap.isDefined(destroyed).destroy();
+        const snapshot = store.createSnapshot({
+            includePhysicsState: true,
+        });
+
+        async function stepAndRead(steppedStore: EntityStore2d) {
+            await stepTimes(steppedStore, 40);
+            return {
+                positions: [...steppedStore.currentEntityInstances].map((entity) => {
+                    return entity.physics.getPosition();
+                }),
+                stateHash: steppedStore.physicsWorld.getStateHash(),
+            };
+        }
+
+        async function createBallStore() {
+            const ballStore = await createTestStore(suite);
+            ballStore.registerEntities({
+                entities: [
+                    Ball,
+                ],
+            });
+            return ballStore;
+        }
+
+        const expected = await stepAndRead(store);
+        const stateStore = await createBallStore();
+        await stateStore.loadSnapshot(snapshot);
+        const plainStore = await createBallStore();
+        await plainStore.loadSnapshot({
+            ...snapshot,
+            physicsState: undefined,
+        });
+        const fromState = await stepAndRead(stateStore);
+        const fromPlain = await stepAndRead(plainStore);
+
+        assert.deepEquals(
+            {
+                fromState,
+                plainMatches: fromPlain.stateHash === expected.stateHash,
+            },
+            {
+                fromState: expected,
+                plainMatches: false,
+            },
+        );
+
+        store.destroy();
+        stateStore.destroy();
+        plainStore.destroy();
     });
 
     it('replaces current entities when loading a snapshot', async () => {
@@ -622,11 +767,14 @@ describe(EntityStore2d.name, () => {
 
         await assert.throws(
             () => {
-                return store.loadSnapshot([
-                    {
-                        entityKey: 'Ball',
-                    } as SerializedEntity2d,
-                ]);
+                return store.loadSnapshot({
+                    entities: [
+                        {
+                            entityKey: 'Ball',
+                        } as SerializedEntity2d,
+                    ],
+                    joints: [],
+                });
             },
             {
                 matchMessage: 'Invalid entity snapshot entry at index 0',

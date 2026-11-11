@@ -8,5 +8,6 @@
 **/graphics/
 **/node_modules/
 **/package-lock.json
+packages/entity-*/src/box*d/box*d.*
 **/tsconfig.tsbuildinfo
 /Icon?

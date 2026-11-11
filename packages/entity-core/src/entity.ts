@@ -18,7 +18,9 @@ import {
     type AnyPhysicsWorld,
     type BodyOf,
     type CollisionFilter,
+    type HitOf,
     type InitialBodyStateOf,
+    type JointOf,
     type PhysicsDefinitionOf,
 } from './physics-world.js';
 
@@ -313,6 +315,32 @@ export abstract class BaseEntity<
     /** Called when this entity stops touching `otherEntity`. Both entities get this call. */
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public contactEnd(otherEntity: BaseEntity): MaybePromise<void> {}
+
+    /**
+     * Called when this entity and `otherEntity` collide faster than the world's hit event
+     * threshold, if either entity's physics definition sets `enableHitEvents`. Both entities get
+     * this call, each with the hit as it sees it.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public contactHit(otherEntity: BaseEntity, hit: HitOf<World>): MaybePromise<void> {}
+
+    /**
+     * Called on an entity with a sensor shape when `visitorEntity` starts overlapping it. Only the
+     * sensor's entity gets this call.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public sensorStart(visitorEntity: BaseEntity): MaybePromise<void> {}
+
+    /** Called on an entity with a sensor shape when `visitorEntity` stops overlapping it. */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public sensorEnd(visitorEntity: BaseEntity): MaybePromise<void> {}
+
+    /**
+     * Called after every step in which `joint` pulls harder than its force or torque threshold.
+     * Both of the joint's entities get this call. Remove the joint here to make it breakable.
+     */
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public jointStrained(joint: JointOf<World>, otherEntity: BaseEntity): MaybePromise<void> {}
 
     /** Called by the entity store once, after construction and before the entity is stored. */
     public initInstance(): MaybePromise<void> {}

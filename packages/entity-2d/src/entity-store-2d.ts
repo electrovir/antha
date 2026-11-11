@@ -1,10 +1,13 @@
 import {
     defineSerializedEntityShape,
+    defineSerializedJointShape,
     EntityStore,
     type AddEntityOptions,
     type AddEntityParams,
+    type EntitySnapshot,
     type EntityStoreConstructorParams,
     type SerializedEntity,
+    type SerializedJoint,
 } from '@antha/entity-core';
 import {type PixiApplication} from '@antha/graphics-2d';
 import {type AnyObject, type PartialWithUndefined, type Writable} from '@augment-vir/common';
@@ -12,6 +15,7 @@ import {type AnyDuration} from 'date-vir';
 import {type BaseEntity2d, type Entity2dConstructor} from './entity.js';
 import {
     bodyStateShape,
+    jointDefinition2dShape,
     type InitialBodyState,
     type PhysicsOptions,
     type PhysicsWorld2d,
@@ -78,6 +82,27 @@ export const serializedEntity2dShape = defineSerializedEntityShape(bodyStateShap
  * @category Internal
  */
 export type SerializedEntity2d = SerializedEntity<PhysicsWorld2d>;
+
+/**
+ * Shape definition for {@link SerializedJoint2d}.
+ *
+ * @category Internal
+ */
+export const serializedJoint2dShape = defineSerializedJointShape(jointDefinition2dShape);
+
+/**
+ * One joint in a snapshot from {@link EntityStore.createSnapshot}.
+ *
+ * @category Internal
+ */
+export type SerializedJoint2d = SerializedJoint<PhysicsWorld2d>;
+
+/**
+ * A snapshot from {@link EntityStore.createSnapshot}.
+ *
+ * @category Internal
+ */
+export type EntitySnapshot2d = EntitySnapshot<PhysicsWorld2d>;
 
 function interpolate({
     start,

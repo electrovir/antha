@@ -11,7 +11,8 @@ export default [
     ...defineEslintConfig(__dirname),
     {
         ignores: [
-            /** Add file globs that should be ignored. */
+            /** Emscripten output from `npm run build:physics` in `packages/scripts`. */
+            'packages/entity-*/src/box*d/box*d.*',
         ],
     },
     {

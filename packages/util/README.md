@@ -4,7 +4,6 @@ This package provides small game dev focused utilities that are made for use wit
 
 -   stabilized, seeded random functions
 -   stabilized Math operations through rounding
--   a service worker that makes a page cross-origin isolated on hosts that can't set headers (see the [`@antha/entity-2d` README](https://www.npmjs.com/package/@antha/entity-2d#cross-origin-isolation))
 
 ## Install
 

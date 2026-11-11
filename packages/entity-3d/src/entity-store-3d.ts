@@ -2,17 +2,25 @@
 
 import {
     defineSerializedEntityShape,
+    defineSerializedJointShape,
     EntityStore,
     type AddEntityOptions,
     type AddEntityParams,
+    type EntitySnapshot,
     type EntityStoreConstructorParams,
     type SerializedEntity,
+    type SerializedJoint,
 } from '@antha/entity-core';
 import {lerp, type View3D} from '@antha/graphics-3d';
 import {type AnyObject, type PartialWithUndefined, type Writable} from '@augment-vir/common';
 import {type AnyDuration} from 'date-vir';
 import {type BaseEntity3d, type Entity3dConstructor} from './entity.js';
-import {bodyStateShape, type InitialBodyState, type PhysicsWorld3d} from './physics.js';
+import {
+    bodyStateShape,
+    jointDefinition3dShape,
+    type InitialBodyState,
+    type PhysicsWorld3d,
+} from './physics.js';
 
 /**
  * Options for {@link EntityStore.addEntity}.
@@ -71,6 +79,27 @@ export const serializedEntity3dShape = defineSerializedEntityShape(bodyStateShap
  * @category Internal
  */
 export type SerializedEntity3d = SerializedEntity<PhysicsWorld3d>;
+
+/**
+ * Shape definition for {@link SerializedJoint3d}.
+ *
+ * @category Internal
+ */
+export const serializedJoint3dShape = defineSerializedJointShape(jointDefinition3dShape);
+
+/**
+ * One joint in a snapshot from {@link EntityStore.createSnapshot}.
+ *
+ * @category Internal
+ */
+export type SerializedJoint3d = SerializedJoint<PhysicsWorld3d>;
+
+/**
+ * A snapshot from {@link EntityStore.createSnapshot}.
+ *
+ * @category Internal
+ */
+export type EntitySnapshot3d = EntitySnapshot<PhysicsWorld3d>;
 
 /**
  * The top level storage class of all 3D entities. Add entities with {@link EntityStore.addEntity}.
