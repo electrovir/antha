@@ -127,9 +127,10 @@ export type AnthaEntity3dModOptions = EntitySuiteOptions &
 
 /**
  * Creates an entity update mod and entity factories. Entities defined by one suite can only touch
- * each other, and a suite supports at most 64 entity classes that touch anything.
+ * each other, and a suite supports at most `maxCollisionCategories` entity classes that touch
+ * anything.
  *
- * @category Pre-built Mods
+ * @category Pre-Built Mods
  */
 export function createAnthaEntity3dSuite<ExtraState extends AnyObject>(
     options: Readonly<AnthaEntity3dModOptions> = {},
@@ -177,9 +178,13 @@ export function createAnthaEntity3dSuite<ExtraState extends AnyObject>(
          * the options given to `createAnthaEntity3dSuite`.
          */
         updateEntitiesMod,
-        defineEntity: defineEntity as DefineEntity3d<AnthaEntity3dModState<ExtraState>>,
+        defineEntity: defineEntity satisfies (
+            args: DefineEntity3dArgs<any, any>,
+        ) => unknown as DefineEntity3d<AnthaEntity3dModState<ExtraState>>,
         /** Defines an entity with no physics shapes, for game logic that needs no body. */
-        defineLogicEntity: defineEntity as DefineLogicEntity3d<AnthaEntity3dModState<ExtraState>>,
+        defineLogicEntity: defineEntity satisfies (
+            args: DefineLogicEntity3dArgs<any, any>,
+        ) => unknown as DefineLogicEntity3d<AnthaEntity3dModState<ExtraState>>,
         /**
          * Creates an entity store, and its Box3D world, with this suite's physics options.
          * `updateEntitiesMod` creates one automatically if `state.entityStore` is empty.

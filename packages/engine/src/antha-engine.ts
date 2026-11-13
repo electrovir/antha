@@ -478,7 +478,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> extends GenericLis
     }
 
     /** Lets the screen dim or lock again. */
-    protected async allowScreenSleep() {
+    protected async releaseScreenWakeLock() {
         const screenWakeLock = this.screenWakeLock;
         this.screenWakeLock = undefined;
         globalThis.document.removeEventListener('visibilitychange', this.handleVisibilityChange);
@@ -559,7 +559,7 @@ export class AnthaEngine<State extends AnyObject = AnyObject> extends GenericLis
     /** Execute a single tick on each render frame. */
     protected async runTickInLoop() {
         if (!this.isLoopRunning) {
-            await this.allowScreenSleep();
+            await this.releaseScreenWakeLock();
             return;
         }
 

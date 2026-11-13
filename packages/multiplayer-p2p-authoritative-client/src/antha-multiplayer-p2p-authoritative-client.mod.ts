@@ -4,11 +4,7 @@ import {
     emptyApiAndRoomConnectionState,
     MultiplayerControllerConnectionEvent,
 } from '@antha/multiplayer-core';
-import {
-    type JsonCompatibleValue,
-    type PartialWithUndefined,
-    type SelectFrom,
-} from '@augment-vir/common';
+import {type JsonCompatibleValue, type PartialWithUndefined} from '@augment-vir/common';
 import {
     P2pAuthoritativeClientMultiplayerController,
     type P2pAuthoritativeClientMultiplayerControllerParams,
@@ -41,16 +37,7 @@ export type AnthaMultiplayerP2pAuthoritativeClientOptions<
     State extends
         AnthaMultiplayerP2pAuthoritativeClientState<ClientState> = AnthaMultiplayerP2pAuthoritativeClientState<ClientState>,
 > = PartialWithUndefined<
-    SelectFrom<
-        P2pAuthoritativeClientMultiplayerControllerParams<ClientState>,
-        {
-            acceptConnection: true;
-            debugMultiplayer: true;
-            gameId: true;
-            sendInterval: true;
-            hostHandoffDelay: true;
-        }
-    >
+    Omit<P2pAuthoritativeClientMultiplayerControllerParams<ClientState>, 'createLocalState'>
 > &
     PartialWithUndefined<{
         /**
@@ -97,11 +84,8 @@ export function createAnthaMultiplayerP2pAuthoritativeClientMod<
                 {
                     multiplayerController:
                         new P2pAuthoritativeClientMultiplayerController<ClientState>({
+                            ...options,
                             gameId: options.gameId || 'antha',
-                            acceptConnection: options.acceptConnection,
-                            debugMultiplayer: options.debugMultiplayer,
-                            sendInterval: options.sendInterval,
-                            hostHandoffDelay: options.hostHandoffDelay,
                             createLocalState: createLocalState
                                 ? () => {
                                       return createLocalState({

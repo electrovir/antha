@@ -44,6 +44,14 @@ class MockP2pLockStepMultiplayerController extends P2pLockStepMultiplayerControl
         this.roomConnection = roomConnection;
     }
 
+    public attachRoomConnectionForTest(
+        roomConnection: MultiplayerRoomConnection<P2pLockStepMessage<string>>,
+        hostTimeout: AnyDuration,
+    ) {
+        this.hostTimeout = hostTimeout;
+        this.attachMultiplayerRoomConnection(roomConnection);
+    }
+
     public setFrameMsForTest(frameMs: number) {
         this.frameMs = frameMs;
     }
@@ -253,6 +261,7 @@ function createFakeConnection({
     host?: boolean | undefined;
 }> = {}): MultiplayerRoomConnection<P2pLockStepMessage<string>> & {
     setHost: (isHost: boolean) => void;
+    droppedHostCount: () => number;
     sentMessages: ReadonlyArray<P2pLockStepMessage<string>>;
     onlyOneClientMessages: ReadonlyArray<{
         clientId: ClientId;
@@ -266,6 +275,7 @@ function createFakeConnection({
         message: P2pLockStepMessage<string>;
     }[] = [];
     let isHost = host;
+    let droppedHostCount = 0;
 
     return {
         clientId,
@@ -275,6 +285,12 @@ function createFakeConnection({
         sentMessages,
         onlyOneClientMessages,
         destroy() {},
+        dropHost() {
+            droppedHostCount++;
+        },
+        droppedHostCount() {
+            return droppedHostCount;
+        },
         getAllClientIds() {
             return [
                 this.clientId,
@@ -788,6 +804,37 @@ describe(P2pLockStepMultiplayerController.name, () => {
         );
     });
 
+    it('drops the host once it stops sending frames', async () => {
+        const controller = createController();
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        const hostClientId = createMultiplayerId.client();
+
+        controller.attachRoomConnectionForTest(fakeConnection, {
+            milliseconds: 1500,
+        });
+        const frameIntervalId = globalThis.setInterval(() => {
+            controller.roomController.dispatch(
+                new MultiplayerControllerMessageEvent(hostClientId, createFrameMessage([])),
+            );
+        }, 100);
+        await wait({
+            milliseconds: 2500,
+        });
+        const droppedWhileSendingFrames = fakeConnection.droppedHostCount();
+        globalThis.clearInterval(frameIntervalId);
+
+        await waitUntil.isTruthy(() => fakeConnection.droppedHostCount(), {
+            timeout: {
+                seconds: 5,
+            },
+        });
+        controller.destroy();
+
+        assert.strictEquals(droppedWhileSendingFrames, 0);
+    });
+
     it('sends reported host state hashes with the next frame without holding frames', () => {
         const controller = createController({
             desyncCheckInterval: {
@@ -1245,6 +1292,92 @@ describe(P2pLockStepMultiplayerController.name, () => {
             {
                 packets: [],
                 type: P2pLockStepMessageType.Frame,
+            },
+        ]);
+        controller.destroy();
+    });
+
+    it('stops producing frames and awaits a state sync once replaced as host', () => {
+        const controller = createController({
+            enableStateSync: true,
+        });
+        controller.hasManualClocksForTest = true;
+        const fakeConnection = createFakeConnection({
+            host: true,
+        });
+        controller.setRoomConnectionForTest(fakeConnection);
+        controller.roomController.dispatch(
+            new MultiplayerControllerClientStatusEvent({
+                detail: {
+                    newHost: controller.localClientIdForTest,
+                },
+            }),
+        );
+        const hadFrameClock = controller.getNextFrameTimeForTest() != undefined;
+
+        controller.roomController.dispatch(
+            new MultiplayerControllerClientStatusEvent({
+                detail: {
+                    lostHost: controller.localClientIdForTest,
+                },
+            }),
+        );
+
+        assert.deepEquals(
+            {
+                hadFrameClock,
+                hasFrameClock: controller.getNextFrameTimeForTest() != undefined,
+                awaitingStateSync: controller.awaitingStateSync,
+            },
+            {
+                hadFrameClock: true,
+                hasFrameClock: false,
+                awaitingStateSync: true,
+            },
+        );
+        controller.destroy();
+    });
+
+    it('keeps awaiting frames when a member loses its host', () => {
+        const controller = createController({
+            enableStateSync: true,
+        });
+        controller.setRoomConnectionForTest(
+            createFakeConnection({
+                host: false,
+            }),
+        );
+        controller.roomController.dispatch(
+            new MultiplayerControllerClientStatusEvent({
+                detail: {
+                    lostHost: controller.localClientIdForTest,
+                },
+            }),
+        );
+
+        assert.isFalse(controller.awaitingStateSync);
+        controller.destroy();
+    });
+
+    it('sends readiness actions again after reconnecting to a host', () => {
+        const controller = createController();
+        const fakeConnection = createFakeConnection({
+            host: false,
+        });
+        controller.setRoomConnectionForTest(fakeConnection);
+        controller.roomController.dispatch(
+            new MultiplayerControllerClientStatusEvent({
+                detail: {
+                    connectedToHost: createMultiplayerId.client(),
+                },
+            }),
+        );
+
+        assert.deepEquals(fakeConnection.sentMessages, [
+            {
+                actions: [],
+                sourceClientId: fakeConnection.clientId,
+                type: P2pLockStepMessageType.Actions,
             },
         ]);
         controller.destroy();

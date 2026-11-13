@@ -131,9 +131,9 @@ describe(createEntitySuite.name, () => {
         const store = await runMod(0);
         await store.addEntity(Counter);
 
-        await runMod(store.stepMs * 1.5);
+        await runMod(store.stepDuration.milliseconds * 1.5);
         const afterFirstRun = counts.update;
-        await runMod(store.stepMs * 0.6);
+        await runMod(store.stepDuration.milliseconds * 0.6);
         const afterSecondRun = counts.update;
         await runMod(10_000);
 
@@ -171,7 +171,7 @@ describe(createEntitySuite.name, () => {
         const store = await runMod(0);
         await store.addEntity(Counter);
 
-        await runMod(store.stepMs * 3);
+        await runMod(store.stepDuration.milliseconds * 3);
 
         assert.deepEquals(counts, {
             update: 0,

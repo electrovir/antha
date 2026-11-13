@@ -11,8 +11,9 @@ import {
     type MultiplayerRoomConnection,
 } from '@antha/multiplayer-core';
 import {assert, assertWrap, waitUntil} from '@augment-vir/assert';
-import {createArray, type PartialWithUndefined, selectFrom} from '@augment-vir/common';
+import {createArray, type PartialWithUndefined, selectFrom, wait} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
+import {type AnyDuration} from 'date-vir';
 import {
     type ClientStateUpdate,
     MultiplayerControllerClientLeaveEvent,
@@ -37,9 +38,15 @@ type SentMessage = {
 
 type FakeRoomConnection = MultiplayerRoomConnection<TestMessage> & {
     sentMessages: SentMessage[];
+    /** Set this to change who is connected, as a real connection does when members come or go. */
+    connectedClientIds: ReadonlyArray<ClientId>;
 };
 
 class TestController extends P2pAuthoritativeClientMultiplayerController<TestClientState> {
+    public setHostTimeoutForTest(hostTimeout: AnyDuration) {
+        this.hostTimeout = hostTimeout;
+    }
+
     public sendClientStatesForTest() {
         this.sendClientStates();
     }
@@ -67,16 +74,18 @@ function createFakeRoomConnection({
     return {
         clientId: createMultiplayerId.client(),
         sentMessages,
+        connectedClientIds,
         destroy() {},
+        dropHost() {},
         getAllClientIds() {
             return [
                 this.clientId,
-                ...connectedClientIds,
+                ...this.connectedClientIds,
             ];
         },
         getConnectedClientIds() {
             return [
-                ...connectedClientIds,
+                ...this.connectedClientIds,
             ];
         },
         isConnected() {
@@ -320,15 +329,34 @@ describe(P2pAuthoritativeClientMultiplayerController.name, () => {
             ]),
         );
         joined.receive(hostClientId, {
-            type: P2pAuthoritativeClientMessageType.ClientLeave,
-            clientId: otherClientId,
+            type: P2pAuthoritativeClientMessageType.ClientList,
+            clientIds: [
+                hostClientId,
+                roomConnection.clientId,
+            ],
         });
         joined.receive(hostClientId, {
-            type: P2pAuthoritativeClientMessageType.ClientLeave,
-            clientId: otherClientId,
+            type: P2pAuthoritativeClientMessageType.ClientList,
+            clientIds: [
+                hostClientId,
+                roomConnection.clientId,
+            ],
         });
+        /** A state relayed before the list, arriving late, must not bring the client back. */
+        joined.receive(
+            hostClientId,
+            createStatesMessage([
+                {
+                    clientId: otherClientId,
+                    sentAt: 25,
+                    state: {
+                        x: 25,
+                    },
+                },
+            ]),
+        );
         joined.updateStatus({
-            lostHost: hostClientId,
+            lostHost: roomConnection.clientId,
         });
 
         assert.deepEquals(
@@ -424,8 +452,8 @@ describe(P2pAuthoritativeClientMultiplayerController.name, () => {
             ]),
         );
         joined.receive(firstMemberId, {
-            type: P2pAuthoritativeClientMessageType.ClientLeave,
-            clientId: firstMemberId,
+            type: P2pAuthoritativeClientMessageType.ClientList,
+            clientIds: [],
         });
         joined.controller.sendClientStatesForTest();
         joined.controller.sendClientStatesForTest();
@@ -441,6 +469,9 @@ describe(P2pAuthoritativeClientMultiplayerController.name, () => {
                 },
             ]),
         );
+        roomConnection.connectedClientIds = [
+            firstMemberId,
+        ];
         joined.updateStatus({
             lostMember: secondMemberId,
         });
@@ -492,8 +523,11 @@ describe(P2pAuthoritativeClientMultiplayerController.name, () => {
                     {
                         delivery: undefined,
                         message: {
-                            type: P2pAuthoritativeClientMessageType.ClientLeave,
-                            clientId: secondMemberId,
+                            type: P2pAuthoritativeClientMessageType.ClientList,
+                            clientIds: [
+                                roomConnection.clientId,
+                                firstMemberId,
+                            ],
                         },
                     },
                 ],
@@ -506,6 +540,38 @@ describe(P2pAuthoritativeClientMultiplayerController.name, () => {
             secondMemberId,
             firstMemberId,
         ]);
+    });
+
+    it('ignores member changes on a member', async () => {
+        const hostClientId = createMultiplayerId.client();
+        const roomConnection = createFakeRoomConnection({
+            isHost: false,
+            connectedClientIds: [
+                hostClientId,
+            ],
+        });
+        const joined = await createJoinedController({
+            roomConnection,
+        });
+
+        joined.updateStatus({
+            newMember: createMultiplayerId.client(),
+        });
+        joined.updateStatus({
+            lostMember: createMultiplayerId.client(),
+        });
+
+        assert.deepEquals(
+            {
+                leaveEvents: joined.leaveEvents,
+                sentMessages: roomConnection.sentMessages,
+            },
+            {
+                leaveEvents: [],
+                sentMessages: [],
+            },
+        );
+        joined.controller.destroy();
     });
 
     it('sends the host state to every member on each send interval', async () => {
@@ -824,6 +890,7 @@ describe(P2pAuthoritativeClientMultiplayerController.name, () => {
 
         assert.isAtLeast(roundTrip, 30);
         assert.isBelow(roundTrip, 1000);
+        assert.isBelow(otherStats.longestGap.milliseconds, 1000);
         assert.deepEquals(
             {
                 echoes:
@@ -900,74 +967,162 @@ describe(P2pAuthoritativeClientMultiplayerController.name, () => {
         );
     });
 
-    it('hands off the host while its page is hidden and joins again once shown', async () => {
-        const pageVisibility = {
-            hidden: false,
-        };
-        Object.defineProperty(globalThis.document, 'hidden', {
-            configurable: true,
-            get() {
-                return pageVisibility.hidden;
+    it('drops malformed messages from peers', async () => {
+        const hostClientId = createMultiplayerId.client();
+        const joined = await createJoinedController({
+            roomConnection: createFakeRoomConnection({
+                isHost: false,
+                connectedClientIds: [
+                    hostClientId,
+                ],
+            }),
+        });
+        const validState = {
+            clientId: hostClientId,
+            sentAt: 1,
+            sequence: 1,
+            echoes: [],
+            state: {
+                x: 1,
             },
+        };
+
+        [
+            {
+                type: 'unknown-type',
+            },
+            {
+                type: P2pAuthoritativeClientMessageType.ClientStates,
+            },
+            {
+                type: P2pAuthoritativeClientMessageType.ClientStates,
+                clientStates: [
+                    {
+                        ...validState,
+                        sentAt: 'soon',
+                    },
+                ],
+            },
+            {
+                type: P2pAuthoritativeClientMessageType.ClientStates,
+                clientStates: [
+                    {
+                        ...validState,
+                        echoes: [
+                            {
+                                clientId: hostClientId,
+                            },
+                        ],
+                    },
+                ],
+            },
+            {
+                type: P2pAuthoritativeClientMessageType.ClientList,
+                clientIds: [
+                    5,
+                ],
+            },
+        ].forEach((message) => {
+            joined.receive(hostClientId, message satisfies object as unknown as TestMessage);
+        });
+        joined.receive(hostClientId, {
+            type: P2pAuthoritativeClientMessageType.ClientStates,
+            clientStates: [
+                validState,
+            ],
         });
 
-        function setPageHidden(hidden: boolean) {
-            pageVisibility.hidden = hidden;
-            globalThis.document.dispatchEvent(new Event('visibilitychange'));
-        }
+        assert.deepEquals(joined.stateEvents, [
+            selectFrom(validState, {
+                clientId: true,
+                sentAt: true,
+                state: true,
+            }),
+        ]);
+    });
+
+    it('drops the host once it stops sending', async () => {
+        const roomConnection = createFakeRoomConnection({
+            isHost: false,
+            connectedClientIds: [],
+        });
+        let droppedHostCount = 0;
+        roomConnection.dropHost = () => {
+            droppedHostCount++;
+        };
+        const joined = await createJoinedController({
+            roomConnection,
+        });
+        joined.controller.setHostTimeoutForTest({
+            milliseconds: 1500,
+        });
+        const hostClientId = createMultiplayerId.client();
+        const sendIntervalId = globalThis.setInterval(() => {
+            joined.receive(hostClientId, createStatesMessage([]));
+        }, 100);
+        await wait({
+            milliseconds: 2500,
+        });
+        const droppedWhileSending = droppedHostCount;
+        globalThis.clearInterval(sendIntervalId);
+
+        await waitUntil.isTruthy(() => droppedHostCount, {
+            timeout: {
+                seconds: 5,
+            },
+        });
+        joined.controller.destroy();
+
+        assert.strictEquals(droppedWhileSending, 0);
+    });
+
+    it('waits for an animation frame before each send', async () => {
+        const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+        const animationFrameCallbacks: FrameRequestCallback[] = [];
+        globalThis.requestAnimationFrame = (callback) => {
+            animationFrameCallbacks.push(callback);
+            return animationFrameCallbacks.length;
+        };
 
         try {
-            const memberId = createMultiplayerId.client();
             const roomConnection = createFakeRoomConnection({
-                isHost: true,
-                connectedClientIds: [
-                    memberId,
-                ],
-            });
-            const lonelyRoomConnection = createFakeRoomConnection({
                 isHost: true,
                 connectedClientIds: [],
             });
             const joined = await createJoinedController({
                 roomConnection,
                 params: {
-                    hostHandoffDelay: {
-                        milliseconds: 1,
+                    sendInterval: {
+                        milliseconds: 10,
+                    },
+                    createLocalState() {
+                        return {
+                            x: 1,
+                        };
                     },
                 },
             });
-            const lonely = await createJoinedController({
-                roomConnection: lonelyRoomConnection,
-                params: {
-                    hostHandoffDelay: {
-                        milliseconds: 1,
-                    },
-                },
+            await wait({
+                milliseconds: 100,
             });
-
-            setPageHidden(true);
-            await waitUntil.isFalse(() => joined.controller.isConnected());
-            assert.isTrue(lonely.controller.isConnected());
-
-            setPageHidden(false);
-            await waitUntil.isTrue(() => joined.controller.isConnected());
-
-            setPageHidden(true);
-            await waitUntil.isFalse(() => joined.controller.isConnected());
-            const failedJoins: Error[] = [];
-            joined.controller.roomController.joinOrCreateRoom = () => {
-                const error = new Error('room server is down');
-                failedJoins.push(error);
-                return Promise.reject(error);
-            };
-            setPageHidden(false);
-            await waitUntil.isLengthExactly(1, () => failedJoins);
-
-            assert.isFalse(joined.controller.isConnected());
+            const sendsBeforeAnimationFrame = roomConnection.sentMessages.length;
+            animationFrameCallbacks.forEach((callback) => callback(performance.now()));
             joined.controller.destroy();
-            lonely.controller.destroy();
+
+            assert.deepEquals(
+                {
+                    sendsBeforeAnimationFrame,
+                    pendingAnimationFrames: animationFrameCallbacks.length,
+                    sendsAfterAnimationFrame: roomConnection.sentMessages.length,
+                },
+                {
+                    sendsBeforeAnimationFrame: 0,
+                    pendingAnimationFrames: 1,
+                    sendsAfterAnimationFrame: 1,
+                },
+            );
         } finally {
-            Reflect.deleteProperty(globalThis.document, 'hidden');
+            globalThis.requestAnimationFrame = originalRequestAnimationFrame;
         }
     });
 });

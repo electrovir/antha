@@ -4,10 +4,7 @@ This package provides a pre-built [Antha game engine](https://www.npmjs.com/pack
 
 ## Install
 
-`@pixi/3d` is a peer dependency and is still in closed beta, so it isn't on npm. Install the beta tarball you were given first:
-
 ```sh
-npm i ./pixi-3d-0.1.0-beta.2.tgz
 npm i @antha/entity-3d
 ```
 

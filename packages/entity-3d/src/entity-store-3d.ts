@@ -4,6 +4,7 @@ import {
     defineSerializedEntityShape,
     defineSerializedJointShape,
     EntityStore,
+    interpolate,
     type AddEntityOptions,
     type AddEntityParams,
     type EntitySnapshot,
@@ -11,9 +12,8 @@ import {
     type SerializedEntity,
     type SerializedJoint,
 } from '@antha/entity-core';
-import {lerp, type View3D} from '@antha/graphics-3d';
-import {type AnyObject, type PartialWithUndefined, type Writable} from '@augment-vir/common';
-import {type AnyDuration} from 'date-vir';
+import {type View3D} from '@antha/graphics-3d';
+import {type AnyObject, type Writable} from '@augment-vir/common';
 import {type BaseEntity3d, type Entity3dConstructor} from './entity.js';
 import {
     bodyStateShape,
@@ -45,15 +45,10 @@ export type AddEntity3dParams<ThisConstructor extends Entity3dConstructor> = Add
  *
  * @category Internal
  */
-export type EntityStore3dPhysicsOptions = PartialWithUndefined<{
-    /**
-     * How much time each {@link EntityStore.updateAllEntities} call simulates. Shorter steps cost
-     * more but let fast bodies collide more accurately.
-     *
-     * @default {seconds: 1 / 120}
-     */
-    stepDuration: AnyDuration;
-}>;
+export type EntityStore3dPhysicsOptions = Pick<
+    EntityStoreConstructorParams<AnyObject, PhysicsWorld3d>,
+    'stepDuration'
+>;
 
 /**
  * Parameters for the constructor of {@link EntityStore3d}.
@@ -123,9 +118,21 @@ export class EntityStore3d<State extends AnyObject = any> extends EntityStore<
     protected override placeView(entity: BaseEntity3d, progress: number) {
         const {previousTransform, currentTransform} = entity.physics;
         entity.view.position.set(
-            lerp(previousTransform.position.x, currentTransform.position.x, progress),
-            lerp(previousTransform.position.y, currentTransform.position.y, progress),
-            lerp(previousTransform.position.z, currentTransform.position.z, progress),
+            interpolate({
+                start: previousTransform.position.x,
+                end: currentTransform.position.x,
+                progress,
+            }),
+            interpolate({
+                start: previousTransform.position.y,
+                end: currentTransform.position.y,
+                progress,
+            }),
+            interpolate({
+                start: previousTransform.position.z,
+                end: currentTransform.position.z,
+                progress,
+            }),
         );
         entity.view.quaternion
             .copyFrom(previousTransform.rotation)

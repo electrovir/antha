@@ -1,6 +1,6 @@
 {
     "name": "@antha/graphics-3d",
-    "version": "0.28.0",
+    "version": "0.29.0",
     "description": "An Antha mod for rendering 3D graphics with PixiJS 3D.",
     "keywords": [
         "vir",
@@ -39,25 +39,25 @@
         "@augment-vir/common": "^32.7.0"
     },
     "devDependencies": {
-        "@antha/engine": "^0.28.0",
-        "@antha/graphics-2d": "^0.28.0",
-        "@antha/web-test-runner-plugin-pixi": "^0.28.0",
+        "@antha/engine": "^0.29.0",
+        "@antha/graphics-2d": "^0.29.0",
+        "@antha/web-test-runner-plugin-pixi": "^0.29.0",
         "@augment-vir/assert": "^32.7.0",
         "@augment-vir/test": "^32.7.0",
-        "@pixi/3d": "file:../../.not-committed/pixi-3d-0.1.0-beta.2.tgz",
+        "@pixi/3d": "^0.1.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
         "markdown-code-example-inserter": "^3.1.2",
-        "pixi.js": "^8.22.0",
+        "pixi.js": "^8.23.0",
         "typedoc": "^0.28.20"
     },
     "peerDependencies": {
-        "@antha/engine": "^0.28.0",
-        "@antha/graphics-2d": "^0.28.0",
-        "@pixi/3d": "^0.1.0-beta.2",
-        "pixi.js": "^8.22.0"
+        "@antha/engine": "^0.29.0",
+        "@antha/graphics-2d": "^0.29.0",
+        "@pixi/3d": "^0.1.0",
+        "pixi.js": "^8.23.0"
     },
     "engines": {
         "node": ">=22"

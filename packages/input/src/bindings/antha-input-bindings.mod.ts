@@ -179,17 +179,25 @@ const pageUiTagNames = [
     'TEXTAREA',
 ];
 
+const modifierKeys = [
+    'Alt',
+    'Control',
+    'Meta',
+];
+
 /**
  * Stops the browser's own action (scrolling on Space or the arrows, Tab moving focus, Firefox's
- * quick find) for keys bound to a player action. Cmd shortcuts and keys aimed at the page's own UI
- * (a text field, a focused button or link, an open dialog) are left to the browser.
+ * quick find) for keys bound to a player action. Shortcuts held with Cmd, Ctrl, or Alt, and keys
+ * aimed at the page's own UI (a text field, a focused button or link, an open dialog), are left to
+ * the browser. A bound modifier key pressed on its own is still stopped.
  */
 function preventBoundKeyDefaults(
     state: Readonly<Pick<Partial<AnthaInputBindingsModState>, 'bindingAssignments'>>,
 ) {
     function preventDefault(event: KeyboardEvent) {
         if (
-            event.metaKey ||
+            ((event.metaKey || event.ctrlKey || event.altKey) &&
+                !modifierKeys.includes(event.key)) ||
             event.composedPath().some((target) => {
                 return (
                     target instanceof HTMLElement &&

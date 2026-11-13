@@ -2,6 +2,8 @@ import {type Asset} from '@antha/asset';
 import {defineAnthaMod, SkipExecution, type ModTrigger} from '@antha/engine';
 import {assertWrap} from '@augment-vir/assert';
 import {
+    awaitedForEach,
+    createArray,
     getObjectTypedEntries,
     type MaybePromise,
     type PartialWithUndefined,
@@ -128,7 +130,8 @@ const maxCatchUpDuration: AnyDuration = {
 /**
  * Creates an entity update mod and entity definer for one physics engine and renderer. Entity
  * packages (like `@antha/entity-2d`) wrap this with their own types. Entities defined by one suite
- * can only touch each other, and a suite supports at most 64 entity classes that touch anything.
+ * can only touch each other, and a suite supports at most {@link maxCollisionCategories} entity
+ * classes that touch anything.
  *
  * @category Internal
  */
@@ -255,13 +258,16 @@ export function createEntitySuite<Store extends EntityStore, State extends Entit
                             milliseconds: true,
                         }).milliseconds,
                     );
-                const stepCount = Math.floor(owedMs / entityStore.stepMs);
+                const stepCount = Math.floor(owedMs / entityStore.stepDuration.milliseconds);
 
-                for (let stepIndex = 0; stepIndex < stepCount; stepIndex++) {
-                    await entityStore.updateAllEntities(executeParams);
-                }
+                await awaitedForEach(
+                    createArray(stepCount, () => undefined),
+                    async () => {
+                        await entityStore.updateAllEntities(executeParams);
+                    },
+                );
 
-                const leftoverMs = owedMs - stepCount * entityStore.stepMs;
+                const leftoverMs = owedMs - stepCount * entityStore.stepDuration.milliseconds;
                 owedSimulationMs.set(entityStore, leftoverMs);
                 if (stepCount) {
                     entityStore.lastStepTime = performance.now() - leftoverMs;

@@ -4,8 +4,10 @@ import {
     type MaybePromise,
     type PartialWithUndefined,
 } from '@augment-vir/common';
+import {type AnyDuration, convertDuration} from 'date-vir';
 import {ListenTarget, type RemoveListenerCallback} from 'typed-event-target';
 import {type ClientId, createMultiplayerId} from '../multiplayer-id.js';
+import {hostPingTimeout} from '../webrtc/web-rtc-communication.js';
 import {type MultiplayerConnectionUpdate} from '../webrtc/webrtc-multiplayer-controller.js';
 import {RoomRejectionError} from './errors.js';
 import {
@@ -60,6 +62,10 @@ export type P2pMultiplayerControllerRoomEvents =
     | MultiplayerControllerClientStatusEvent
     | MultiplayerControllerConnectionEvent;
 
+const hostWatchInterval = {
+    milliseconds: 1000,
+} as const satisfies AnyDuration;
+
 /**
  * Room, API, and singleplayer bookkeeping shared by the p2p multiplayer controllers. Subclasses
  * implement their own state synchronization on top of the attached room connection.
@@ -82,6 +88,18 @@ export abstract class P2pMultiplayerController<
     protected readonly localClientId = createMultiplayerId.client();
     protected roomConnection: MultiplayerRoomConnection<Message> | undefined;
     protected singleplayer = false;
+    protected hostWatchIntervalId: ReturnType<typeof globalThis.setInterval> | undefined;
+    /** On members, when the last message from the host arrived. */
+    protected lastHostMessageAt = 0;
+    /**
+     * How long a member waits without any message from the host before dropping it and recreating
+     * the room. A hidden host keeps its WebRTC connection open but stops sending, so this watches
+     * messages instead of the connection. It is longer than `hostPingTimeout` so the multiplayer
+     * server deletes a silent host's room before members try to recreate it.
+     */
+    protected hostTimeout: AnyDuration = {
+        milliseconds: hostPingTimeout.milliseconds * 2,
+    };
 
     constructor(
         params: Readonly<
@@ -243,6 +261,7 @@ export abstract class P2pMultiplayerController<
         }
 
         this.debugLog(`leaving room '${this.roomId || 'unknown'}'`);
+        this.stopWatchingHost();
         this.roomConnection = undefined;
         this.singleplayer = false;
         this.roomController.leaveRoom();
@@ -251,6 +270,7 @@ export abstract class P2pMultiplayerController<
     /** Cleanup everything. */
     public override destroy() {
         this.debugLog('destroying controller');
+        this.stopWatchingHost();
         this.roomConnection = undefined;
         this.singleplayer = false;
         this.roomController.destroy();
@@ -275,8 +295,46 @@ export abstract class P2pMultiplayerController<
         });
         this.roomController.listen(MultiplayerControllerMessageEvent<Message>, (event) => {
             this.debugLog(`message event received from ${event.sourceClientId}`);
+            if (this.roomConnection && !this.isHost()) {
+                this.lastHostMessageAt = performance.now();
+            }
             this.handleReceivedMessage(event.sourceClientId, event.detail);
         });
+    }
+
+    /**
+     * On members, calls `dropHost` on the room connection once the host has sent nothing for
+     * `hostTimeout`. Call this whenever a room connection is attached.
+     */
+    protected watchHost() {
+        this.stopWatchingHost();
+        this.lastHostMessageAt = performance.now();
+        this.hostWatchIntervalId = globalThis.setInterval(() => {
+            const now = performance.now();
+
+            if (
+                !this.roomConnection ||
+                this.roomConnection.isHost() ||
+                !this.roomConnection.isConnected()
+            ) {
+                this.lastHostMessageAt = now;
+            } else if (
+                now - this.lastHostMessageAt >
+                convertDuration(this.hostTimeout, {
+                    milliseconds: true,
+                }).milliseconds
+            ) {
+                this.debugLog('host sent nothing for too long; dropping it');
+                this.lastHostMessageAt = now;
+                this.roomConnection.dropHost();
+            }
+        }, hostWatchInterval.milliseconds);
+    }
+
+    /** Stops what {@link watchHost} started. */
+    protected stopWatchingHost() {
+        globalThis.clearInterval(this.hostWatchIntervalId);
+        this.hostWatchIntervalId = undefined;
     }
 
     /** Write a multiplayer debug log when debug logging is enabled. */

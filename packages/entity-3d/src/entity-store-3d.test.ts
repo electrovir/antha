@@ -55,7 +55,7 @@ describe(EntityStore3d.name, () => {
                 w: Math.SQRT1_2,
             },
         };
-        store.lastStepTime = performance.now() - store.stepMs / 2;
+        store.lastStepTime = performance.now() - store.stepDuration.milliseconds / 2;
         await store.renderAllEntities(emptyEntityUpdateParams);
         const {position, quaternion} = mover.view;
 

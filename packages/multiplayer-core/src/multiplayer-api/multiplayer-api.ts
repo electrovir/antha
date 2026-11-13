@@ -15,6 +15,7 @@ import {
     errorMessageShape,
     forwardedOfferMessageShape,
     hostPingMessageShape,
+    hostReplacedMessageShape,
     offerMessageShape,
     offerResultShape,
 } from './multiplayer-socket-messages.js';
@@ -141,6 +142,7 @@ export const multiplayerConnectWebSocket = defineWebSocket({
         answerMessageShape,
         forwardedOfferMessageShape,
         offerResultShape,
+        hostReplacedMessageShape,
         errorMessageShape,
     ),
     searchParams: {

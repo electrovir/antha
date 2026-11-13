@@ -1,4 +1,15 @@
+import {type AnyDuration} from 'date-vir';
 import {defineShape, exactShape} from 'object-shape-tester';
+
+/**
+ * How long a host may go without sending {@link MultiplayerWebSocketMessageType.HostPing} before the
+ * multiplayer server deletes its room.
+ *
+ * @category Internal
+ */
+export const hostPingTimeout = {
+    milliseconds: 10_000,
+} as const satisfies AnyDuration;
 
 /**
  * All possible message types sent to and from the game-vir multiplayer server. These are used to
@@ -33,6 +44,11 @@ export enum MultiplayerWebSocketMessageType {
      * date. This will be sent repeatedly on an interval.
      */
     HostPing = 'host-ping',
+    /**
+     * Sent from the multiplayer server to a client that pings a room another client now hosts, such
+     * as after the room's members recreated it while this client stopped pinging.
+     */
+    HostReplaced = 'host-replaced',
 
     /** An error message. */
     Error = 'error',

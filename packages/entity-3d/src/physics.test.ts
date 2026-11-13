@@ -356,6 +356,56 @@ describe(PhysicsWorld3d.name, () => {
         world.destroy();
     });
 
+    it('rejects shapes with sizes that are not positive', async () => {
+        const world = await PhysicsWorld3d.create();
+
+        assert.throws(
+            () => {
+                return world.createBody({
+                    definition: {
+                        type: BodyType.Dynamic,
+                        shapes: [
+                            {
+                                type: ShapeType.Sphere,
+                                radius: -1,
+                            },
+                        ],
+                    },
+                    filter: touchingFilter,
+                    entityId: 1,
+                    bodyState: {},
+                });
+            },
+            {
+                matchMessage: "A sphere shape's radius must be a finite number above 0, got -1.",
+            },
+        );
+        assert.throws(
+            () => {
+                return world.createBody({
+                    definition: {
+                        type: BodyType.Dynamic,
+                        shapes: [
+                            {
+                                type: ShapeType.Box,
+                                width: 1,
+                                height: Number.NaN,
+                                depth: 1,
+                            },
+                        ],
+                    },
+                    filter: touchingFilter,
+                    entityId: 1,
+                    bodyState: {},
+                });
+            },
+            {
+                matchMessage: "A box shape's height must be a finite number above 0, got NaN.",
+            },
+        );
+        world.destroy();
+    });
+
     it('reads and writes body state', async () => {
         const world = await PhysicsWorld3d.create();
         const quarterTurnAroundY = {

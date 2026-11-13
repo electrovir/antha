@@ -1,5 +1,4 @@
 import {AnthaEngine, AnthaUi, defineAnthaMod} from '@antha/engine';
-import {SnapshotInterpolator} from '@antha/graphics-2d';
 import {
     createMockRoomHandlerServerApiClient,
     createNewRoom,
@@ -11,6 +10,7 @@ import {
     createAnthaMultiplayerP2pAuthoritativeClientMod,
     type AnthaMultiplayerP2pAuthoritativeClientState,
 } from '@antha/multiplayer-p2p-authoritative-client';
+import {SnapshotInterpolator} from '@antha/util';
 import {
     combineErrorMessages,
     getObjectTypedEntries,
@@ -103,6 +103,12 @@ function createDemoClientMod(
                     state.connectionError = combineErrorMessages('Failed to connect', error);
                 }
             }
+
+            remotePlayerInterpolators.forEach((_interpolator, clientId) => {
+                if (!(clientId in controller.remoteClientStates)) {
+                    remotePlayerInterpolators.delete(clientId);
+                }
+            });
 
             return html`
                 <strong>${controller.isHost() ? 'Host Client' : 'Member Client'}</strong>

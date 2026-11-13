@@ -142,7 +142,7 @@ export type EntityConstructorParams<
 };
 
 /**
- * The bse of all entity-specific events.
+ * The base of all entity-specific events.
  *
  * @category Internal
  */

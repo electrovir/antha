@@ -2,9 +2,11 @@ import {defineAnthaMod} from '@antha/engine';
 import {assertWrap, check} from '@augment-vir/assert';
 import {
     getObjectTypedEntries,
+    getObjectTypedValues,
     type EmptyFunction,
     type PartialWithUndefined,
 } from '@augment-vir/common';
+import {getGamepads} from 'input-device-handler';
 import {listenToGlobal} from 'typed-event-target';
 import {AudioPlayer, type AudioPlayerOptions} from './audio-player.js';
 
@@ -93,8 +95,8 @@ export function resumeAudioOnGamepadPress({
     if (
         audioPlayer.audioContext.state !== 'running' &&
         globalThis.navigator.userActivation.hasBeenActive &&
-        globalThis.navigator.getGamepads().some((gamepad) => {
-            return gamepad?.buttons.some((button) => button.pressed);
+        getObjectTypedValues(getGamepads()).some((gamepad) => {
+            return gamepad.buttons.some((button) => button.pressed);
         })
     ) {
         resumeAnthaAudioContext({
@@ -153,15 +155,14 @@ export function createAnthaAudioMod(audioPlayerOptions: Readonly<AnthaAudioModOp
             }
 
             syncChannelVolumes(state);
-            resumeAudioOnGamepadPress({
-                audioPlayer: state.audioPlayer,
-            });
 
-            if (state.audioResumeListenersCleanup) {
-                return;
+            if (!state.audioResumeListenersCleanup) {
+                state.audioResumeListenersCleanup = createAudioResumeListeners({
+                    audioPlayer: state.audioPlayer,
+                });
             }
 
-            state.audioResumeListenersCleanup = createAudioResumeListeners({
+            resumeAudioOnGamepadPress({
                 audioPlayer: state.audioPlayer,
             });
         },

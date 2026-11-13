@@ -254,7 +254,7 @@ export class WebrtcController<MessageData extends JsonCompatibleValue> extends L
     }
 
     /** Mark this connection as lost. Only the first loss of a live connection is reported. */
-    protected handleDisconnect() {
+    public handleDisconnect() {
         if (!this.isConnected) {
             return;
         }

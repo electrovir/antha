@@ -203,7 +203,7 @@ describe(createAnthaEntity2dSuite.name, () => {
 
         const entityStore = await runMod(0);
         await entityStore.addEntity(Counter);
-        const stepMs = entityStore.stepMs;
+        const stepMs = entityStore.stepDuration.milliseconds;
         await runMod(stepMs);
         const bothDisabled = {
             ...counts,
@@ -317,7 +317,7 @@ describe(createAnthaEntity2dSuite.name, () => {
             state: {},
         });
 
-        assert.strictEquals(store.stepMs, 20);
+        assert.strictEquals(store.stepDuration.milliseconds, 20);
         store.destroy();
     });
 

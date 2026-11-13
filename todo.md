@@ -5,3 +5,4 @@
     -   add `<input>` and `<textarea>` element wrappers that allow cursor navigation with the on-screen keyboard
     -   press shift to transition the arrow keys to vertical arrow keys on the onscreen keyboard
     -   add shortcuts to the special keys on the on-screen keyboard (like R2 hits enter, x hits backspace, etc.)
+-   remove the `@pixi/3d`, `pixi.js`, and `colord` `min-release-age-exclude` entries from `.npmrc` once `@pixi/3d@0.1.0`, `pixi.js@8.23.0`, and `colord@2.11.0` are 5 days old (2026-11-17)

@@ -13,7 +13,7 @@ import {
     type PartialWithUndefined,
     type Writable,
 } from '@augment-vir/common';
-import {convertDuration, type AnyDuration} from 'date-vir';
+import {convertDuration, type AnyDuration, type Duration, type DurationUnit} from 'date-vir';
 import {assertValidShape, defineShape, optionalShape, type Shape} from 'object-shape-tester';
 import {GenericListenTarget} from 'typed-event-target';
 import {type BaseEntity, type EntityConstructor, type EntityConstructorParams} from './entity.js';
@@ -154,6 +154,20 @@ export type EntitySnapshot<World extends AnyPhysicsWorld = AnyPhysicsWorld> = {
     physicsState?: Uint8Array | undefined;
 };
 
+/**
+ * Blends linearly from `start` to `end`, where `progress` is `0` at `start` and `1` at `end`.
+ * Entity stores use it to place views between the last two physics steps.
+ *
+ * @category Util
+ */
+export function interpolate({
+    start,
+    end,
+    progress,
+}: Readonly<{start: number; end: number; progress: number}>) {
+    return start + (end - start) * progress;
+}
+
 const defaultStepDuration: AnyDuration = {
     seconds: 1 / 120,
 };
@@ -191,8 +205,8 @@ export abstract class EntityStore<
     public readonly state: State;
     /** Loads entity assets. */
     public readonly assetLoader: AssetLoader;
-    /** How many milliseconds each {@link EntityStore.updateAllEntities} call simulates. */
-    public readonly stepMs: number;
+    /** How long each {@link EntityStore.updateAllEntities} call simulates. */
+    public readonly stepDuration: Duration<DurationUnit.Milliseconds>;
     /**
      * The `performance.now()` time that the most recent step represents. Renders interpolate views
      * between the last two steps by how far the current time is past this. Clock owners that run
@@ -225,9 +239,9 @@ export abstract class EntityStore<
         this.serializedJointShape = defineSerializedJointShape(
             args.physicsWorld.jointDefinitionShape,
         );
-        this.stepMs = convertDuration(args.stepDuration || defaultStepDuration, {
+        this.stepDuration = convertDuration(args.stepDuration || defaultStepDuration, {
             milliseconds: true,
-        }).milliseconds;
+        });
         if (args.preregisteredEntities) {
             this.registerEntities({
                 entities: args.preregisteredEntities,
@@ -278,7 +292,7 @@ export abstract class EntityStore<
 
     /**
      * Advances the game by one physics step: runs `.update()` on every entity, steps the physics
-     * world by {@link EntityStore.stepMs}, then calls the contact hooks. Entities marked as
+     * world by {@link EntityStore.stepDuration}, then calls the contact hooks. Entities marked as
      * destroyed are removed before they update.
      */
     public async updateAllEntities(updateParams: Readonly<ModExecuteParams<NoInfer<State>>>) {
@@ -298,7 +312,7 @@ export abstract class EntityStore<
             }
         }
 
-        const contacts = this.physicsWorld.step(this.stepMs / 1000);
+        const contacts = this.physicsWorld.step(this.stepDuration.milliseconds / 1000);
         this.lastStepTime = performance.now();
         this.currentEntityInstances.forEach((entity) => entity.physics.recordStep());
 
@@ -394,7 +408,13 @@ export abstract class EntityStore<
         const progress =
             this.lastStepTime == undefined
                 ? 1
-                : Math.min(Math.max((performance.now() - this.lastStepTime) / this.stepMs, 0), 1);
+                : Math.min(
+                      Math.max(
+                          (performance.now() - this.lastStepTime) / this.stepDuration.milliseconds,
+                          0,
+                      ),
+                      1,
+                  );
 
         for (const entity of this.currentEntityInstances) {
             if (entity.isDestroyed) {
@@ -502,8 +522,7 @@ export abstract class EntityStore<
      * skipped, along with their joints.
      *
      * With `includePhysicsState`, also saves the physics engine's internal state, so that loading
-     * the snapshot continues the simulation exactly as if it never stopped. Box3D can't save its
-     * state.
+     * the snapshot continues the simulation exactly as if it never stopped.
      */
     public createSnapshot({
         includePhysicsState,
@@ -594,13 +613,24 @@ export abstract class EntityStore<
         assert.isObject(snapshot, 'Entity snapshot must be an object.');
         assert.isArray(snapshot.entities, 'Entity snapshot entities must be an array.');
         assert.isArray(snapshot.joints, 'Entity snapshot joints must be an array.');
-        snapshot.entities.forEach((serializedEntity, index) => {
+        const entityInputs = snapshot.entities.map((serializedEntity, index) => {
             assertValidShape(
                 serializedEntity,
                 this.serializedEntityShape,
                 {},
                 `Invalid entity snapshot entry at index ${index}`,
             );
+            const entityConstructor = this.entityKeyConstructorMap[serializedEntity.entityKey];
+            if (!entityConstructor) {
+                throw new Error(
+                    `Invalid entity snapshot entry at index ${index}: no entity registered for key '${serializedEntity.entityKey}'.`,
+                );
+            }
+            return {
+                entityConstructor,
+                body: serializedEntity.body,
+                params: entityConstructor.deserialize(serializedEntity.serializedParams),
+            };
         });
         snapshot.joints.forEach((serializedJoint, index) => {
             assertValidShape(
@@ -647,9 +677,15 @@ export abstract class EntityStore<
          * `addEntity` inserts each entity only after its async init finishes, so creating them in
          * parallel could order the store differently on each peer.
          */
-        const entities = await awaitedBlockingMap(snapshot.entities, async (serializedEntity) => {
-            return await this.deserializeEntity(serializedEntity);
-        });
+        const entities = await awaitedBlockingMap(
+            entityInputs,
+            async ({entityConstructor, body, params}) => {
+                return (await this.addEntity(entityConstructor, {
+                    ...(body satisfies BodyStateOf<World> as AnyObject),
+                    params,
+                })) satisfies BaseEntity as Entity;
+            },
+        );
         const joints = snapshot.joints.map(({entityIndexes, definition}) => {
             return this.addJoint({
                 entities: [
@@ -693,7 +729,12 @@ export abstract class EntityStore<
             entityId,
             bodyState: bodyState satisfies AnyObject as InitialBodyStateOf<World>,
         } satisfies EntityConstructorParams<any, any, World>);
-        await child.initInstance();
+        try {
+            await child.initInstance();
+        } catch (error) {
+            this.physicsWorld.destroyBody(child.physics);
+            throw error;
+        }
         /** Every entity class in a store extends the store's own base entity class. */
         const entity = child satisfies BaseEntity as Entity;
         this.currentEntityInstances.add(entity);

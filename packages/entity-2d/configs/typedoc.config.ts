@@ -12,7 +12,9 @@ export const typeDocConfig: Partial<TypeDocOptions> = {
     entryPoints: [
         indexTsFile.replaceAll('\\', '/'),
     ],
-    intentionallyNotExported: [],
+    intentionallyNotExported: [
+        'MainModule',
+    ],
     defaultCategory: 'MISSING CATEGORY',
     categoryOrder: [
         'Main',

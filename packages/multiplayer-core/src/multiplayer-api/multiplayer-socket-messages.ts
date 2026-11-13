@@ -138,6 +138,17 @@ export const offerResultShape = defineShape(
 );
 
 /**
+ * Shape definition for "host replaced" messages.
+ *
+ * @category Internal
+ */
+export const hostReplacedMessageShape = defineShape(
+    intersectShape(baseMessageShape, {
+        type: exactShape(MultiplayerWebSocketMessageType.HostReplaced),
+    }),
+);
+
+/**
  * Shape definition for error messages.
  *
  * @category Internal

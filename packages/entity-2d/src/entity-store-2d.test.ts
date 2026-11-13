@@ -154,11 +154,13 @@ describe(EntityStore2d.name, () => {
 
         assert.deepEquals(
             {
-                stepMs: store.stepMs,
+                stepDuration: store.stepDuration,
                 position: roundCoords(mover.physics.getPosition()),
             },
             {
-                stepMs: 100,
+                stepDuration: {
+                    milliseconds: 100,
+                },
                 position: {
                     x: 1,
                     y: 0,
@@ -440,7 +442,7 @@ describe(EntityStore2d.name, () => {
             },
             rotation: -Math.PI + 0.1,
         };
-        store.lastStepTime = performance.now() - store.stepMs / 2;
+        store.lastStepTime = performance.now() - store.stepDuration.milliseconds / 2;
         await store.renderAllEntities(emptyEntityUpdateParams);
 
         assert.isTrue(Math.abs(spinner.view.rotation - Math.PI) < 0.02);

@@ -46,6 +46,7 @@ describe(createAnthaMultiplayerP2pAuthoritativeClientMod.name, () => {
         const roomConnection: MultiplayerRoomConnection<P2pAuthoritativeClientMessage<number>> = {
             clientId: createMultiplayerId.client(),
             destroy() {},
+            dropHost() {},
             getAllClientIds() {
                 return [];
             },

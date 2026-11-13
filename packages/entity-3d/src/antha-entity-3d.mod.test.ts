@@ -44,12 +44,14 @@ describe(createAnthaEntity3dSuite.name, () => {
             {
                 storeWithoutView,
                 isUsingView: entityStore.view3d === view,
-                stepMs: entityStore.stepMs,
+                stepDuration: entityStore.stepDuration,
             },
             {
                 storeWithoutView: undefined,
                 isUsingView: true,
-                stepMs: 20,
+                stepDuration: {
+                    milliseconds: 20,
+                },
             },
         );
         entityStore.destroy();

@@ -266,9 +266,9 @@ const defaultFrameDuration: AnyDuration = {
 };
 
 /** Once a frame clock falls this far behind, such as in a hidden tab, it skips ahead. */
-const maxCatchUpDuration: AnyDuration = {
+const maxCatchUpDuration = {
     milliseconds: 250,
-};
+} as const satisfies AnyDuration;
 
 /**
  * When the next frame is due from a fixed-step clock. Advancing this by exactly one frame duration
@@ -651,7 +651,24 @@ export class P2pLockStepMultiplayerController<
             this.syncNewMember(status.newMember);
         } else if ('newHost' in status) {
             this.handleNewHost(status.newHost);
+        } else if ('lostHost' in status && this.isHost()) {
+            this.handleReplacedAsHost();
+        } else if ('connectedToHost' in status && !this.joiningRoom) {
+            this.sendReadinessToHost();
         }
+    }
+
+    /**
+     * Stop producing frames once another client has taken over this room as host. When
+     * `enableStateSync` is set, this waits for the new host's state like a joining member, since
+     * the new host kept playing without this client.
+     */
+    protected handleReplacedAsHost() {
+        this.stopClocks();
+        this.clientsResponded = {};
+        this.resetDesyncCheck();
+        this.resetStateSync();
+        this.awaitingStateSync = !!this.params.enableStateSync;
     }
 
     /** Attach an established room transport and publish initial frame readiness. */
@@ -662,16 +679,25 @@ export class P2pLockStepMultiplayerController<
             `attached room connection; client=${roomConnection.clientId} host=${roomConnection.isHost()} connected=${roomConnection.isConnected()} connectedClients=${roomConnection.getConnectedClientIds().length} allClients=${roomConnection.getAllClientIds().length}`,
         );
         this.roomConnection = roomConnection;
+        this.watchHost();
         if (roomConnection.isHost()) {
             this.finishFrame();
         } else {
-            this.debugLog('attached as member; sending initial readiness actions to host');
-            roomConnection.sendMessage({
-                actions: [],
-                sourceClientId: this.clientId,
-                type: P2pLockStepMessageType.Actions,
-            });
+            this.sendReadinessToHost();
         }
+    }
+
+    /**
+     * Tells the host that this member can receive frames. The host produces no frames until every
+     * connected member has sent this, so it is sent again after every reconnect.
+     */
+    protected sendReadinessToHost() {
+        this.debugLog('sending readiness actions to host');
+        this.roomConnection?.sendMessage({
+            actions: [],
+            sourceClientId: this.clientId,
+            type: P2pLockStepMessageType.Actions,
+        });
     }
 
     /** Restart frame production if this client is promoted after losing its previous host. */
@@ -981,11 +1007,7 @@ export class P2pLockStepMultiplayerController<
      * is due.
      */
     protected runClocks(now = performance.now()) {
-        const earliestFrameTime =
-            now -
-            convertDuration(maxCatchUpDuration, {
-                milliseconds: true,
-            }).milliseconds;
+        const earliestFrameTime = now - maxCatchUpDuration.milliseconds;
 
         if (this.frameClock && this.isHost()) {
             this.frameClock = {

@@ -110,6 +110,11 @@ export type MultiplayerRoomConnection<Message extends JsonCompatibleValue> = {
         message: Readonly<Message>,
         delivery?: MessageDelivery | undefined,
     ): void;
+    /**
+     * On a member, treat the host as lost: drop its connection and rejoin the room, recreating it
+     * if the host is gone. Does nothing on the host.
+     */
+    dropHost(): void;
     /** Terminate the room connection and release transport resources. */
     destroy(): void;
 };

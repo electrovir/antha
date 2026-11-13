@@ -2,7 +2,7 @@ import {assert, assertWrap} from '@augment-vir/assert';
 import {awaitedForEach} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {defineShape} from 'object-shape-tester';
-import {EntityStore} from './entity-store.js';
+import {EntityStore, interpolate} from './entity-store.js';
 import {
     createTestStore,
     createTestSuite,
@@ -304,7 +304,7 @@ describe(EntityStore.name, () => {
     it('defaults to 120 steps per second', () => {
         const store = createTestStore();
 
-        assert.strictEquals(store.stepMs, 1000 / 120);
+        assert.strictEquals(store.stepDuration.milliseconds, 1000 / 120);
     });
 
     it('registers, snapshots, hashes, and restores entities and joints', async () => {
@@ -650,6 +650,21 @@ describe(EntityStore.name, () => {
             },
         );
         await assert.throws(
+            store.loadSnapshot({
+                entities: [
+                    {
+                        ...validEntity,
+                        entityKey: 'Missing',
+                    },
+                ],
+                joints: [],
+            }),
+            {
+                matchMessage:
+                    "Invalid entity snapshot entry at index 0: no entity registered for key 'Missing'.",
+            },
+        );
+        await assert.throws(
             store.deserializeEntity({
                 entityKey: 'Missing',
                 body: {
@@ -662,6 +677,39 @@ describe(EntityStore.name, () => {
         );
 
         assert.isLengthExactly([...store.currentEntityInstances], 1);
+    });
+
+    it('deserializes a registered entity', async () => {
+        const {Named} = createTestEntities();
+        const store = createTestStore({
+            preregisteredEntities: [
+                Named,
+            ],
+        });
+        const entity = await store.deserializeEntity({
+            entityKey: 'Named',
+            serializedParams: JSON.stringify({
+                name: 'loaded',
+            }),
+            body: {
+                x: 3,
+            },
+        });
+
+        assert.deepEquals(
+            {
+                isNamed: entity instanceof Named,
+                params: entity.params,
+                x: entity.physics.x,
+            },
+            {
+                isNamed: true,
+                params: {
+                    name: 'loaded',
+                },
+                x: 3,
+            },
+        );
     });
 
     it('adds and removes joints', async () => {
@@ -736,6 +784,22 @@ describe(EntityStore.name, () => {
         );
     });
 
+    it('destroys the body of an entity whose init fails', async () => {
+        class Failing extends createTestSuite().defineEntity({
+            key: 'Failing',
+        }) {
+            public override initInstance() {
+                throw new Error('init failed');
+            }
+        }
+        const store = createTestStore();
+
+        await assert.throws(store.addEntity(Failing), {
+            matchMessage: 'init failed',
+        });
+        assert.isEmpty([...store.physicsWorld.bodies]);
+    });
+
     it('destroys all entities while staying usable', async () => {
         const {Plain} = createTestEntities();
         const store = createTestStore();
@@ -777,5 +841,30 @@ describe(EntityStore.name, () => {
         await assert.throws(store.addEntity(Plain), {
             matchMessage: 'Cannot operate on a destroyed entity store.',
         });
+    });
+});
+
+describe(interpolate.name, () => {
+    it('blends from start to end, and past them outside 0 to 1', () => {
+        assert.deepEquals(
+            [
+                0,
+                0.25,
+                1,
+                1.5,
+            ].map((progress) => {
+                return interpolate({
+                    start: 2,
+                    end: 6,
+                    progress,
+                });
+            }),
+            [
+                2,
+                3,
+                6,
+                8,
+            ],
+        );
     });
 });

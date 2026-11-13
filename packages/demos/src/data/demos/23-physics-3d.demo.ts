@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/pseudo-random */
 import {createAnthaAssetMod} from '@antha/asset';
 import {AnthaEngine, SkipExecution, type AnthaMod} from '@antha/engine';
 import {
@@ -15,10 +16,9 @@ import {
     DirectionalLight,
     Material3D,
     Mesh3D,
-    randomItem,
-    randomSpread,
     SphereGeometry,
 } from '@antha/graphics-3d';
+import {assertWrap} from '@augment-vir/assert';
 import {randomInteger} from '@augment-vir/common';
 import {createUtcFullDate} from 'date-vir';
 import {css, html, listen} from 'element-vir';
@@ -173,6 +173,11 @@ const colors = [
     '#cc66ff',
 ];
 
+/** A random number within `range / 2` of zero. */
+function randomSpread(range: number) {
+    return range * (0.5 - Math.random());
+}
+
 async function dropBody(
     entityStore: EntityStore3d,
     entityClass: typeof BallEntity | typeof CrateEntity,
@@ -186,7 +191,14 @@ async function dropBody(
                     min: 5,
                     max: 12,
                 }) / 10,
-            color: randomItem(colors),
+            color: assertWrap.isDefined(
+                colors[
+                    randomInteger({
+                        min: 0,
+                        max: colors.length - 1,
+                    })
+                ],
+            ),
         },
         position: {
             x: randomSpread(spread * 2),

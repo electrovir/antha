@@ -3,6 +3,11 @@ import {
     BodyType,
     flattenBindingValues,
     readBindingValues,
+    readFilterBits,
+    readWasmFloat32s,
+    readWasmInt32s,
+    readWasmOverlaps,
+    writeWasmInputBytes,
     type BaseEntityPhysicsDefinition,
     type CollisionFilter,
     type ContactEvents,
@@ -25,7 +30,6 @@ import {
     makeWritable,
     mapObjectValues,
     omitObjectKeys,
-    removeDuplicates,
     type Coords,
     type PartialWithUndefined,
 } from '@augment-vir/common';
@@ -207,7 +211,12 @@ export type CastShapeDefinition = Extract<
     }
 >;
 
-type CastShapeType =
+/**
+ * The shape types that casts support.
+ *
+ * @category Internal
+ */
+export type CastShapeType =
     | ShapeType.Circle
     | ShapeType.Capsule
     | ShapeType.Segment
@@ -244,7 +253,12 @@ export type Hit2d = {
     approachSpeed: number;
 };
 
-type CastFilter = PartialWithUndefined<{
+/**
+ * Options shared by every cast.
+ *
+ * @category Internal
+ */
+export type CastFilter = PartialWithUndefined<{
     /**
      * Selects what the cast can hit. A shape is hit when its category is in `mask` and its own mask
      * includes `category`. Leave it out to hit every shape.
@@ -331,7 +345,12 @@ export type PhysicsOptions = PartialWithUndefined<{
     pixelsPerMeter: number;
 }>;
 
-const worldSettingsTemplate = {
+/**
+ * The world settings in the order the bindings read them, so don't reorder them.
+ *
+ * @category Internal
+ */
+export const worldSettingsTemplate = {
     /** Game units per second. Slower collisions don't bounce, so resting bodies can settle. */
     restitutionThreshold: 0,
     /** How many passes each step spends on bounces. More passes spin boxes less. */
@@ -696,7 +715,12 @@ const subStepCount = 4;
 /** The largest 32-bit float, which Box2D's default drawing bounds reach to. */
 const maxFloat32 = 3.4028234663852886e38;
 
-const debugDrawTemplate = {
+/**
+ * The default debug drawing options, in the order the bindings read them.
+ *
+ * @category Internal
+ */
+export const debugDrawTemplate = {
     /** Only things overlapping these bounds are drawn. Everything is drawn by default. */
     bounds: {
         lower: {
@@ -916,7 +940,7 @@ function readDrawing(box2d: Box2dModule, pointer: number): DebugDrawing2d {
     const [
         start,
         count,
-    ] = readNumbers(box2d.HEAP32, pointer, 2);
+    ] = readWasmInt32s(box2d, pointer, 2);
     const values = box2d.HEAPF32.subarray(
         start / Float32Array.BYTES_PER_ELEMENT,
         start / Float32Array.BYTES_PER_ELEMENT + count,
@@ -950,7 +974,12 @@ function readDrawing(box2d: Box2dModule, pointer: number): DebugDrawing2d {
     return drawing;
 }
 
-const profileTemplate = {
+/**
+ * The step profile timings, in the order the bindings write them.
+ *
+ * @category Internal
+ */
+export const profileTemplate = {
     step: 0,
     pairs: 0,
     collide: 0,
@@ -983,7 +1012,12 @@ const profileTemplate = {
  */
 export type PhysicsProfile2d = typeof profileTemplate;
 
-const countersTemplate = {
+/**
+ * The world counters, in the order the bindings write them.
+ *
+ * @category Internal
+ */
+export const countersTemplate = {
     /** Memory Box2D has allocated. */
     byteCount: 0,
     bodyCount: 0,
@@ -1078,11 +1112,6 @@ const replayQueryHitLength = 6;
 /** `sizeof(b2RecHeader)` in Box2D. */
 const recordingHeaderLength = 32;
 
-/** Joins two uint32 halves, written low half first, into a 64-bit filter. */
-function readFilterBits({low, high}: Readonly<{low: number; high: number}>) {
-    return BigInt(low >>> 0) | (BigInt(high >>> 0) << 32n);
-}
-
 /**
  * Callbacks the world runs while stepping. See {@link PhysicsWorld2d.setHooks}.
  *
@@ -1090,7 +1119,12 @@ function readFilterBits({low, high}: Readonly<{low: number; high: number}>) {
  */
 export type WorldHooks2d = WorldHooks<Coords>;
 
-type LoadedBox2d = Box2dModule & {
+/**
+ * The Box2D WebAssembly module, plus the hooks its C bindings call back into.
+ *
+ * @category Internal
+ */
+export type LoadedBox2d = Box2dModule & {
     /** Read by bindings.c, keyed by world id. */
     anthaWorldHooks: Map<number, () => WorldHooks2d>;
 };
@@ -1111,25 +1145,11 @@ async function loadBox2d(pixelsPerMeter: number) {
     });
 }
 
-/**
- * Copies numbers that a binding wrote into wasm memory. Pass the memory view after calling the
- * binding, because a call that grows wasm memory replaces the views.
- */
-function readNumbers<const Count extends number>(
-    memory: Readonly<Float32Array | Int32Array>,
-    pointer: number,
-    count: Count,
-) {
-    const start = pointer / memory.BYTES_PER_ELEMENT;
-    /** Spreading a `subarray` instead is several times slower, and this runs for every body read. */
-    return createArray(count, (index) => assertWrap.isDefined(memory[start + index]));
-}
-
 function readCoords(box2d: Box2dModule, pointer: number) {
     const [
         x,
         y,
-    ] = readNumbers(box2d.HEAPF32, pointer, 2);
+    ] = readWasmFloat32s(box2d, pointer, 2);
     return {
         x,
         y,
@@ -1165,7 +1185,7 @@ function readHit(box2d: Box2dModule, pointer: number): CastHit2d | undefined {
     const [
         isHit,
         entityId,
-    ] = readNumbers(box2d.HEAP32, pointer, 2);
+    ] = readWasmInt32s(box2d, pointer, 2);
     if (!isHit) {
         return undefined;
     }
@@ -1175,7 +1195,7 @@ function readHit(box2d: Box2dModule, pointer: number): CastHit2d | undefined {
         normalX,
         normalY,
         fraction,
-    ] = readNumbers(box2d.HEAPF32, pointer + 2 * Int32Array.BYTES_PER_ELEMENT, 5);
+    ] = readWasmFloat32s(box2d, pointer + 2 * Int32Array.BYTES_PER_ELEMENT, 5);
     return {
         entityId,
         point: {
@@ -1219,13 +1239,13 @@ function readSettings(box2d: Box2dModule, bodyId: Readonly<Box2dId>) {
         isBullet,
         isAwake,
         motionLocks,
-    ] = readNumbers(box2d.HEAP32, pointer, 5);
+    ] = readWasmInt32s(box2d, pointer, 5);
     const [
         gravityScale,
         linearDamping,
         angularDamping,
         sleepThreshold,
-    ] = readNumbers(box2d.HEAPF32, pointer + 5 * Int32Array.BYTES_PER_ELEMENT, 4);
+    ] = readWasmFloat32s(box2d, pointer + 5 * Int32Array.BYTES_PER_ELEMENT, 4);
     return {
         type: readBodyType(type),
         isDisabled: !isEnabled,
@@ -1283,7 +1303,7 @@ function readMotion(box2d: Box2dModule, bodyId: Readonly<Box2dId>) {
         velocityX,
         velocityY,
         angularVelocity,
-    ] = readNumbers(box2d.HEAPF32, pointer, 8);
+    ] = readWasmFloat32s(box2d, pointer, 8);
     return {
         position: {
             x,
@@ -1307,7 +1327,7 @@ function makeRotation(box2d: Box2dModule, angle: number): BodyState['rotation'] 
     const [
         cosine,
         sine,
-    ] = readNumbers(box2d.HEAPF32, pointer, 2);
+    ] = readWasmFloat32s(box2d, pointer, 2);
     return {
         cosine,
         sine,
@@ -1634,13 +1654,6 @@ function writeCastShape(box2d: Box2dModule, shape: Readonly<CastShapeDefinition>
     };
 }
 
-function readOverlaps(box2d: Box2dModule, pointer: number) {
-    const [count] = readNumbers(box2d.HEAP32, pointer, 1);
-    return removeDuplicates(
-        readNumbers(box2d.HEAP32, pointer + Int32Array.BYTES_PER_ELEMENT, count),
-    );
-}
-
 /**
  * Controls one entity's Box2D body. Positions, lengths, and velocities are in game units.
  *
@@ -1933,7 +1946,7 @@ export class EntityPhysics2d implements EntityBody<BodyState> {
      */
     public getContacts() {
         const pointer = this.box2d._readContacts(this.bodyId.index, this.bodyId.tag);
-        const [count] = readNumbers(this.box2d.HEAPF32, pointer, 1);
+        const [count] = readWasmFloat32s(this.box2d, pointer, 1);
         const contactsPointer = pointer + Float32Array.BYTES_PER_ELEMENT;
 
         return createArray(count, (contactIndex) => {
@@ -1942,8 +1955,8 @@ export class EntityPhysics2d implements EntityBody<BodyState> {
                 normalY,
                 separation,
                 otherType,
-            ] = readNumbers(
-                this.box2d.HEAPF32,
+            ] = readWasmFloat32s(
+                this.box2d,
                 contactsPointer + contactIndex * 4 * Float32Array.BYTES_PER_ELEMENT,
                 4,
             );
@@ -2128,6 +2141,7 @@ export class EntityPhysics2d implements EntityBody<BodyState> {
         this.updateSleepEnabled(shapes);
     }
 
+    /** Lets the body sleep only when sleep is not disabled and it has shapes. */
     protected updateSleepEnabled(shapes: ReadonlyArray<Readonly<PhysicsShapeDefinition>>) {
         /** See the matching `createBody` argument. */
         this.box2d._setSleepEnabled(
@@ -2144,6 +2158,7 @@ export class EntityPhysics2d implements EntityBody<BodyState> {
         }
     }
 
+    /** Adds shapes with this body's material, filter, and hit events, then reapplies its mass data. */
     protected addShapes(shapes: ReadonlyArray<Readonly<PhysicsShapeDefinition>>) {
         addShapes({
             box2d: this.box2d,
@@ -2229,8 +2244,8 @@ export class EntityPhysics2d implements EntityBody<BodyState> {
             centerX,
             centerY,
             rotationalInertia,
-        ] = readNumbers(
-            this.box2d.HEAPF32,
+        ] = readWasmFloat32s(
+            this.box2d,
             this.box2d._readMassData(this.bodyId.index, this.bodyId.tag),
             4,
         );
@@ -2345,8 +2360,8 @@ export class EntityPhysics2d implements EntityBody<BodyState> {
             hasShapes,
             x,
             y,
-        ] = readNumbers(
-            this.box2d.HEAPF32,
+        ] = readWasmFloat32s(
+            this.box2d,
             this.box2d._getClosestPoint(this.bodyId.index, this.bodyId.tag, target.x, target.y),
             3,
         );
@@ -2368,7 +2383,7 @@ export class EntityPhysics2d implements EntityBody<BodyState> {
 
     /** Every entity inside this body's sensor shapes as of the last step. Each entity appears once. */
     public getSensorOverlaps() {
-        return readOverlaps(
+        return readWasmOverlaps(
             this.box2d,
             this.box2d._readSensorOverlaps(this.bodyId.index, this.bodyId.tag),
         );
@@ -2444,8 +2459,10 @@ const box2dJointTypes: Record<JointType, number> = {
 /**
  * Settings every joint type has. Their key order is the order the bindings read them in, so don't
  * reorder them.
+ *
+ * @category Internal
  */
-const baseJointSettings = {
+export const baseJointSettings = {
     /** Where the joint attaches to body A, relative to its position and rotation. */
     frameA: {
         position: {
@@ -2477,8 +2494,10 @@ const baseJointSettings = {
 /**
  * The settings of each joint type. Their key order is the order the bindings read them in, so don't
  * reorder them. Angles are in radians and lengths in game units.
+ *
+ * @category Internal
  */
-const jointTypeSettings = {
+export const jointTypeSettings = {
     [JointType.Distance]: {
         length: 0,
         enableSpring: false,
@@ -2575,8 +2594,12 @@ const jointTypeSettings = {
     },
 } satisfies Record<JointType, object>;
 
-/** Pogo settings that only apply when the joint is created. */
-type PogoCreationSettings =
+/**
+ * Pogo settings that only apply when the joint is created.
+ *
+ * @category Internal
+ */
+export type PogoCreationSettings =
     | 'normal'
     | 'maxTensionForce'
     | 'maxCompressionForce'
@@ -2632,8 +2655,12 @@ export const jointDefinition2dShape = unionShape(
     ),
 );
 
-/** What {@link EntityJoint2d.read} reads for every joint type, in the order the bindings write it. */
-const baseJointReading = {
+/**
+ * What {@link EntityJoint2d.read} reads for every joint type, in the order the bindings write it.
+ *
+ * @category Internal
+ */
+export const baseJointReading = {
     /** The force the joint applied to body B in the last step. */
     constraintForce: {
         x: 0,
@@ -2646,8 +2673,12 @@ const baseJointReading = {
     angularSeparation: 0,
 };
 
-/** What {@link EntityJoint2d.read} adds for each joint type, in the order the bindings write it. */
-const jointTypeReadings = {
+/**
+ * What {@link EntityJoint2d.read} adds for each joint type, in the order the bindings write it.
+ *
+ * @category Internal
+ */
+export const jointTypeReadings = {
     [JointType.Distance]: {
         length: 0,
         springForce: 0,
@@ -2754,7 +2785,7 @@ export class EntityJoint2d<Type extends JointType = JointType>
                 ...baseJointReading,
                 ...jointTypeReadings[this.definition.type],
             },
-            readNumbers(this.box2d.HEAPF32, pointer, 8),
+            readWasmFloat32s(this.box2d, pointer, 8),
         ) satisfies JointReading2d as JointReading2d<Type>;
     }
 }
@@ -2799,7 +2830,11 @@ export class PhysicsWorld2d
         this.box2d = box2d;
         this.settings = readBindingValues(
             worldSettingsTemplate,
-            readNumbers(box2d.HEAPF32, box2d._readDefaultWorldSettings(), 11),
+            readWasmFloat32s(
+                box2d,
+                box2d._readDefaultWorldSettings(),
+                flattenBindingValues(worldSettingsTemplate, undefined).length,
+            ),
         );
         this.createWorld();
     }
@@ -2816,6 +2851,7 @@ export class PhysicsWorld2d
         this.applyHooks(worldId);
     }
 
+    /** Tells the bindings which of {@link hooks} are set, so they only call the ones that are. */
     protected applyHooks(worldId: number) {
         this.box2d._setHooks(
             worldId,
@@ -2826,11 +2862,13 @@ export class PhysicsWorld2d
         );
     }
 
+    /** Destroys the native world and forgets its hooks. */
     protected destroyWorld(worldId: number) {
         this.box2d._destroyWorld(worldId);
         this.box2d.anthaWorldHooks.delete(worldId);
     }
 
+    /** Writes {@link settings} into the native world. */
     protected applySettings(worldId: number) {
         writeInputFloats(this.box2d, flattenBindingValues(worldSettingsTemplate, this.settings));
         this.box2d._setWorldSettings(worldId);
@@ -2896,6 +2934,7 @@ export class PhysicsWorld2d
         this.applySettings(worldId);
     }
 
+    /** A copy, so changing it does not change the world. Use {@link setSettings} for that. */
     public getSettings() {
         return {
             ...this.settings,
@@ -2920,6 +2959,7 @@ export class PhysicsWorld2d
         this.applyHooks(worldId);
     }
 
+    /** A copy, so changing it does not change the world. Use {@link setHooks} for that. */
     public getHooks() {
         return {
             ...this.hooks,
@@ -2990,7 +3030,7 @@ export class PhysicsWorld2d
         const [
             index,
             tag,
-        ] = readNumbers(box2d.HEAP32, idPointer, 2);
+        ] = readWasmInt32s(box2d, idPointer, 2);
         const bodyId = {
             index,
             tag,
@@ -3071,7 +3111,7 @@ export class PhysicsWorld2d
         const [
             index,
             tag,
-        ] = readNumbers(box2d.HEAP32, idPointer, 2);
+        ] = readWasmInt32s(box2d, idPointer, 2);
         return new EntityJoint2d(
             box2d,
             jointId,
@@ -3093,7 +3133,7 @@ export class PhysicsWorld2d
     public step(stepSeconds: number) {
         const {box2d, worldId} = this.requireWorld();
         const pointer = box2d._step(worldId, stepSeconds, subStepCount);
-        const counts = readNumbers(box2d.HEAP32, pointer, 6);
+        const counts = readWasmInt32s(box2d, pointer, 6);
         const [
             startedCount,
             endedCount,
@@ -3105,8 +3145,8 @@ export class PhysicsWorld2d
         const pairCount = startedCount + endedCount + sensorStartedCount + sensorEndedCount;
         const pairsPointer = pointer + counts.length * Int32Array.BYTES_PER_ELEMENT;
         const pairs = createArray(pairCount, (index): ContactPair => {
-            return readNumbers(
-                box2d.HEAP32,
+            return readWasmInt32s(
+                box2d,
                 pairsPointer + index * 2 * Int32Array.BYTES_PER_ELEMENT,
                 2,
             );
@@ -3117,14 +3157,14 @@ export class PhysicsWorld2d
             const [
                 firstId,
                 secondId,
-            ] = readNumbers(box2d.HEAP32, hitPointer, 2);
+            ] = readWasmInt32s(box2d, hitPointer, 2);
             const [
                 pointX,
                 pointY,
                 normalX,
                 normalY,
                 approachSpeed,
-            ] = readNumbers(box2d.HEAPF32, hitPointer + 2 * Int32Array.BYTES_PER_ELEMENT, 5);
+            ] = readWasmFloat32s(box2d, hitPointer + 2 * Int32Array.BYTES_PER_ELEMENT, 5);
             const point = {
                 x: pointX,
                 y: pointY,
@@ -3164,8 +3204,8 @@ export class PhysicsWorld2d
             sensorStarted: pairs.slice(sensorStart, sensorStart + sensorStartedCount),
             sensorEnded: pairs.slice(sensorStart + sensorStartedCount),
             hits,
-            strainedJoints: readNumbers(
-                box2d.HEAP32,
+            strainedJoints: readWasmInt32s(
+                box2d,
                 hitsPointer + hitCount * 7 * Int32Array.BYTES_PER_ELEMENT,
                 strainedJointCount,
             ),
@@ -3209,7 +3249,7 @@ export class PhysicsWorld2d
         const [
             ,
             size,
-        ] = readNumbers(box2d.HEAP32, pointer, 2);
+        ] = readWasmInt32s(box2d, pointer, 2);
         return box2d.HEAPU8.slice(pointer, pointer + size);
     }
 
@@ -3235,7 +3275,7 @@ export class PhysicsWorld2d
             savedBodyCount,
             ,
             savedJointCount,
-        ] = readNumbers(box2d.HEAP32, pointer, 5);
+        ] = readWasmInt32s(box2d, pointer, 5);
         if (savedBodyCount !== bodyCount || savedJointCount !== jointCount) {
             throw new Error(
                 `Invalid physics state: it has ${savedBodyCount} bodies and ${savedJointCount} joints, not ${bodyCount} and ${jointCount}.`,
@@ -3279,8 +3319,8 @@ export class PhysicsWorld2d
         if (!restoredPointer) {
             throw new Error('Box2D could not restore the physics state.');
         }
-        const restoredIds = readNumbers(
-            box2d.HEAP32,
+        const restoredIds = readWasmInt32s(
+            box2d,
             restoredPointer,
             (bodies.length + joints.length) * 2,
         );
@@ -3308,6 +3348,7 @@ export class PhysicsWorld2d
         return readDrawing(box2d, box2d._drawWorld(worldId));
     }
 
+    /** Bodies that are not sleeping, which are the ones each step simulates. */
     public getAwakeBodyCount() {
         const {box2d, worldId} = this.requireWorld();
         return box2d._getAwakeBodyCount(worldId);
@@ -3318,19 +3359,20 @@ export class PhysicsWorld2d
         const {box2d, worldId} = this.requireWorld();
         return readBindingValues(
             profileTemplate,
-            readNumbers(
-                box2d.HEAPF32,
+            readWasmFloat32s(
+                box2d,
                 box2d._readProfile(worldId),
                 getObjectTypedKeys(profileTemplate).length,
             ),
         );
     }
 
+    /** Counts of the world's internal objects and memory, mostly for debugging performance. */
     public getCounters(): PhysicsCounters2d {
         const {box2d, worldId} = this.requireWorld();
         const counterCount = getObjectTypedKeys(countersTemplate).length;
-        const numbers = readNumbers(
-            box2d.HEAP32,
+        const numbers = readWasmInt32s(
+            box2d,
             box2d._readCounters(worldId),
             counterCount + graphColorCount,
         );
@@ -3363,6 +3405,7 @@ export class PhysicsWorld2d
         }
     }
 
+    /** Whether the world is recording its steps, see {@link startRecording}. */
     public isRecording() {
         const {box2d, worldId} = this.requireWorld();
         return !!box2d._isRecording(worldId);
@@ -3379,7 +3422,7 @@ export class PhysicsWorld2d
         if (!pointer) {
             throw new Error('The physics world is not recording.');
         }
-        const [size] = readNumbers(box2d.HEAP32, pointer, 1);
+        const [size] = readWasmInt32s(box2d, pointer, 1);
         const start = pointer + Int32Array.BYTES_PER_ELEMENT;
         return box2d.HEAPU8.slice(start, start + size);
     }
@@ -3485,7 +3528,7 @@ export class PhysicsWorld2d
             filter?.category ?? allBits,
             filter?.mask ?? allBits,
         );
-        return readOverlaps(box2d, pointer);
+        return readWasmOverlaps(box2d, pointer);
     }
 
     /**
@@ -3525,7 +3568,7 @@ export class PhysicsWorld2d
             filter?.category ?? allBits,
             filter?.mask ?? allBits,
         );
-        return readOverlaps(box2d, pointer);
+        return readWasmOverlaps(box2d, pointer);
     }
 
     /**
@@ -3632,17 +3675,17 @@ export class PhysicsWorld2d
             filter?.category ?? allBits,
             filter?.mask ?? allBits,
         );
-        const [count] = readNumbers(box2d.HEAP32, pointer, 1);
+        const [count] = readWasmInt32s(box2d, pointer, 1);
         return createArray(count, (index) => {
             const planePointer = pointer + (1 + index * 6) * Float32Array.BYTES_PER_ELEMENT;
-            const [entityId] = readNumbers(box2d.HEAP32, planePointer, 1);
+            const [entityId] = readWasmInt32s(box2d, planePointer, 1);
             const [
                 normalX,
                 normalY,
                 offset,
                 pointX,
                 pointY,
-            ] = readNumbers(box2d.HEAPF32, planePointer + Int32Array.BYTES_PER_ELEMENT, 5);
+            ] = readWasmFloat32s(box2d, planePointer + Int32Array.BYTES_PER_ELEMENT, 5);
             return {
                 entityId,
                 normal: {
@@ -3695,7 +3738,7 @@ export class PhysicsWorld2d
             deltaY,
             velocityX,
             velocityY,
-        ] = readNumbers(box2d.HEAPF32, pointer, 4);
+        ] = readWasmFloat32s(box2d, pointer, 4);
         return {
             /** The translation to try, usually through {@link PhysicsWorld2d.castMover}. */
             delta: {
@@ -3738,7 +3781,7 @@ export class PhysicsReplay2d {
             throw new Error(invalidRecordingMessage);
         }
         const box2d = await loadBox2d(lengthScale);
-        writeInputBytes(box2d, recording);
+        writeWasmInputBytes(box2d, recording);
         const replay = box2d._createReplay(recording.byteLength);
         if (!replay) {
             throw new Error(invalidRecordingMessage);
@@ -3756,7 +3799,7 @@ export class PhysicsReplay2d {
             return false;
         }
         const box2d = await loadBox2d(lengthScale);
-        writeInputBytes(box2d, recording);
+        writeWasmInputBytes(box2d, recording);
         return !!box2d._validateRecording(recording.byteLength);
     }
 
@@ -3801,6 +3844,7 @@ export class PhysicsReplay2d {
         box2d._seekReplayFrame(replay, frame);
     }
 
+    /** Where playback is and how keyframes are being saved. */
     public getStatus() {
         const {box2d, replay} = this.requireReplay();
         const [
@@ -3811,7 +3855,7 @@ export class PhysicsReplay2d {
             keyframeMinInterval,
             keyframeInterval,
             keyframeBytes,
-        ] = readNumbers(box2d.HEAP32, box2d._readReplayStatus(replay), 7);
+        ] = readWasmInt32s(box2d, box2d._readReplayStatus(replay), 7);
         return {
             /** How many frames have been replayed. */
             frame,
@@ -3840,7 +3884,7 @@ export class PhysicsReplay2d {
             lowerY,
             upperX,
             upperY,
-        ] = readNumbers(box2d.HEAPF32, box2d._readReplayInfo(replay), 8);
+        ] = readWasmFloat32s(box2d, box2d._readReplayInfo(replay), 8);
         return {
             frameCount,
             stepSeconds,
@@ -3883,12 +3927,8 @@ export class PhysicsReplay2d {
     public getBodies() {
         const {box2d, replay} = this.requireReplay();
         const pointer = box2d._readReplayBodies(replay);
-        const [count] = readNumbers(box2d.HEAPF32, pointer, 1);
-        const values = readNumbers(
-            box2d.HEAPF32,
-            pointer + Float32Array.BYTES_PER_ELEMENT,
-            count * 4,
-        );
+        const [count] = readWasmFloat32s(box2d, pointer, 1);
+        const values = readWasmFloat32s(box2d, pointer + Float32Array.BYTES_PER_ELEMENT, count * 4);
         return createArray(count, (index): Transform2d | undefined => {
             const [
                 exists,
@@ -3920,7 +3960,7 @@ export class PhysicsReplay2d {
             ,
             ,
             queryCount,
-        ] = readNumbers(box2d.HEAP32, box2d._readReplayStatus(replay), 8);
+        ] = readWasmInt32s(box2d, box2d._readReplayStatus(replay), 8);
         return createArray(queryCount, (queryIndex): ReplayQuery2d => {
             const pointer = box2d._readReplayQuery(replay, queryIndex);
             const [
@@ -3938,7 +3978,7 @@ export class PhysicsReplay2d {
                 ,
                 ,
                 hitCount,
-            ] = readNumbers(box2d.HEAP32, pointer, replayQueryLength);
+            ] = readWasmInt32s(box2d, pointer, replayQueryLength);
             const [
                 ,
                 ,
@@ -3953,7 +3993,7 @@ export class PhysicsReplay2d {
                 originY,
                 translationX,
                 translationY,
-            ] = readNumbers(box2d.HEAPF32, pointer, replayQueryLength);
+            ] = readWasmFloat32s(box2d, pointer, replayQueryLength);
             const hitsPointer = pointer + replayQueryLength * Int32Array.BYTES_PER_ELEMENT;
             return {
                 type: assertWrap.isEnumValue(type, ReplayQueryType2d),
@@ -3989,7 +4029,7 @@ export class PhysicsReplay2d {
                     const hitPointer =
                         hitsPointer +
                         hitIndex * replayQueryHitLength * Int32Array.BYTES_PER_ELEMENT;
-                    const [bodyIndex] = readNumbers(box2d.HEAP32, hitPointer, 1);
+                    const [bodyIndex] = readWasmInt32s(box2d, hitPointer, 1);
                     const [
                         ,
                         pointX,
@@ -3997,7 +4037,7 @@ export class PhysicsReplay2d {
                         normalX,
                         normalY,
                         fraction,
-                    ] = readNumbers(box2d.HEAPF32, hitPointer, replayQueryHitLength);
+                    ] = readWasmFloat32s(box2d, hitPointer, replayQueryHitLength);
                     return {
                         bodyIndex: bodyIndex < 0 ? undefined : bodyIndex,
                         point: {
@@ -4057,11 +4097,6 @@ function readRecordingLengthScale(recording: Uint8Array) {
             ? 0
             : new DataView(recording.buffer, recording.byteOffset).getFloat32(12, true);
     return lengthScale > 0 ? lengthScale : undefined;
-}
-
-/** Writes bytes where the next binding call that takes input reads them. */
-function writeInputBytes(box2d: Box2dModule, bytes: Uint8Array) {
-    box2d.HEAPU8.set(bytes, box2d._reserveInput(bytes.byteLength));
 }
 
 /**
@@ -4230,7 +4265,7 @@ function readBounds(box2d: Box2dModule, pointer: number): Bounds2d {
         lowerY,
         upperX,
         upperY,
-    ] = readNumbers(box2d.HEAPF32, pointer, 4);
+    ] = readWasmFloat32s(box2d, pointer, 4);
     return {
         lowerBound: {
             x: lowerX,
@@ -4252,7 +4287,7 @@ function readGeometryHit(box2d: Box2dModule, pointer: number): GeometryHit2d | u
         normalX,
         normalY,
         fraction,
-    ] = readNumbers(box2d.HEAPF32, pointer, 6);
+    ] = readWasmFloat32s(box2d, pointer, 6);
     return isHit
         ? {
               point: {
@@ -4371,8 +4406,8 @@ export class PhysicsGeometry2d {
             centerX,
             centerY,
             rotationalInertia,
-        ] = readNumbers(
-            this.box2d.HEAPF32,
+        ] = readWasmFloat32s(
+            this.box2d,
             requireGeometryOutput(
                 this.box2d._computeGeometryMass(
                     (shape.type === GeometryShapeType2d.ChainSegment
@@ -4420,8 +4455,8 @@ export class PhysicsGeometry2d {
         point: Readonly<Coords>;
     }>) {
         writeGeometryShapes(this.box2d, [shape]);
-        const [isInside] = readNumbers(
-            this.box2d.HEAP32,
+        const [isInside] = readWasmInt32s(
+            this.box2d,
             requireGeometryOutput(
                 this.box2d._containsGeometryPoint(
                     ...writeTransform(this.box2d, transform),
@@ -4555,8 +4590,8 @@ export class PhysicsGeometry2d {
             normalY,
             distance,
             iterations,
-        ] = readNumbers(
-            this.box2d.HEAPF32,
+        ] = readWasmFloat32s(
+            this.box2d,
             requireGeometryOutput(
                 this.box2d._computeGeometryDistance(
                     ...writeTransform(this.box2d, transformA),
@@ -4611,8 +4646,8 @@ export class PhysicsGeometry2d {
             fraction1,
             fraction2,
             distanceSquared,
-        ] = readNumbers(
-            this.box2d.HEAPF32,
+        ] = readWasmFloat32s(
+            this.box2d,
             this.box2d._computeSegmentDistance(
                 segment1.point1.x,
                 segment1.point1.y,
@@ -4679,8 +4714,8 @@ export class PhysicsGeometry2d {
             normalX,
             normalY,
             fraction,
-        ] = readNumbers(
-            this.box2d.HEAPF32,
+        ] = readWasmFloat32s(
+            this.box2d,
             requireGeometryOutput(this.box2d._computeTimeOfImpact(maxFraction ?? 1)),
             6,
         );
@@ -4736,9 +4771,9 @@ export class PhysicsGeometry2d {
             pointCount,
             normalX,
             normalY,
-        ] = readNumbers(this.box2d.HEAPF32, pointer, 3);
-        const pointFloats = readNumbers(
-            this.box2d.HEAPF32,
+        ] = readWasmFloat32s(this.box2d, pointer, 3);
+        const pointFloats = readWasmFloat32s(
+            this.box2d,
             pointer + 3 * Float32Array.BYTES_PER_ELEMENT,
             pointCount * 4,
         );
@@ -4773,12 +4808,12 @@ export class PhysicsGeometry2d {
     public computeHull(points: ReadonlyArray<Readonly<Coords>>) {
         writePoints(this.box2d, points, undefined);
         const pointer = this.box2d._computeHull(points.length);
-        const [count] = readNumbers(this.box2d.HEAPF32, pointer, 1);
+        const [count] = readWasmFloat32s(this.box2d, pointer, 1);
         if (!count) {
             return undefined;
         }
-        const floats = readNumbers(
-            this.box2d.HEAPF32,
+        const floats = readWasmFloat32s(
+            this.box2d,
             pointer + Float32Array.BYTES_PER_ELEMENT,
             count * 2,
         );
@@ -4798,8 +4833,8 @@ export class PhysicsGeometry2d {
 
 /** Reads `writeFoundProxies` from `bindings.c`. */
 function readFoundProxies(box2d: Box2dModule, pointer: number) {
-    const [count] = readNumbers(box2d.HEAP32, pointer, 1);
-    return readNumbers(box2d.HEAP32, pointer + Int32Array.BYTES_PER_ELEMENT, count);
+    const [count] = readWasmInt32s(box2d, pointer, 1);
+    return readWasmInt32s(box2d, pointer + Int32Array.BYTES_PER_ELEMENT, count);
 }
 
 /**
@@ -5003,6 +5038,7 @@ export class DynamicTree2d {
         );
     }
 
+    /** The tree's shape and memory use. */
     public getStats() {
         const pointer = this.box2d._readTreeStats(this.requireTree());
         const [
@@ -5010,7 +5046,7 @@ export class DynamicTree2d {
             areaRatio,
             proxyCount,
             byteCount,
-        ] = readNumbers(this.box2d.HEAPF32, pointer, 4);
+        ] = readWasmFloat32s(this.box2d, pointer, 4);
         return {
             height,
             /** The internal boxes' total area divided by the root's. Lower makes faster queries. */

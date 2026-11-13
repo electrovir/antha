@@ -221,6 +221,7 @@ describe(createAnthaAudioMod.name, () => {
                 return [
                     null,
                     {
+                        index: 1,
                         buttons: [
                             {
                                 pressed: fake.isButtonPressed,

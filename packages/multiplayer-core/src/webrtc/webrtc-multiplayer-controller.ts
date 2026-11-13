@@ -64,6 +64,8 @@ export type MultiplayerConnectionUpdate = RequireExactlyOne<{
     newMember: ClientId;
     lostHost: ClientId;
     lostMember: ClientId;
+    /** Sent on members each time their connection to the host opens, including after reconnects. */
+    connectedToHost: ClientId;
 }>;
 
 /**
@@ -114,6 +116,11 @@ export type ShouldAllowConnectionCheck<MultiplayerController> = (data: {
     connectingClientId: ClientId;
     multiplayerController: MultiplayerController;
 }) => MaybePromise<boolean>;
+
+/** The longest wait between reconnect attempts. */
+const maxReconnectWait = {
+    seconds: 30,
+} as const satisfies AnyDuration;
 
 /**
  * Resolves once the browser fires `online`, `maxWait` passes, or `abortSignal` aborts. Resolves to
@@ -172,6 +179,7 @@ export class WebrtcMultiplayerController<
     protected readonly clientSecret = randomString(32);
     public readonly isDestroyed = false as boolean;
     protected hostPingTimeoutId: ReturnType<typeof setTimeout> | undefined;
+    protected hostPingAnimationFrameId: number | undefined;
     protected reconnectPromise: Promise<void> | undefined;
     protected isCleaningUpConnection = false;
     protected readonly destroyAbortController = new AbortController();
@@ -207,6 +215,16 @@ export class WebrtcMultiplayerController<
      */
     public isHost(): boolean {
         return this.hostClientId === this.clientId;
+    }
+
+    /**
+     * On a member, treat the host as lost: drop its connection and rejoin the room, recreating it
+     * if the host is gone. Does nothing on the host.
+     */
+    public dropHost() {
+        if (!this.isHost()) {
+            this.connections[this.clientId]?.handleDisconnect();
+        }
     }
 
     /**
@@ -269,8 +287,7 @@ export class WebrtcMultiplayerController<
     public override destroy() {
         makeWritable(this).isDestroyed = true;
         this.destroyAbortController.abort();
-        globalThis.clearTimeout(this.hostPingTimeoutId);
-        this.hostPingTimeoutId = undefined;
+        this.stopHostPings();
         Object.values(this.connections).forEach((connection) => connection.destroy());
         void this.webSocket?.close();
         this.connectionQueue.destroy();
@@ -386,17 +403,7 @@ export class WebrtcMultiplayerController<
 
             return true;
         } catch (error) {
-            this.isCleaningUpConnection = true;
-            try {
-                this.connections[this.clientId]?.destroy();
-                delete this.connections[this.clientId];
-                globalThis.clearTimeout(this.hostPingTimeoutId);
-                this.hostPingTimeoutId = undefined;
-                await this.webSocket?.close();
-                this.webSocket = undefined;
-            } finally {
-                this.isCleaningUpConnection = false;
-            }
+            await this.destroyOwnConnection();
             throw error;
         }
     }
@@ -413,8 +420,62 @@ export class WebrtcMultiplayerController<
                 ...this.multiplayerRoom,
             });
 
-            this.hostPingTimeoutId = setTimeout(() => this.sendHostPing(), 1000);
+            this.hostPingTimeoutId = setTimeout(() => {
+                /**
+                 * Browsers stop animation frames in hidden pages but keep running timers. Waiting
+                 * for one stops the pings from a hidden host, so the multiplayer server deletes its
+                 * room and members can recreate it instead of rejoining the hidden host.
+                 */
+                this.hostPingAnimationFrameId = globalThis.requestAnimationFrame(() => {
+                    this.hostPingAnimationFrameId = undefined;
+                    this.sendHostPing();
+                });
+            }, 1000);
         }
+    }
+
+    /** Cancels the next host ping, including one waiting for an animation frame. */
+    protected stopHostPings() {
+        globalThis.clearTimeout(this.hostPingTimeoutId);
+        this.hostPingTimeoutId = undefined;
+        if (this.hostPingAnimationFrameId != undefined) {
+            globalThis.cancelAnimationFrame(this.hostPingAnimationFrameId);
+        }
+        this.hostPingAnimationFrameId = undefined;
+    }
+
+    /**
+     * Turns a host that the multiplayer server has replaced into a member of the room's new host.
+     * Its own members are dropped so that they also reconnect to the new host.
+     */
+    protected rejoinAsMember() {
+        if (!this.isHost()) {
+            return;
+        }
+
+        this.stopHostPings();
+        getObjectTypedValues(this.connections).forEach((connection) => {
+            connection.handleDisconnect();
+            connection.destroy();
+        });
+        /**
+         * `initConnection` won't reconnect while any connection is left, even one that never
+         * opened.
+         */
+        this.connections = {};
+        /**
+         * Members also get `lostHost` with their own client id, so this is dispatched while still
+         * host for listeners to tell the two apart.
+         */
+        this.dispatch(
+            new WebrtcMultiplayerConnectionUpdateEvent({
+                detail: {
+                    lostHost: this.clientId,
+                },
+            }),
+        );
+        makeWritable(this).hostClientId = undefined;
+        this.reconnectAfterHostLoss();
     }
 
     /** Reconnect this room member after it loses its connection to the host. */
@@ -428,34 +489,62 @@ export class WebrtcMultiplayerController<
         });
     }
 
+    /** How long a reconnect waits for its new connection to open before trying again. */
+    protected reconnectOpenTimeout: AnyDuration = {
+        seconds: 10,
+    };
+
     /**
      * Keep trying to connect, waiting longer after each failure, until it works or this controller
      * is destroyed. The browser coming back online skips the wait.
      */
-    protected async reconnectUntilDestroyed(failureCount = 0) {
-        try {
-            await this.initConnection({
-                abortSignal: this.destroyAbortController.signal,
-            });
+    protected async reconnectUntilDestroyed(failureCount = 0): Promise<void> {
+        if (await this.tryReconnect()) {
             return;
-        } catch (error) {
-            if (this.destroyAbortController.signal.aborted) {
-                return;
-            }
-            log.warning(
-                ensureErrorAndPrependMessage(error, 'Failed to reconnect to the multiplayer room.'),
-            );
         }
 
         const isDestroyed = await waitUntilOnline({
             maxWait: {
-                seconds: Math.min(2 ** failureCount, 30),
+                seconds: Math.min(2 ** failureCount, maxReconnectWait.seconds),
             },
             abortSignal: this.destroyAbortController.signal,
         });
 
         if (!isDestroyed) {
+            /** Recursion is why this function's return type is annotated. */
             await this.reconnectUntilDestroyed(failureCount + 1);
+        }
+    }
+
+    /**
+     * Makes one reconnect attempt, which only succeeds once the new connection opens. Returns
+     * whether to stop trying: the connection opened or this controller was destroyed.
+     */
+    protected async tryReconnect() {
+        try {
+            await this.initConnection({
+                abortSignal: this.destroyAbortController.signal,
+            });
+            await rejectOnAbort(
+                waitUntil.isTrue(() => this.isConnected(), {
+                    timeout: this.reconnectOpenTimeout,
+                }),
+                this.destroyAbortController.signal,
+            );
+            return true;
+        } catch (error) {
+            if (this.destroyAbortController.signal.aborted) {
+                return true;
+            }
+            log.warning(
+                ensureErrorAndPrependMessage(error, 'Failed to reconnect to the multiplayer room.'),
+            );
+            /**
+             * A connection that never opened never fires a disconnect, and `initConnection` won't
+             * start a new one while it exists.
+             */
+            await this.destroyOwnConnection();
+            return false;
         }
     }
 
@@ -579,6 +668,10 @@ export class WebrtcMultiplayerController<
                                     );
                                 }
                             } else if (
+                                message.type === MultiplayerWebSocketMessageType.HostReplaced
+                            ) {
+                                this.rejoinAsMember();
+                            } else if (
                                 (message.type as string) === MultiplayerWebSocketMessageType.Error
                             ) {
                                 throw new Error(message.errorMessage);
@@ -601,8 +694,7 @@ export class WebrtcMultiplayerController<
                     },
                     close: () => {
                         this.webSocket = undefined;
-                        globalThis.clearTimeout(this.hostPingTimeoutId);
-                        this.hostPingTimeoutId = undefined;
+                        this.stopHostPings();
                     },
                 },
             },
@@ -622,6 +714,23 @@ export class WebrtcMultiplayerController<
         }
     }
 
+    /**
+     * Destroys the local client's own WebRTC connection and its WebSocket, without treating it as a
+     * lost host.
+     */
+    protected async destroyOwnConnection() {
+        this.isCleaningUpConnection = true;
+        try {
+            this.connections[this.clientId]?.destroy();
+            delete this.connections[this.clientId];
+            this.stopHostPings();
+            await this.webSocket?.close();
+            this.webSocket = undefined;
+        } finally {
+            this.isCleaningUpConnection = false;
+        }
+    }
+
     /** Create and track a WebRTC connection for the given client. */
     protected createNewConnection(clientId: ClientId): WebrtcController<MessageData> {
         const newController = new WebrtcController<MessageData>(clientId);
@@ -635,6 +744,14 @@ export class WebrtcMultiplayerController<
                         new WebrtcMultiplayerConnectionUpdateEvent({
                             detail: {
                                 newMember: clientId,
+                            },
+                        }),
+                    );
+                } else if (this.hostClientId) {
+                    this.dispatch(
+                        new WebrtcMultiplayerConnectionUpdateEvent({
+                            detail: {
+                                connectedToHost: this.hostClientId,
                             },
                         }),
                     );

@@ -230,6 +230,7 @@ function createFakeConnection({
         destroy() {
             this.destroyed = true;
         },
+        dropHost() {},
         getAllClientIds() {
             return [
                 this.clientId,

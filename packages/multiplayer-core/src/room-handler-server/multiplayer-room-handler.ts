@@ -14,7 +14,7 @@ import {
     type MultiplayerConnectHostMessage,
 } from '../multiplayer-api/multiplayer-api.js';
 import {createMultiplayerId, type ClientId, type RoomId} from '../multiplayer-id.js';
-import {MultiplayerWebSocketMessageType} from '../webrtc/web-rtc-communication.js';
+import {hostPingTimeout, MultiplayerWebSocketMessageType} from '../webrtc/web-rtc-communication.js';
 
 /**
  * A transport-agnostic client handle that the room handler uses to send messages and check
@@ -219,9 +219,8 @@ function updateRoomsForFetching(
             room.hostClient.transport.readyState !== CommonWebSocketState.Open ||
             /** Delete a room if the host reports no active room clients. */
             room.clientCount <= 0 ||
-            /** Delete a room if it has had no updates from the host for two cycles. */
-            room.lastHostPingTimestamp <=
-                Date.now() - updateRoomsForFetchingIntervalDuration.milliseconds * 2
+            /** Delete a room if it has had no updates from the host for too long. */
+            room.lastHostPingTimestamp <= Date.now() - hostPingTimeout.milliseconds
         ) {
             delete gameRooms[room.roomId];
         }
@@ -359,8 +358,7 @@ function processQueueItem(
             /** A client that isn't the room's host is trying to ping it. */
             transport.send({
                 messageId: message.messageId,
-                type: MultiplayerWebSocketMessageType.Error,
-                errorMessage: 'Invalid room to ping.',
+                type: MultiplayerWebSocketMessageType.HostReplaced,
             });
         } else {
             /** Refresh the room, re-establishing it if needed. */

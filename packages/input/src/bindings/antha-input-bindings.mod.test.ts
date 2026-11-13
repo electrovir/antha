@@ -1,6 +1,7 @@
 import {AnthaEngine, createEngineTime} from '@antha/engine';
 import {LocalPlayerPosition} from '@antha/util';
 import {assert, assertWrap} from '@augment-vir/assert';
+import {type PartialWithUndefined} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
 import {
     createButtonName,
@@ -605,6 +606,11 @@ describe(createAnthaInputBindingsMod.name, () => {
                         inputName: createButtonName('Space'),
                         direction: InputDirection.Positive,
                     },
+                    {
+                        deviceKey: InputDeviceKey.Keyboard,
+                        inputName: createButtonName('ControlLeft'),
+                        direction: InputDirection.Positive,
+                    },
                 ],
             },
         };
@@ -621,16 +627,26 @@ describe(createAnthaInputBindingsMod.name, () => {
 
         function isPrevented({
             code,
-            metaKey,
+            key,
             target,
-        }: Readonly<{
-            code: string;
-            metaKey?: boolean | undefined;
-            target?: EventTarget | undefined;
-        }>) {
+            metaKey,
+            ctrlKey,
+            altKey,
+        }: Readonly<
+            PartialWithUndefined<
+                Pick<KeyboardEventInit, 'key' | 'metaKey' | 'ctrlKey' | 'altKey'> & {
+                    target: EventTarget;
+                }
+            > & {
+                code: string;
+            }
+        >) {
             const event = new KeyboardEvent('keydown', {
                 code,
+                key: key || '',
                 metaKey: !!metaKey,
+                ctrlKey: !!ctrlKey,
+                altKey: !!altKey,
                 bubbles: true,
                 cancelable: true,
                 composed: true,
@@ -650,6 +666,19 @@ describe(createAnthaInputBindingsMod.name, () => {
             withCmd: isPrevented({
                 code: 'Space',
                 metaKey: true,
+            }),
+            withCtrl: isPrevented({
+                code: 'Space',
+                ctrlKey: true,
+            }),
+            withAlt: isPrevented({
+                code: 'Space',
+                altKey: true,
+            }),
+            boundModifier: isPrevented({
+                code: 'ControlLeft',
+                key: 'Control',
+                ctrlKey: true,
             }),
             inTextField: isPrevented({
                 code: 'Space',
@@ -684,6 +713,9 @@ describe(createAnthaInputBindingsMod.name, () => {
             bound: true,
             unbound: false,
             withCmd: false,
+            withCtrl: false,
+            withAlt: false,
+            boundModifier: true,
             inTextField: false,
             inEditable: false,
             onButton: false,

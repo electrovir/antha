@@ -1,4 +1,4 @@
-import {assert, assertWrap} from '@augment-vir/assert';
+import {assert, assertWrap, check} from '@augment-vir/assert';
 import {
     DeferredPromise,
     makeWritable,
@@ -7,6 +7,7 @@ import {
     type MaybePromise,
 } from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
+import {type AnyDuration} from 'date-vir';
 import {type MultiplayerApiClient} from '../multiplayer-api/multiplayer-client.js';
 import {createMultiplayerId, type ClientId} from '../multiplayer-id.js';
 import {MultiplayerWebSocketMessageType} from './web-rtc-communication.js';
@@ -48,6 +49,7 @@ type WebrtcMultiplayerControllerInternals<MessageData extends JsonCompatibleValu
     setupWebSocket(): Promise<FakeClientWebSocket>;
     reconnectAfterHostLoss(): void;
     reconnectPromise: Promise<void> | undefined;
+    reconnectOpenTimeout: AnyDuration;
     isCleaningUpConnection: boolean;
     webSocket: FakeClientWebSocket | undefined;
 }>;
@@ -414,59 +416,81 @@ describe(WebrtcMultiplayerController.name, () => {
         });
     });
 
-    it('reports lost host for member connections', async () => {
-        await withMockPeerConnection(async () => {
-            const localClientId = createMultiplayerId.client();
-            const hostClientId = createMultiplayerId.client();
-            const controller = new WebrtcMultiplayerController<TestMessage>(
-                'mock',
-                createCapturingApiClient(new FakeClientWebSocket(hostClientId)).apiClient,
-                [],
-                createNewRoom(),
-                localClientId,
-            );
-            const updates: unknown[] = [];
-            const internals = extractInternals(controller);
-            let reconnectCallCount = 0;
-
-            makeWritable(controller).hostClientId = hostClientId;
-            makeWritable(controller).initConnection = () => {
-                reconnectCallCount++;
-                return Promise.resolve(false);
-            };
-            assert.deepEquals(controller.getAllClientIds(), []);
-            controller.listen(WebrtcMultiplayerConnectionUpdateEvent, ({detail}) => {
-                updates.push(detail);
-            });
-
-            const hostConnection = internals.createNewConnection(localClientId);
-            await hostConnection.createOffer([]);
-            const dataChannel = FakePeerConnection.instances[0]?.createdDataChannels[0];
-            assert.isDefined(dataChannel);
-            dataChannel.open();
-            assert.deepEquals(
-                controller.getAllClientIds().toSorted(),
-                [
-                    hostClientId,
+    [
+        {
+            name: 'reports lost host for member connections',
+            loseHost(dataChannel: Readonly<{close(): void}>) {
+                dataChannel.close();
+            },
+        },
+        {
+            name: 'drops the host when a member calls dropHost',
+            loseHost(
+                _dataChannel: Readonly<{close(): void}>,
+                controller: Readonly<{dropHost(): void}>,
+            ) {
+                controller.dropHost();
+            },
+        },
+    ].forEach((testCase) => {
+        it(testCase.name, async () => {
+            await withMockPeerConnection(async () => {
+                const localClientId = createMultiplayerId.client();
+                const hostClientId = createMultiplayerId.client();
+                const controller = new WebrtcMultiplayerController<TestMessage>(
+                    'mock',
+                    createCapturingApiClient(new FakeClientWebSocket(hostClientId)).apiClient,
+                    [],
+                    createNewRoom(),
                     localClientId,
-                ].toSorted(),
-            );
-            dataChannel.close();
+                );
+                const updates: unknown[] = [];
+                const internals = extractInternals(controller);
+                let reconnectCallCount = 0;
 
-            assert.deepEquals(
-                {
-                    reconnectCallCount,
-                    updates,
-                },
-                {
-                    reconnectCallCount: 1,
-                    updates: [
-                        {
-                            lostHost: localClientId,
-                        },
-                    ],
-                },
-            );
+                makeWritable(controller).hostClientId = hostClientId;
+                makeWritable(controller).initConnection = () => {
+                    reconnectCallCount++;
+                    return Promise.resolve(false);
+                };
+                assert.deepEquals(controller.getAllClientIds(), []);
+                controller.listen(WebrtcMultiplayerConnectionUpdateEvent, ({detail}) => {
+                    updates.push(detail);
+                });
+
+                const hostConnection = internals.createNewConnection(localClientId);
+                await hostConnection.createOffer([]);
+                const dataChannel = FakePeerConnection.instances[0]?.createdDataChannels[0];
+                assert.isDefined(dataChannel);
+                dataChannel.open();
+                assert.deepEquals(
+                    controller.getAllClientIds().toSorted(),
+                    [
+                        hostClientId,
+                        localClientId,
+                    ].toSorted(),
+                );
+                testCase.loseHost(dataChannel, controller);
+
+                assert.deepEquals(
+                    {
+                        reconnectCallCount,
+                        updates,
+                    },
+                    {
+                        reconnectCallCount: 1,
+                        updates: [
+                            {
+                                connectedToHost: hostClientId,
+                            },
+                            {
+                                lostHost: localClientId,
+                            },
+                        ],
+                    },
+                );
+                controller.destroy();
+            });
         });
     });
 
@@ -714,6 +738,75 @@ describe(WebrtcMultiplayerController.name, () => {
         });
     });
 
+    it('rejoins as a member once the multiplayer server replaces it as host', async () => {
+        await withMockPeerConnection(async () => {
+            const localClientId = createMultiplayerId.client();
+            const memberClientId = createMultiplayerId.client();
+            const pendingClientId = createMultiplayerId.client();
+            const webSocket = new FakeClientWebSocket(localClientId);
+            const capturedApiClient = createCapturingApiClient(webSocket);
+            const controller = new WebrtcMultiplayerController<TestMessage>(
+                'mock',
+                capturedApiClient.apiClient,
+                [],
+                createNewRoom(),
+                localClientId,
+            );
+            const updates: unknown[] = [];
+            const internals = extractInternals(controller);
+            let reconnectCount = 0;
+
+            makeWritable(controller).hostClientId = localClientId;
+            makeWritable(internals).reconnectAfterHostLoss = () => {
+                reconnectCount++;
+            };
+            controller.listen(WebrtcMultiplayerConnectionUpdateEvent, ({detail}) => {
+                updates.push(detail);
+            });
+            await internals.createNewConnection(memberClientId).createOffer([]);
+            assertWrap.isDefined(FakePeerConnection.instances[0]?.createdDataChannels[0]).open();
+            internals.createNewConnection(pendingClientId);
+            await internals.setupWebSocket();
+            await capturedApiClient.listeners.message({
+                message: {
+                    type: MultiplayerWebSocketMessageType.HostReplaced,
+                },
+                webSocket,
+            });
+            await capturedApiClient.listeners.message({
+                message: {
+                    type: MultiplayerWebSocketMessageType.HostReplaced,
+                },
+                webSocket,
+            });
+
+            assert.deepEquals(
+                {
+                    connectionCount: Object.keys(internals.connections).length,
+                    isHost: controller.isHost(),
+                    reconnectCount,
+                    updates,
+                },
+                {
+                    connectionCount: 0,
+                    isHost: false,
+                    reconnectCount: 1,
+                    updates: [
+                        {
+                            newMember: memberClientId,
+                        },
+                        {
+                            lostMember: memberClientId,
+                        },
+                        {
+                            lostHost: localClientId,
+                        },
+                    ],
+                },
+            );
+        });
+    });
+
     it('handles rejected answers and invalid WebSocket messages', async () => {
         await withMockPeerConnection(async () => {
             const localClientId = createMultiplayerId.client();
@@ -756,6 +849,74 @@ describe(WebrtcMultiplayerController.name, () => {
                 webSocket,
             });
         });
+    });
+
+    it('waits for an animation frame before each repeated host ping', async () => {
+        const localClientId = createMultiplayerId.client();
+        const webSocket = new FakeClientWebSocket(localClientId);
+        const controller = new WebrtcMultiplayerController<TestMessage>(
+            'mock',
+            createCapturingApiClient(webSocket).apiClient,
+            [],
+            createNewRoom(),
+            localClientId,
+        );
+        const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+        const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
+        const animationFrameCallbacks: FrameRequestCallback[] = [];
+        const canceledAnimationFrameIds: number[] = [];
+
+        function countHostPings() {
+            return webSocket.sentMessages.filter((message) => {
+                return (
+                    check.isObject(message) &&
+                    'type' in message &&
+                    message.type === MultiplayerWebSocketMessageType.HostPing
+                );
+            }).length;
+        }
+
+        globalThis.requestAnimationFrame = (callback) => {
+            animationFrameCallbacks.push(callback);
+            return animationFrameCallbacks.length;
+        };
+        globalThis.cancelAnimationFrame = (id) => {
+            canceledAnimationFrameIds.push(id);
+        };
+        try {
+            await withMockPeerConnection(async () => {
+                assert.isTrue(await controller.initConnection());
+            });
+            await wait({
+                milliseconds: 1500,
+            });
+            const pingsBeforeAnimationFrame = countHostPings();
+            animationFrameCallbacks.forEach((callback) => callback(performance.now()));
+            const pingsAfterAnimationFrame = countHostPings();
+            await wait({
+                milliseconds: 1500,
+            });
+            controller.destroy();
+
+            assert.deepEquals(
+                {
+                    pingsBeforeAnimationFrame,
+                    pingsAfterAnimationFrame,
+                    canceledAnimationFrameIds,
+                },
+                {
+                    pingsBeforeAnimationFrame: 1,
+                    pingsAfterAnimationFrame: 2,
+                    canceledAnimationFrameIds: [
+                        animationFrameCallbacks.length,
+                    ],
+                },
+            );
+        } finally {
+            controller.destroy();
+            globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+            globalThis.cancelAnimationFrame = originalCancelAnimationFrame;
+        }
     });
 
     it('initializes as a host through the mock API client', async () => {
@@ -914,6 +1075,7 @@ describe(WebrtcMultiplayerController.name, () => {
                 return Promise.reject(new Error('reconnect failed'));
             }
 
+            makeWritable(controller).hostClientId = localClientId;
             return Promise.resolve(true);
         };
         internals.reconnectAfterHostLoss();
@@ -927,6 +1089,60 @@ describe(WebrtcMultiplayerController.name, () => {
             {
                 reconnectCallCount: 3,
                 reconnectPromise: undefined,
+            },
+        );
+        controller.destroy();
+    });
+
+    it('tries again when a reconnect connection never opens', async () => {
+        const localClientId = createMultiplayerId.client();
+        const controller = new WebrtcMultiplayerController<TestMessage>(
+            'mock',
+            createCapturingApiClient(new FakeClientWebSocket(localClientId)).apiClient,
+            [],
+            createNewRoom(),
+            localClientId,
+        );
+        const internals = extractInternals(controller);
+        const reconnectCalls: number[] = [];
+        const destroyedConnections: number[] = [];
+
+        /** `waitUntil` fails even a passing check when its timeout is below its polling interval. */
+        makeWritable(internals).reconnectOpenTimeout = {
+            milliseconds: 300,
+        };
+        makeWritable(controller).initConnection = () => {
+            reconnectCalls.push(1);
+
+            if (reconnectCalls.length === 1) {
+                internals.connections[localClientId] = {
+                    clientId: localClientId,
+                    isConnected: false,
+                    destroy() {
+                        destroyedConnections.push(1);
+                        globalThis.setTimeout(() => globalThis.dispatchEvent(new Event('online')));
+                    },
+                    sendMessage() {},
+                };
+            } else {
+                makeWritable(controller).hostClientId = localClientId;
+            }
+
+            return Promise.resolve(true);
+        };
+        internals.reconnectAfterHostLoss();
+        await internals.reconnectPromise;
+
+        assert.deepEquals(
+            {
+                connections: internals.connections,
+                destroyedConnectionCount: destroyedConnections.length,
+                reconnectCallCount: reconnectCalls.length,
+            },
+            {
+                connections: {},
+                destroyedConnectionCount: 1,
+                reconnectCallCount: 2,
             },
         );
         controller.destroy();

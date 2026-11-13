@@ -415,8 +415,7 @@ describe(createMultiplayerRoomHandler.name, () => {
                 memberMessages: [
                     {
                         messageId: invalidHostPing.messageId,
-                        type: MultiplayerWebSocketMessageType.Error,
-                        errorMessage: 'Invalid room to ping.',
+                        type: MultiplayerWebSocketMessageType.HostReplaced,
                     },
                     {
                         messageId: invalidMessageError.messageId,

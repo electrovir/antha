@@ -292,7 +292,7 @@ class PlayerEntity extends defineEntity({
     }
 
     public override async update(): Promise<void> {
-        const gameTickDelta = calculateGameTickDelta(this.entityStore.stepMs);
+        const gameTickDelta = calculateGameTickDelta(this.entityStore.stepDuration.milliseconds);
 
         this.shootCooldown += gameTickDelta;
 
@@ -373,7 +373,7 @@ class PlayerEntity extends defineEntity({
             min: -maxTurn,
             max: maxTurn,
         });
-        this.physics.setAngularVelocity(turn / (this.entityStore.stepMs / 1000));
+        this.physics.setAngularVelocity(turn / (this.entityStore.stepDuration.milliseconds / 1000));
 
         /** Move forward normally, or retreat when too close to an asteroid. */
         const heading = direction + turn;

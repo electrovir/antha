@@ -7,6 +7,8 @@ const baseConfig = defineConfig({
         'no-orphans': {
             from: [
                 'src/index\\.ts$',
+                // TypeScript picks these up for the matching `.mjs` imports
+                '\\.d\\.mts$',
             ],
         },
         'not-to-dev-dep': {

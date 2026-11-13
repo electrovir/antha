@@ -14,11 +14,9 @@ import {
 import {assertWrap, check} from '@augment-vir/assert';
 import {
     clamp,
-    ensureErrorAndPrependMessage,
     getObjectTypedKeys,
     getObjectTypedValues,
     type JsonCompatibleValue,
-    log,
     makeWritable,
     mapObjectValues,
     omitObjectKeys,
@@ -34,7 +32,7 @@ import {defineTypedCustomEvent, type TypedCustomEventInit} from 'typed-event-tar
  */
 export enum P2pAuthoritativeClientMessageType {
     ClientStates = 'client-states',
-    ClientLeave = 'client-leave',
+    ClientList = 'client-list',
 }
 
 /**
@@ -92,7 +90,10 @@ export type ClientConnectionStats = {
     recoveredCount: number;
     /** States that never arrived, even as a repeat, or arrived after a newer one. */
     missedCount: number;
-    /** The longest wait between received states, including the wait since the newest one. */
+    /**
+     * The longest wait between received states, including the wait since the newest one. The wait
+     * before a client's first state, such as while it loads or joins, is not counted.
+     */
     longestGap: Duration<DurationUnit.Milliseconds>;
     /** How much slower the slowest delivery was than the fastest one. */
     jitter: Duration<DurationUnit.Milliseconds>;
@@ -154,10 +155,14 @@ export type P2pAuthoritativeClientMessage<ClientState extends JsonCompatibleValu
           type: P2pAuthoritativeClientMessageType.ClientStates;
           clientStates: ClientStateUpdate<ClientState>[];
       }
-    /** Sent from the host to members when a member leaves the room. */
+    /**
+     * Sent reliably from the host to members whenever a member joins or leaves, including when
+     * members reconnect to a new host. Lists every client in the room, the host included. Members
+     * drop every other client, and ignore states from them until a later list includes them.
+     */
     | {
-          type: P2pAuthoritativeClientMessageType.ClientLeave;
-          clientId: ClientId;
+          type: P2pAuthoritativeClientMessageType.ClientList;
+          clientIds: ClientId[];
       };
 
 /**
@@ -199,15 +204,6 @@ export type P2pAuthoritativeClientMultiplayerControllerParams<
          * @default {seconds: 1 / 20}
          */
         sendInterval: AnyDuration;
-        /**
-         * While this client is the host and has members, how long its page may stay hidden before
-         * it leaves the room so a member takes over as host. A hidden page sends its own state
-         * slowly, so the host's player stalls on every member's screen. The client joins the room
-         * again as a member once its page is shown.
-         *
-         * @default {seconds: 10}
-         */
-        hostHandoffDelay: AnyDuration;
         /**
          * Called with each new state received from another client. Return `false` to drop the
          * state: it's then not stored, emitted, or relayed by the host.
@@ -266,32 +262,19 @@ export type AllP2pAuthoritativeClientMultiplayerControllerEvents<
 const defaultSendInterval: AnyDuration = {
     seconds: 1 / 20,
 };
-const defaultHostHandoffDelay: AnyDuration = {
-    seconds: 10,
-};
 /** Each send includes this many states from earlier sends, to cover lost messages. */
 const repeatedStateCount = 2;
 /** How far back the fastest delivery from each client is looked for. */
-const clockSyncWindowMs = convertDuration(
-    {
-        seconds: 2,
-    },
-    {
-        milliseconds: true,
-    },
-).milliseconds;
+const clockSyncWindow = {
+    milliseconds: 2000,
+} as const satisfies AnyDuration;
 /**
  * How long deliveries are kept for
  * {@link P2pAuthoritativeClientMultiplayerController.getConnectionStats}.
  */
-const deliveryHistoryMs = convertDuration(
-    {
-        seconds: 30,
-    },
-    {
-        milliseconds: true,
-    },
-).milliseconds;
+const deliveryHistory = {
+    milliseconds: 30_000,
+} as const satisfies AnyDuration;
 /**
  * How much faster or slower than real time `smoothedReceivedAt` may run while it adjusts to a
  * client's changing delivery.
@@ -314,6 +297,57 @@ export type ClientClockSync = {
     /** The newest `sentAt` that the delay was adjusted for. */
     sentAt: number;
 };
+
+function isFiniteNumber(value: unknown) {
+    return check.isNumber(value) && check.isFinite(value);
+}
+
+function isValidStateEcho(echo: unknown) {
+    return (
+        check.isPlainObject(echo) &&
+        check.isString(echo.clientId) &&
+        isFiniteNumber(echo.sentAt) &&
+        isFiniteNumber(echo.receivedAt)
+    );
+}
+
+function isValidClientStateUpdate(clientStateUpdate: unknown) {
+    return (
+        check.isPlainObject(clientStateUpdate) &&
+        check.isString(clientStateUpdate.clientId) &&
+        isFiniteNumber(clientStateUpdate.sentAt) &&
+        isFiniteNumber(clientStateUpdate.sequence) &&
+        check.isArray(clientStateUpdate.echoes) &&
+        clientStateUpdate.echoes.every(isValidStateEcho)
+    );
+}
+
+/**
+ * Checks the parts of a peer's message that the controller reads. Client states themselves are left
+ * to `isValidState`.
+ */
+function isValidMessage(message: unknown) {
+    if (
+        !check.isPlainObject(message) ||
+        !check.isEnumValue(message.type, P2pAuthoritativeClientMessageType)
+    ) {
+        return false;
+    }
+
+    const validators: Record<P2pAuthoritativeClientMessageType, () => boolean> = {
+        [P2pAuthoritativeClientMessageType.ClientStates]() {
+            return (
+                check.isArray(message.clientStates) &&
+                message.clientStates.every(isValidClientStateUpdate)
+            );
+        },
+        [P2pAuthoritativeClientMessageType.ClientList]() {
+            return check.isArray(message.clientIds) && message.clientIds.every(check.isString);
+        },
+    };
+
+    return validators[message.type]();
+}
 
 /**
  * A controller for singleplayer or p2p multiplayer where each client is the authority over its own
@@ -351,72 +385,19 @@ export class P2pAuthoritativeClientMultiplayerController<
     protected clientDeliveries: Record<ClientId, StateDelivery[]> = {};
     protected nextSequence = 0;
     protected sendIntervalId: ReturnType<typeof globalThis.setInterval> | undefined;
-    protected readonly sendIntervalMs: number;
-    /** The room joined last, to join again after handing off the host. */
-    protected joinedRoom: Readonly<RoomInput> | undefined;
-    /** The room this client left to hand off the host, to join again once its page is shown. */
-    protected handedOffRoom: Readonly<RoomInput> | undefined;
-    protected hostHandoffTimeoutId: ReturnType<typeof globalThis.setTimeout> | undefined;
+    protected sendAnimationFrameId: number | undefined;
+    /**
+     * On members, every client in the room from the host's latest client list, or `undefined`
+     * before the first list arrives.
+     */
+    protected roomClientIds: ClientId[] | undefined;
+    /** On members, the host that the latest message came from. */
+    protected hostClientId: ClientId | undefined;
 
     constructor(
         protected readonly params: P2pAuthoritativeClientMultiplayerControllerParams<ClientState>,
     ) {
         super(params);
-        this.sendIntervalMs = convertDuration(params.sendInterval || defaultSendInterval, {
-            milliseconds: true,
-        }).milliseconds;
-        globalThis.document.addEventListener('visibilitychange', this.handleVisibilityChange);
-    }
-
-    /**
-     * Hands off the host after the page has been hidden for `hostHandoffDelay`, and joins the
-     * handed off room again once the page is shown.
-     */
-    protected readonly handleVisibilityChange = async () => {
-        globalThis.clearTimeout(this.hostHandoffTimeoutId);
-        this.hostHandoffTimeoutId = undefined;
-
-        if (globalThis.document.hidden) {
-            this.hostHandoffTimeoutId = globalThis.setTimeout(
-                () => {
-                    this.handOffHost();
-                },
-                convertDuration(this.params.hostHandoffDelay || defaultHostHandoffDelay, {
-                    milliseconds: true,
-                }).milliseconds,
-            );
-        } else if (this.handedOffRoom) {
-            try {
-                await this.joinOrCreateRoom(this.handedOffRoom);
-            } catch (error) {
-                log.warning(
-                    ensureErrorAndPrependMessage(
-                        error,
-                        'Failed to join the room again after handing off the host.',
-                    ),
-                );
-            }
-        }
-    };
-
-    /**
-     * Leaves the room so that a member takes over as host. Members reconnect on their own when they
-     * lose the host, and the first one to reach the room server becomes the new host.
-     */
-    protected handOffHost() {
-        if (
-            this.singleplayer ||
-            !this.joinedRoom ||
-            !this.isHost() ||
-            !this.getConnectedClientIds().length
-        ) {
-            return;
-        }
-
-        const room = this.joinedRoom;
-        this.debugLog(`handing off the host of room '${room.roomName}' (${room.roomId})`);
-        this.leaveRoom();
-        this.handedOffRoom = room;
     }
 
     protected override shouldAcceptConnection(connectingClientId: ClientId) {
@@ -450,17 +431,31 @@ export class P2pAuthoritativeClientMultiplayerController<
         await this.roomController.joinOrCreateRoom(room, timeoutOptions);
 
         this.stopSending();
+        this.roomClientIds = undefined;
+        this.hostClientId = undefined;
         this.removeAllRemoteClients();
         this.singleplayer = false;
-        this.joinedRoom = room;
-        this.handedOffRoom = undefined;
         this.roomConnection = assertWrap.isDefined(
             this.roomController.currentConnection,
             'Cannot start p2p-authoritative-client multiplayer: room connection is missing.',
         );
-        this.sendIntervalId = globalThis.setInterval(() => {
-            this.sendClientStates();
-        }, this.sendIntervalMs);
+        this.watchHost();
+        this.sendIntervalId = globalThis.setInterval(
+            () => {
+                /**
+                 * Browsers stop animation frames in hidden pages but keep running timers. Waiting
+                 * for one stops a hidden host from sending, so its members drop it and recreate the
+                 * room instead of playing on with a host that only sends occasionally.
+                 */
+                this.sendAnimationFrameId ??= globalThis.requestAnimationFrame(() => {
+                    this.sendAnimationFrameId = undefined;
+                    this.sendClientStates();
+                });
+            },
+            convertDuration(this.params.sendInterval || defaultSendInterval, {
+                milliseconds: true,
+            }).milliseconds,
+        );
         this.debugLog(
             `attached p2p-authoritative-client connection; client=${this.clientId} host=${this.isHost()}`,
         );
@@ -469,30 +464,47 @@ export class P2pAuthoritativeClientMultiplayerController<
     /** Leave the current room or single player connection. */
     public override leaveRoom() {
         this.stopSending();
+        this.roomClientIds = undefined;
+        this.hostClientId = undefined;
         this.removeAllRemoteClients();
-        this.joinedRoom = undefined;
-        this.handedOffRoom = undefined;
         super.leaveRoom();
     }
 
     /** Cleanup everything. */
     public override destroy() {
         this.stopSending();
-        globalThis.clearTimeout(this.hostHandoffTimeoutId);
-        globalThis.document.removeEventListener('visibilitychange', this.handleVisibilityChange);
         super.destroy();
     }
 
     protected override handleClientStatus(status: Readonly<MultiplayerConnectionUpdate>) {
         if (status.lostMember) {
             this.removeRemoteClient(status.lostMember);
-            this.roomConnection?.sendMessage({
-                type: P2pAuthoritativeClientMessageType.ClientLeave,
-                clientId: status.lostMember,
-            });
-        } else if (status.lostHost) {
-            this.removeRemoteClient(status.lostHost);
+            this.sendClientList();
+        } else if (status.newMember) {
+            this.sendClientList();
+        } else if (status.lostHost && this.hostClientId) {
+            /** `lostHost` is the local client's id, not the host's. */
+            this.removeRemoteClient(this.hostClientId);
+            this.hostClientId = undefined;
         }
+    }
+
+    /**
+     * On the host, drops every remote client that's no longer connected and sends the room's
+     * clients to every member.
+     */
+    protected sendClientList() {
+        if (!this.roomConnection || !this.isHost()) {
+            return;
+        }
+
+        const clientIds = this.roomConnection.getAllClientIds();
+
+        this.removeRemoteClientsExcept(clientIds);
+        this.roomConnection.sendMessage({
+            type: P2pAuthoritativeClientMessageType.ClientList,
+            clientIds,
+        });
     }
 
     /** Per message type, how a received message is handled. */
@@ -509,6 +521,14 @@ export class P2pAuthoritativeClientMultiplayerController<
     } = {
         [P2pAuthoritativeClientMessageType.ClientStates]: {
             handle: ({message, sourceClientId}) => {
+                const newestSentAts = message.clientStates.reduce<
+                    Partial<Record<ClientId, number>>
+                >((newest, {clientId, sentAt}) => {
+                    return {
+                        ...newest,
+                        [clientId]: Math.max(newest[clientId] ?? sentAt, sentAt),
+                    };
+                }, {});
                 const acceptedCount = message.clientStates.filter((clientStateUpdate) => {
                     /** The host only trusts a member's own state, and members never take their own. */
                     const isAllowed = this.isHost()
@@ -519,12 +539,9 @@ export class P2pAuthoritativeClientMultiplayerController<
                         isAllowed &&
                         this.receiveClientState({
                             clientStateUpdate,
-                            isRepeat: message.clientStates.some((otherUpdate) => {
-                                return (
-                                    otherUpdate.clientId === clientStateUpdate.clientId &&
-                                    otherUpdate.sentAt > clientStateUpdate.sentAt
-                                );
-                            }),
+                            isRepeat:
+                                clientStateUpdate.sentAt !==
+                                newestSentAts[clientStateUpdate.clientId],
                         })
                     );
                 }).length;
@@ -534,10 +551,11 @@ export class P2pAuthoritativeClientMultiplayerController<
                 }
             },
         },
-        [P2pAuthoritativeClientMessageType.ClientLeave]: {
+        [P2pAuthoritativeClientMessageType.ClientList]: {
             handle: ({message}) => {
                 if (!this.isHost()) {
-                    this.removeRemoteClient(message.clientId);
+                    this.roomClientIds = message.clientIds;
+                    this.removeRemoteClientsExcept(message.clientIds);
                 }
             },
         },
@@ -551,6 +569,14 @@ export class P2pAuthoritativeClientMultiplayerController<
         sourceClientId: ClientId,
         message: P2pAuthoritativeClientMessageByType<ClientState>[Type],
     ) {
+        if (!isValidMessage(message)) {
+            this.debugLog(`dropped an invalid message from client ${sourceClientId}`);
+            return;
+        }
+        if (!this.isHost()) {
+            this.hostClientId = sourceClientId;
+        }
+
         /** Indexing by `message.type` directly loses the link between the handler and `message`. */
         const type: Type = message.type;
 
@@ -576,6 +602,9 @@ export class P2pAuthoritativeClientMultiplayerController<
 
         if (
             (previous && previous.sentAt >= clientStateUpdate.sentAt) ||
+            (!this.isHost() &&
+                this.roomClientIds &&
+                !this.roomClientIds.includes(clientStateUpdate.clientId)) ||
             this.params.isValidState?.({
                 previous,
                 next: clientStateUpdate,
@@ -660,8 +689,12 @@ export class P2pAuthoritativeClientMultiplayerController<
                     (delivery) => delivery.receivedAt > since,
                 );
                 const sequences = recentDeliveries.map(({sequence}) => sequence);
+                /** A client that joined during the window has no gap before its first state. */
+                const hasEarlierDelivery = deliveries.some(
+                    (delivery) => delivery.receivedAt <= since,
+                );
                 const receivedAts = [
-                    since,
+                    ...(hasEarlierDelivery ? [since] : []),
                     ...recentDeliveries.map(({receivedAt}) => receivedAt),
                     now,
                 ];
@@ -719,9 +752,9 @@ export class P2pAuthoritativeClientMultiplayerController<
     }>) {
         const echo = clientStateUpdate.echoes.find(({clientId}) => clientId === this.clientId);
         const deliveries = [
-            ...(this.clientDeliveries[clientStateUpdate.clientId] || []).filter(
-                (delivery) => delivery.receivedAt > receivedAt - deliveryHistoryMs,
-            ),
+            ...(this.clientDeliveries[clientStateUpdate.clientId] || []).filter((delivery) => {
+                return delivery.receivedAt > receivedAt - deliveryHistory.milliseconds;
+            }),
             {
                 sequence: clientStateUpdate.sequence,
                 sentAt: clientStateUpdate.sentAt,
@@ -739,7 +772,9 @@ export class P2pAuthoritativeClientMultiplayerController<
         };
 
         const roundTrips = deliveries
-            .filter((delivery) => delivery.receivedAt > receivedAt - clockSyncWindowMs)
+            .filter((delivery) => {
+                return delivery.receivedAt > receivedAt - clockSyncWindow.milliseconds;
+            })
             .map(({roundTrip}) => roundTrip)
             .filter(check.isDefined);
 
@@ -767,9 +802,9 @@ export class P2pAuthoritativeClientMultiplayerController<
     }>) {
         const previous = this.clientClockSyncs[clientId];
         const deliveries = [
-            ...(previous?.deliveries || []).filter(
-                (delivery) => delivery.sentAt > sentAt - clockSyncWindowMs,
-            ),
+            ...(previous?.deliveries || []).filter((delivery) => {
+                return delivery.sentAt > sentAt - clockSyncWindow.milliseconds;
+            }),
             {
                 sentAt,
                 delay: receivedAt - sentAt,
@@ -883,6 +918,15 @@ export class P2pAuthoritativeClientMultiplayerController<
         );
     }
 
+    /** Removes every remote client that isn't in `clientIds`. */
+    protected removeRemoteClientsExcept(clientIds: ReadonlyArray<ClientId>) {
+        getObjectTypedKeys(this.remoteClientStates).forEach((clientId) => {
+            if (!clientIds.includes(clientId)) {
+                this.removeRemoteClient(clientId);
+            }
+        });
+    }
+
     /**
      * Removes every remote client with
      * {@link P2pAuthoritativeClientMultiplayerController.removeRemoteClient}.
@@ -897,6 +941,10 @@ export class P2pAuthoritativeClientMultiplayerController<
     protected stopSending() {
         globalThis.clearInterval(this.sendIntervalId);
         this.sendIntervalId = undefined;
+        if (this.sendAnimationFrameId != undefined) {
+            globalThis.cancelAnimationFrame(this.sendAnimationFrameId);
+            this.sendAnimationFrameId = undefined;
+        }
         this.recentClientStates = {};
     }
 }

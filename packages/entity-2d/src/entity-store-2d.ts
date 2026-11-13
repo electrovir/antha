@@ -2,6 +2,7 @@ import {
     defineSerializedEntityShape,
     defineSerializedJointShape,
     EntityStore,
+    interpolate,
     type AddEntityOptions,
     type AddEntityParams,
     type EntitySnapshot,
@@ -10,8 +11,7 @@ import {
     type SerializedJoint,
 } from '@antha/entity-core';
 import {type PixiApplication} from '@antha/graphics-2d';
-import {type AnyObject, type PartialWithUndefined, type Writable} from '@augment-vir/common';
-import {type AnyDuration} from 'date-vir';
+import {type AnyObject, type Writable} from '@augment-vir/common';
 import {type BaseEntity2d, type Entity2dConstructor} from './entity.js';
 import {
     bodyStateShape,
@@ -45,15 +45,7 @@ export type AddEntity2dParams<ThisConstructor extends Entity2dConstructor> = Add
  * @category Internal
  */
 export type EntityStore2dPhysicsOptions = PhysicsOptions &
-    PartialWithUndefined<{
-        /**
-         * How much time each {@link EntityStore.updateAllEntities} call simulates. Shorter steps
-         * cost more but let fast bodies collide more accurately.
-         *
-         * @default {seconds: 1 / 120}
-         */
-        stepDuration: AnyDuration;
-    }>;
+    Pick<EntityStoreConstructorParams<AnyObject, PhysicsWorld2d>, 'stepDuration'>;
 
 /**
  * Parameters for the constructor of {@link EntityStore2d}.
@@ -103,14 +95,6 @@ export type SerializedJoint2d = SerializedJoint<PhysicsWorld2d>;
  * @category Internal
  */
 export type EntitySnapshot2d = EntitySnapshot<PhysicsWorld2d>;
-
-function interpolate({
-    start,
-    end,
-    progress,
-}: Readonly<{start: number; end: number; progress: number}>) {
-    return start + (end - start) * progress;
-}
 
 /** Turns the short way around, so that crossing from `π` to `-π` is not a full spin. */
 function interpolateAngle({

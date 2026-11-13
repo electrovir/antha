@@ -1,5 +1,7 @@
 import {assert} from '@augment-vir/assert';
+import {wait} from '@augment-vir/common';
 import {describe, it} from '@augment-vir/test';
+import {type AnyDuration} from 'date-vir';
 import {type ClientId, createMultiplayerId} from '../multiplayer-id.js';
 import {createMockRoomHandlerServerApiClient} from '../room-handler-server/mock-room-handler-server-api-client.js';
 import {type MultiplayerConnectionUpdate} from '../webrtc/webrtc-multiplayer-controller.js';
@@ -33,6 +35,11 @@ class MinimalP2pController extends P2pMultiplayerController<TestMessage> {
 
     public setSingleplayerForTest(singleplayer: boolean) {
         this.singleplayer = singleplayer;
+    }
+
+    public watchHostForTest(hostTimeout: Readonly<AnyDuration>) {
+        this.hostTimeout = hostTimeout;
+        this.watchHost();
     }
 
     public get localClientIdForTest() {
@@ -77,12 +84,17 @@ function createFakeConnection({
     host: boolean;
 }>): MultiplayerRoomConnection<TestMessage> & {
     destroyed: boolean;
+    dropHostCount: number;
 } {
     return {
         clientId: createMultiplayerId.client(),
         destroyed: false,
         destroy() {
             this.destroyed = true;
+        },
+        dropHostCount: 0,
+        dropHost() {
+            this.dropHostCount++;
         },
         getAllClientIds() {
             return [
@@ -329,5 +341,53 @@ describe(P2pMultiplayerController.name, () => {
 
         assert.strictEquals(controller.apiConnectionState, MultiplayerConnectionState.Connected);
         controller.destroy();
+    });
+
+    it('drops a host that sends nothing for too long', async () => {
+        const controller = new MinimalP2pController({
+            gameId: 'test-game',
+            debugMultiplayer: true,
+        });
+        const hostConnection = createFakeConnection({
+            connected: true,
+            host: true,
+        });
+        const memberConnection = createFakeConnection({
+            connected: true,
+            host: false,
+        });
+
+        try {
+            controller.setRoomConnectionForTest(hostConnection);
+            controller.watchHostForTest({
+                milliseconds: 1,
+            });
+            await wait({
+                milliseconds: 1500,
+            });
+
+            controller.setRoomConnectionForTest(memberConnection);
+            controller.roomController.dispatch(
+                new MultiplayerControllerMessageEvent<TestMessage>(memberConnection.clientId, {
+                    value: 'from host',
+                }),
+            );
+            await wait({
+                milliseconds: 1000,
+            });
+
+            assert.deepEquals(
+                {
+                    hostDropHostCount: hostConnection.dropHostCount,
+                    memberDropHostCount: memberConnection.dropHostCount,
+                },
+                {
+                    hostDropHostCount: 0,
+                    memberDropHostCount: 1,
+                },
+            );
+        } finally {
+            controller.destroy();
+        }
     });
 });
