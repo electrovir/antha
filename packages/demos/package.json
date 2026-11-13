@@ -39,7 +39,7 @@
         "theme-vir": "^29.0.3",
         "typed-event-target": "^4.3.4",
         "url-vir": "^2.2.2",
-        "vira": "^33.17.0"
+        "vira": "^33.18.0"
     },
     "devDependencies": {
         "@augment-vir/test": "^32.7.0",
@@ -48,10 +48,10 @@
         "@web/test-runner": "^1.0.0",
         "@web/test-runner-playwright": "^1.0.0",
         "istanbul-smart-text-reporter": "^1.1.5",
-        "markdown-code-example-inserter": "^3.1.1",
+        "markdown-code-example-inserter": "^3.1.2",
         "typedoc": "^0.28.20",
         "typescript": "^6.0.3",
-        "vite": "^8.3.5"
+        "vite": "^8.3.6"
     },
     "engines": {
         "node": ">=22"

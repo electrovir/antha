@@ -55,7 +55,7 @@
         "markdown-code-example-inserter": "^3.1.2",
         "typedoc": "^0.28.20",
         "typescript": "^6.0.3",
-        "vite": "^8.3.5"
+        "vite": "^8.3.6"
     },
     "peerDependencies": {
         "element-vir": "^27"

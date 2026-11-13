@@ -53,7 +53,7 @@
         "markdown-code-example-inserter": "^3.1.2",
         "pixi.js": "^8.23.0",
         "typedoc": "^0.28.20",
-        "vira": "33.17.0"
+        "vira": "33.18.0"
     },
     "peerDependencies": {
         "@antha/asset": "^0.29.0",

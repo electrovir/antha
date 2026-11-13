@@ -39,7 +39,7 @@
         "device-navigation": "^5.0.0",
         "input-device-handler": "^9.1.0",
         "object-shape-tester": "^6.15.3",
-        "vira": "^33.17.0"
+        "vira": "^33.18.0"
     },
     "devDependencies": {
         "@antha/engine": "^0.29.0",
