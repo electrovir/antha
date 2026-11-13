@@ -11,6 +11,8 @@ const baseConfig = defineConfig({
 /** @type {import('@web/test-runner').TestRunnerConfig} */
 const webTestRunnerConfig = {
     ...baseConfig,
+    /** The default of one page per CPU core times out page loads when the machine is busy. */
+    concurrency: Math.min(baseConfig.concurrency, 4),
 };
 
 export default webTestRunnerConfig;

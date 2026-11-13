@@ -1,6 +1,6 @@
 {
     "name": "@antha/entity-2d",
-    "version": "0.29.0",
+    "version": "0.29.1",
     "description": "An Antha mod for handling 2D entities.",
     "keywords": [
         "vir",
@@ -28,7 +28,8 @@
     "module": "src/index.ts",
     "types": "src/index.ts",
     "scripts": {
-        "compile": "virmator compile",
+        "compile": "virmator compile && npm run compile:engine",
+        "compile:engine": "mkdir -p dist/box2d && cp src/box2d/box2d.mjs src/box2d/box2d.d.mts src/box2d/LICENSE-box2d dist/box2d/",
         "docs": "virmator docs",
         "test": "NODE_OPTIONS=--import=tsx virmator test web",
         "test:coverage": "npm test coverage",
@@ -40,11 +41,11 @@
         "date-vir": "^9.4.1"
     },
     "devDependencies": {
-        "@antha/asset": "^0.29.0",
-        "@antha/engine": "^0.29.0",
-        "@antha/entity-core": "^0.29.0",
-        "@antha/graphics-2d": "^0.29.0",
-        "@antha/web-test-runner-plugin-pixi": "^0.29.0",
+        "@antha/asset": "^0.29.1",
+        "@antha/engine": "^0.29.1",
+        "@antha/entity-core": "^0.29.1",
+        "@antha/graphics-2d": "^0.29.1",
+        "@antha/web-test-runner-plugin-pixi": "^0.29.1",
         "@augment-vir/test": "^32.7.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
@@ -56,10 +57,10 @@
         "typedoc": "^0.28.20"
     },
     "peerDependencies": {
-        "@antha/asset": "^0.29.0",
-        "@antha/engine": "^0.29.0",
-        "@antha/entity-core": "^0.29.0",
-        "@antha/graphics-2d": "^0.29.0",
+        "@antha/asset": "^0.29.1",
+        "@antha/engine": "^0.29.1",
+        "@antha/entity-core": "^0.29.1",
+        "@antha/graphics-2d": "^0.29.1",
         "element-vir": "^27",
         "object-shape-tester": "^6",
         "pixi.js": "^8"

@@ -1,6 +1,6 @@
 {
     "name": "@evir/antha-root",
-    "version": "0.29.0",
+    "version": "0.29.1",
     "private": true,
     "homepage": "https://github.com/electrovir/antha",
     "bugs": {
@@ -22,14 +22,15 @@
     ],
     "scripts": {
         "build": "npm run build --workspace @antha/scripts",
-        "compile": "virmator compile",
+        "compile": "virmator compile && npm run compile:engine",
+        "compile:engine": "npm run compile:engine --workspaces --if-present",
         "docs": "virmator docs",
         "format": "virmator format",
         "lint": "virmator lint fix",
         "publish": "virmator publish npm run test:all",
         "start": "npm start --workspace @antha/demos",
         "test": "mono-vir for-each-async npm run test",
-        "test:all": "npm run compile && runstorm --names tests,spelling,format,docs,deps,lint \"npm run test:coverage\" \"npm run test:spelling\" \"npm run test:format\" \"npm run test:docs\" \"npm run test:deps\" \"npm run test:lint\"",
+        "test:all": "npm run compile && runstorm --names spelling,format,docs,deps,lint \"npm run test:spelling\" \"npm run test:format\" \"npm run test:docs\" \"npm run test:deps\" \"npm run test:lint\" && npm run test:coverage",
         "test:coverage": "mono-vir for-each npm run test:coverage",
         "test:deps": "virmator deps check",
         "test:docs": "virmator docs check",

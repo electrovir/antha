@@ -1,6 +1,6 @@
 {
     "name": "@antha/entity-core",
-    "version": "0.29.0",
+    "version": "0.29.1",
     "description": "Entity logic shared by every Antha entity package.",
     "keywords": [
         "vir",
@@ -39,10 +39,10 @@
         "date-vir": "^9.4.1"
     },
     "devDependencies": {
-        "@antha/asset": "^0.29.0",
-        "@antha/audio": "^0.29.0",
-        "@antha/engine": "^0.29.0",
-        "@antha/util": "^0.29.0",
+        "@antha/asset": "^0.29.1",
+        "@antha/audio": "^0.29.1",
+        "@antha/engine": "^0.29.1",
+        "@antha/util": "^0.29.1",
         "@augment-vir/test": "^32.7.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
@@ -54,10 +54,10 @@
         "typedoc": "^0.28.20"
     },
     "peerDependencies": {
-        "@antha/asset": "^0.29.0",
-        "@antha/audio": "^0.29.0",
-        "@antha/engine": "^0.29.0",
-        "@antha/util": "^0.29.0",
+        "@antha/asset": "^0.29.1",
+        "@antha/audio": "^0.29.1",
+        "@antha/engine": "^0.29.1",
+        "@antha/util": "^0.29.1",
         "object-shape-tester": "^6",
         "typed-event-target": "^4.3"
     },

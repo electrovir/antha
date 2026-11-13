@@ -1,6 +1,6 @@
 {
     "name": "@antha/web-test-runner-plugin-pixi",
-    "version": "0.29.0",
+    "version": "0.29.1",
     "description": "Fixing pixi.js imports for web-test-runner.",
     "keywords": [
         "pixi",

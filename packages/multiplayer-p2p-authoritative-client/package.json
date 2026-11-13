@@ -1,6 +1,6 @@
 {
     "name": "@antha/multiplayer-p2p-authoritative-client",
-    "version": "0.29.0",
+    "version": "0.29.1",
     "description": "Authoritative-client P2P multiplayer mod for the Antha engine.",
     "keywords": [
         "vir",
@@ -42,7 +42,7 @@
         "typed-event-target": "^4.3.4"
     },
     "devDependencies": {
-        "@antha/multiplayer-core": "^0.29.0",
+        "@antha/multiplayer-core": "^0.29.1",
         "@augment-vir/test": "^32.7.0",
         "@web/dev-server-esbuild": "^2.0.0",
         "@web/test-runner": "^1.0.0",
@@ -52,7 +52,7 @@
         "typedoc": "^0.28.20"
     },
     "peerDependencies": {
-        "@antha/multiplayer-core": "^0.29.0"
+        "@antha/multiplayer-core": "^0.29.1"
     },
     "engines": {
         "node": ">=22"

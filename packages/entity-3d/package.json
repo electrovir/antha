@@ -1,6 +1,6 @@
 {
     "name": "@antha/entity-3d",
-    "version": "0.29.0",
+    "version": "0.29.1",
     "description": "An Antha mod for handling 3D entities.",
     "keywords": [
         "vir",
@@ -28,7 +28,8 @@
     "module": "src/index.ts",
     "types": "src/index.ts",
     "scripts": {
-        "compile": "virmator compile",
+        "compile": "virmator compile && npm run compile:engine",
+        "compile:engine": "mkdir -p dist/box3d && cp src/box3d/box3d.mjs src/box3d/box3d.d.mts src/box3d/LICENSE-box3d dist/box3d/",
         "docs": "virmator docs",
         "test": "NODE_OPTIONS=--import=tsx virmator test web",
         "test:coverage": "npm test coverage",
@@ -40,12 +41,12 @@
         "date-vir": "^9.4.1"
     },
     "devDependencies": {
-        "@antha/asset": "^0.29.0",
-        "@antha/engine": "^0.29.0",
-        "@antha/entity-core": "^0.29.0",
-        "@antha/graphics-2d": "^0.29.0",
-        "@antha/graphics-3d": "^0.29.0",
-        "@antha/web-test-runner-plugin-pixi": "^0.29.0",
+        "@antha/asset": "^0.29.1",
+        "@antha/engine": "^0.29.1",
+        "@antha/entity-core": "^0.29.1",
+        "@antha/graphics-2d": "^0.29.1",
+        "@antha/graphics-3d": "^0.29.1",
+        "@antha/web-test-runner-plugin-pixi": "^0.29.1",
         "@augment-vir/test": "^32.7.0",
         "@pixi/3d": "^0.1.0",
         "@web/dev-server-esbuild": "^2.0.0",
@@ -58,11 +59,11 @@
         "typedoc": "^0.28.20"
     },
     "peerDependencies": {
-        "@antha/asset": "^0.29.0",
-        "@antha/engine": "^0.29.0",
-        "@antha/entity-core": "^0.29.0",
-        "@antha/graphics-2d": "^0.29.0",
-        "@antha/graphics-3d": "^0.29.0",
+        "@antha/asset": "^0.29.1",
+        "@antha/engine": "^0.29.1",
+        "@antha/entity-core": "^0.29.1",
+        "@antha/graphics-2d": "^0.29.1",
+        "@antha/graphics-3d": "^0.29.1",
         "@pixi/3d": "^0.1.0",
         "object-shape-tester": "^6",
         "pixi.js": "^8.23.0"
